@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Loader2, CheckCircle } from 'lucide-react';
 
 import { AuthLayout } from '@/components/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,18 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Signup() {
   const { t } = useTranslation();
+  const { signUp } = useAuth();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const signupSchema = z.object({
     firstName: z.string().min(1, t('auth.validation.firstNameRequired')),
@@ -58,10 +64,56 @@ export default function Signup() {
 
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
-    // TODO: Implement Supabase signup
-    console.log('Signup attempt:', data);
-    setTimeout(() => setIsLoading(false), 1500);
+
+    const { error } = await signUp(data.email, data.password, {
+      first_name: data.firstName,
+      last_name: data.lastName,
+    });
+
+    if (error) {
+      let errorMessage = t('auth.errors.generic');
+      
+      if (error.message?.includes('already registered')) {
+        errorMessage = 'Cet email est déjà utilisé';
+      }
+
+      toast({
+        variant: 'destructive',
+        title: t('common.error'),
+        description: errorMessage,
+      });
+    } else {
+      setUserEmail(data.email);
+      setIsSuccess(true);
+    }
+
+    setIsLoading(false);
   };
+
+  if (isSuccess) {
+    return (
+      <AuthLayout>
+        <Card className="border-border/50 shadow-lg">
+          <CardHeader className="space-y-1 text-center">
+            <div className="mx-auto w-12 h-12 bg-ventou-success/10 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="h-6 w-6 text-ventou-success" />
+            </div>
+            <CardTitle className="text-2xl font-bold">{t('auth.verifyEmail.title')}</CardTitle>
+            <CardDescription>
+              {t('auth.verifyEmail.subtitle')} <strong>{userEmail}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/login">
+              <Button variant="outline" className="w-full">
+                {t('auth.forgotPassword.backToLogin')}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout>
