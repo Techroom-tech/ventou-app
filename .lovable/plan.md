@@ -1,186 +1,185 @@
 
-# VENTOU - Plan de Développement MVP
+# Plan d'intégration Supabase - Authentification VENTOU
 
-## 🎯 Vision
-Plateforme e-commerce pour vendeurs d'Afrique de l'Ouest avec authentification robuste, gestion de boutique, et intégration Mobile Money.
+## Objectif
+Intégrer Supabase pour gérer l'authentification complète (inscription, connexion, réinitialisation de mot de passe) avec stockage des profils utilisateurs.
 
----
-
-## 📦 PHASE 1 : Authentification & Sécurité (Première étape)
-
-### 1.1 Authentification de base
-- Page d'inscription avec email + mot de passe
-- Page de connexion sécurisée
-- Vérification email obligatoire (lien de confirmation)
-- Réinitialisation de mot de passe par email
-- Protection "Leaked Password" via Supabase (HaveIBeenPwned)
-
-### 1.2 Authentification à deux facteurs (2FA)
-- Configuration 2FA avec Google Authenticator (génération QR code)
-- Email OTP comme méthode de secours
-- 2FA obligatoire pour actions sensibles (définies dans Phase 2+)
-- Interface d'activation/désactivation dans les paramètres
-
-### 1.3 Logs de sécurité
-- Historique des connexions (date, IP, appareil)
-- Enregistrement des tentatives échouées
-- Journal d'activation/utilisation 2FA
-
-### 1.4 Système de rôles
-- Table user_roles séparée (admin, support, vendor)
-- Fonctions RLS sécurisées pour vérification des rôles
-
-### 1.5 Internationalisation (i18n)
-- Support Français + Anglais
-- Toggle de langue dans le header
-- Toutes les pages traduites
-
-### 1.6 Design de base VENTOU
-- Palette : Bleu profond (#1E3A5F), Orange CTA (#FF6B35), Blanc
-- Layout mobile-first responsive
-- Animations légères (fade, hover)
+## Credentials Supabase
+- **URL**: `https://chpplckgndznakuvcqbx.supabase.co`
+- **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHBsY2tnbmR6bmFrdXZjcWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NTgxMjEwLCJleHAiOjIwODYxNTcyMTB9.oimHRR-gDoli9w26pif2pcurnrZQlN7mR51rBc_-gek`
 
 ---
 
-## 📦 PHASE 2 : Espace Vendeur - Profil & Paramètres
+## Etapes d'implementation
 
-### 2.1 Profil vendeur
-- Édition : Nom, prénom, téléphone, pays, ville
-- Photo de profil (upload sécurisé)
-- Langue préférée et fuseau horaire
-- Email en lecture seule
+### 1. Configuration Supabase Client
+Creer le dossier `src/integrations/supabase/` avec :
+- `client.ts` : Client Supabase configure
+- `types.ts` : Types TypeScript pour la base de donnees
 
-### 2.2 Paramètres de sécurité (onglet séparé)
-- Changement de mot de passe
-- Gestion 2FA (activer/désactiver/régénérer clé)
-- Indicateur de niveau de sécurité du compte
+### 2. Base de donnees - Table Profiles
+Creer une table `profiles` dans Supabase :
 
----
+```text
++-------------------+
+|     profiles      |
++-------------------+
+| id (uuid, PK, FK) | -> reference auth.users(id)
+| first_name (text) |
+| last_name (text)  |
+| avatar_url (text) |
+| created_at        |
+| updated_at        |
++-------------------+
+```
 
-## 📦 PHASE 3 : Boutique & Produits
+**Politiques RLS** :
+- Les utilisateurs peuvent lire leur propre profil
+- Les utilisateurs peuvent mettre a jour leur propre profil
+- Creation automatique du profil via trigger lors de l'inscription
 
-### 3.1 Création de boutique
-- Nom et description de la boutique
-- Upload logo (storage sécurisé par shop_id)
-- URL personnalisée : nom.ventou.shop
-- Statut : active / suspendue
+### 3. Hook d'authentification
+Creer `src/hooks/useAuth.ts` :
+- Gestion de l'etat de connexion avec `onAuthStateChange`
+- Fonctions : `signUp`, `signIn`, `signOut`, `resetPassword`
+- Chargement automatique du profil utilisateur
 
-### 3.2 Gestion des produits
-- CRUD complet (créer, lire, modifier, supprimer)
-- Upload d'images multiples (storage sécurisé)
-- Prix et stock optionnel
-- Variantes simples (taille, couleur)
+### 4. Contexte d'authentification
+Creer `src/contexts/AuthContext.tsx` :
+- Provider global pour l'application
+- Expose l'utilisateur, le profil et les fonctions d'auth
+- Gestion de l'etat de chargement
 
-### 3.3 Catégories
-- Création de catégories personnalisées
-- Organisation drag & drop
-- Filtrage des produits par catégorie
+### 5. Mise a jour des pages d'authentification
+Modifier les pages existantes pour utiliser Supabase :
 
-### 3.4 SEO basique
-- Slug automatique pour chaque produit
-- Champs meta title et meta description
+**Login.tsx** :
+- Remplacer le mock par `supabase.auth.signInWithPassword`
+- Gestion des erreurs avec messages traduits
+- Redirection vers dashboard apres connexion
 
----
+**Signup.tsx** :
+- Remplacer le mock par `supabase.auth.signUp`
+- Passer les metadata (first_name, last_name)
+- Afficher message de verification email
 
-## 📦 PHASE 4 : Commandes & Checkout
+**ForgotPassword.tsx** :
+- Remplacer le mock par `supabase.auth.resetPasswordForEmail`
+- Configurer l'URL de redirection
 
-### 4.1 Page checkout publique
-- Formulaire client : nom, téléphone, adresse
-- Validation côté client et serveur (Zod)
-- Génération de numéro de commande sécurisé
+### 6. Nouvelle page - Reset Password
+Creer `src/pages/ResetPassword.tsx` :
+- Page de creation du nouveau mot de passe
+- Accessible via le lien email Supabase
+- Utilise `supabase.auth.updateUser`
 
-### 4.2 Gestion des commandes (vendeur)
-- Liste des commandes avec statuts
-- Statuts : en attente, payée, annulée
-- Détails de chaque commande
-- Notification au vendeur (nouvelle commande)
+### 7. Protection des routes
+Creer `src/components/ProtectedRoute.tsx` :
+- Wrapper pour les routes authentifiees
+- Redirection vers login si non connecte
 
----
-
-## 📦 PHASE 5 : Paiements
-
-### 5.1 Méthodes de paiement
-- Mobile Money (architecture préparée pour Orange Money)
-- Option "Paiement à la livraison"
-
-### 5.2 Gestion des paiements
-- Confirmation manuelle ou automatique
-- Statut de paiement par commande
-- Historique des paiements pour le vendeur
-- 2FA obligatoire pour les retraits
-
----
-
-## 📦 PHASE 6 : Gestion Clients
-
-### 6.1 Base clients
-- Liste des clients par boutique
-- Informations : nom, téléphone, email
-- Historique des commandes par client
-- Accès protégé par RLS (propriétaire boutique uniquement)
+### 8. Dashboard utilisateur
+Creer une page `src/pages/Dashboard.tsx` :
+- Page d'accueil apres connexion
+- Affichage du profil utilisateur
+- Bouton de deconnexion
 
 ---
 
-## 📦 PHASE 7 : Notifications & Emails
+## Details techniques
 
-### 7.1 Notifications in-app
-- Nouvelle commande
-- Paiement reçu
-- Alertes sécurité
-- Messages support
+### Structure des fichiers a creer
+```text
+src/
+  integrations/
+    supabase/
+      client.ts
+      types.ts
+  contexts/
+    AuthContext.tsx
+  hooks/
+    useAuth.ts
+  components/
+    ProtectedRoute.tsx
+  pages/
+    ResetPassword.tsx
+    Dashboard.tsx
+```
 
-### 7.2 Emails transactionnels
-- Email de bienvenue
-- Vérification email
-- Reset mot de passe
-- Code 2FA
-- Confirmation commande
-- Paiement confirmé / échoué
+### Fichiers a modifier
+```text
+src/App.tsx          -> Ajouter AuthProvider + nouvelles routes
+src/pages/Login.tsx  -> Integrer Supabase signIn
+src/pages/Signup.tsx -> Integrer Supabase signUp
+src/pages/ForgotPassword.tsx -> Integrer Supabase resetPassword
+src/pages/Index.tsx  -> Afficher bouton conditionnel si connecte
+```
 
-### 7.3 Préférences notifications
-- Activer/désactiver par type (commandes, paiements, infos boutique)
-- Notifications sécurité non désactivables
+### Migration SQL pour Supabase
+```sql
+-- Table profiles
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name TEXT,
+  last_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Politiques
+CREATE POLICY "Users can view own profile"
+  ON public.profiles FOR SELECT
+  TO authenticated
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile"
+  ON public.profiles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile"
+  ON public.profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
+-- Trigger pour creation automatique
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, first_name, last_name)
+  VALUES (
+    NEW.id,
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->>'last_name'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
 
 ---
 
-## 📦 PHASE 8 : Espace Super-Admin
+## Flux utilisateur final
 
-### 8.1 Dashboard admin
-- Route protégée /admin (rôles admin/support seulement)
-- Vue d'ensemble plateforme
-
-### 8.2 Gestion utilisateurs
-- Liste, recherche, filtrage
-- Actions : voir, suspendre, bloquer, changer rôle
-
-### 8.3 Gestion boutiques
-- Liste de toutes les boutiques
-- Modération et suspension
-
-### 8.4 Commandes & Paiements globaux
-- Vue consolidée de toutes les commandes
-- Suivi des paiements plateforme
-
-### 8.5 Support & CMS
-- Système de tickets support
-- Pages CMS basiques (CGU, mentions légales, etc.)
-
-### 8.6 Réglages plateforme
-- Paramètres globaux
-- Logs admin (audit trail)
+1. **Inscription** : L'utilisateur s'inscrit -> Email de verification envoye -> Profil cree automatiquement
+2. **Connexion** : L'utilisateur se connecte -> Redirection vers Dashboard
+3. **Mot de passe oublie** : Email avec lien -> Page ResetPassword -> Nouveau mot de passe
+4. **Deconnexion** : Bouton dans Dashboard -> Retour a la page d'accueil
 
 ---
 
-## 🛠️ Architecture Technique
-
-- **Frontend** : React avec TypeScript, Tailwind CSS, mobile-first
-- **Backend** : Votre Supabase (Auth, Database, Storage)
-- **Sécurité** : RLS strictes, validation Zod, séparation des rôles
-- **i18n** : Support FR/EN intégré dès Phase 1
-- **Storage** : Sécurisé par owner (RLS sur buckets)
-
----
-
-## 🚀 Prochaine action
-
-Nous commencerons par **Phase 1 : Authentification complète** avec inscription, connexion, vérification email, reset mot de passe, 2FA, logs de sécurité, et le design de base VENTOU bilingue.
+## Prochaines etapes apres approbation
+1. Executer la migration SQL dans Supabase
+2. Creer les fichiers de configuration
+3. Implementer le contexte et le hook d'auth
+4. Mettre a jour les pages existantes
+5. Creer les nouvelles pages (ResetPassword, Dashboard)
+6. Tester le flux complet
