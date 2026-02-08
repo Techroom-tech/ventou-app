@@ -24,6 +24,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -33,6 +35,8 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPassword() {
   const { t } = useTranslation();
+  const { resetPassword } = useAuth();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -45,12 +49,20 @@ export default function ForgotPassword() {
 
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     setIsLoading(true);
-    // TODO: Implement Supabase password reset
-    console.log('Password reset attempt:', data);
-    setTimeout(() => {
-      setIsLoading(false);
+
+    const { error } = await resetPassword(data.email);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: t('common.error'),
+        description: t('auth.errors.generic'),
+      });
+    } else {
       setIsSuccess(true);
-    }, 1500);
+    }
+
+    setIsLoading(false);
   };
 
   if (isSuccess) {

@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { ArrowRight, ShoppingBag, Shield, Globe } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const { t } = useTranslation();
+  const { user, isLoading } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
@@ -20,16 +22,28 @@ const Index = () => {
           </Link>
           <div className="flex items-center gap-3">
             <LanguageToggle />
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                {t('nav.login')}
-              </Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" className="bg-accent hover:bg-accent/90">
-                {t('nav.signup')}
-              </Button>
-            </Link>
+            {!isLoading && (
+              user ? (
+                <Link to="/dashboard">
+                  <Button size="sm" className="bg-accent hover:bg-accent/90">
+                    {t('nav.dashboard')}
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="ghost" size="sm">
+                      {t('nav.login')}
+                    </Button>
+                  </Link>
+                  <Link to="/signup">
+                    <Button size="sm" className="bg-accent hover:bg-accent/90">
+                      {t('nav.signup')}
+                    </Button>
+                  </Link>
+                </>
+              )
+            )}
           </div>
         </div>
       </header>
@@ -47,9 +61,9 @@ const Index = () => {
             Créez votre boutique, gérez vos produits, acceptez Mobile Money.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-            <Link to="/signup">
+            <Link to={user ? "/dashboard" : "/signup"}>
               <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-lg px-8">
-                Commencer gratuitement
+                {user ? t('nav.dashboard') : 'Commencer gratuitement'}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>

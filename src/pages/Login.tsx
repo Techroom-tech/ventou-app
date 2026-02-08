@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,6 +26,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -37,8 +39,14 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn } = useAuth();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard';
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -51,9 +59,28 @@ export default function Login() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
-    // TODO: Implement Supabase login
-    console.log('Login attempt:', data);
-    setTimeout(() => setIsLoading(false), 1500);
+
+    const { error } = await signIn(data.email, data.password);
+
+    if (error) {
+      let errorMessage = t('auth.errors.generic');
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = t('auth.errors.invalidCredentials');
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = t('auth.errors.emailNotVerified');
+      }
+
+      toast({
+        variant: 'destructive',
+        title: t('common.error'),
+        description: errorMessage,
+      });
+    } else {
+      navigate(from, { replace: true });
+    }
+
+    setIsLoading(false);
   };
 
   return (
