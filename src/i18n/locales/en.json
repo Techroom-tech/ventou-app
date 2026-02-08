@@ -1,0 +1,115 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "or": "or",
+    "and": "and"
+  },
+  "nav": {
+    "home": "Home",
+    "login": "Login",
+    "signup": "Sign up",
+    "logout": "Logout",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "settings": "Settings"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "subtitle": "Sign in to your VENTOU account",
+      "email": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signupLink": "Create an account",
+      "rememberMe": "Remember me"
+    },
+    "signup": {
+      "title": "Create an account",
+      "subtitle": "Join VENTOU and start selling",
+      "firstName": "First name",
+      "firstNamePlaceholder": "Your first name",
+      "lastName": "Last name",
+      "lastNamePlaceholder": "Your last name",
+      "email": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Create a secure password",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "submit": "Create my account",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "terms": "By creating an account, you agree to our",
+      "termsLink": "Terms of Service",
+      "privacyLink": "Privacy Policy"
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email to receive a reset link",
+      "email": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "submit": "Send reset link",
+      "backToLogin": "Back to login",
+      "successTitle": "Email sent!",
+      "successMessage": "Check your inbox for the reset link."
+    },
+    "resetPassword": {
+      "title": "New password",
+      "subtitle": "Create your new password",
+      "password": "New password",
+      "passwordPlaceholder": "Your new password",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Confirm your new password",
+      "submit": "Reset password"
+    },
+    "verifyEmail": {
+      "title": "Verify your email",
+      "subtitle": "We've sent a verification link to",
+      "resend": "Resend email",
+      "resent": "Email resent!"
+    },
+    "twoFactor": {
+      "title": "Two-factor verification",
+      "subtitle": "Enter the code from your authenticator app",
+      "codePlaceholder": "000000",
+      "submit": "Verify",
+      "useBackupCode": "Use a backup code",
+      "useEmailCode": "Get code via email"
+    },
+    "validation": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Email is not valid",
+      "passwordRequired": "Password is required",
+      "passwordMin": "Password must be at least 8 characters",
+      "passwordMatch": "Passwords do not match",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailNotVerified": "Please verify your email",
+      "tooManyAttempts": "Too many attempts, please try again later",
+      "generic": "An error occurred, please try again"
+    }
+  },
+  "footer": {
+    "copyright": "© 2024 VENTOU. All rights reserved.",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "contact": "Contact"
+  }
+}
