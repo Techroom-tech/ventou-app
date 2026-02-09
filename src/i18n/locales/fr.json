@@ -106,8 +106,44 @@
       "generic": "Une erreur est survenue, veuillez réessayer"
     }
   },
+  "about": {
+    "title": "À propos de Ventou",
+    "mission": {
+      "badge": "NOTRE MISSION",
+      "title": "Démocratiser l'e-commerce en Afrique de l'Ouest",
+      "subtitle": "Connecter les vendeurs locaux au monde digital, simplement et sans barrières."
+    },
+    "challenge": {
+      "title": "Le défi actuel",
+      "cardTitle": "Des obstacles à la croissance",
+      "cardText": "Aujourd'hui, les paiements complexes, le manque d'outils adaptés et la méfiance freinent les entrepreneurs locaux dans leur développement digital."
+    },
+    "cta": "Commencer maintenant",
+    "solution": {
+      "title": "Simple. Sécurisé. Local.",
+      "description": "Nous intégrons nativement le Mobile Money et créons des boutiques vérifiées pour rassurer vos clients.",
+      "feature1": "Paiements instantanés via Orange Money, Wave & MTN.",
+      "feature2": "Boutiques digitales prêtes en 2 minutes."
+    },
+    "values": {
+      "title": "Nos valeurs",
+      "security": {
+        "title": "Sécurité",
+        "description": "Transactions protégées et données cryptées."
+      },
+      "proximity": {
+        "title": "Proximité",
+        "description": "Une équipe locale disponible 7j/7 pour vous."
+      },
+      "innovation": {
+        "title": "Innovation",
+        "description": "Des outils modernes adaptés à nos réalités."
+      }
+    }
+  },
   "footer": {
     "copyright": "© 2024 VENTOU. Tous droits réservés.",
+    "about": "À propos",
     "terms": "Conditions d'utilisation",
     "privacy": "Politique de confidentialité",
     "contact": "Contact"
