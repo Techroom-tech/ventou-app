@@ -265,6 +265,7 @@
     },
     "nav": {
       "dashboard": "Dashboard",
+      "createShop": "Créer ma boutique",
       "products": "Produits",
       "orders": "Commandes",
       "customers": "Clients",
@@ -398,6 +399,62 @@
         "title": "Innovation",
         "description": "Des outils modernes adaptés à nos réalités."
       }
+    }
+  },
+  "createShop": {
+    "title": "Créer Ma Boutique",
+    "subtitle": "Configurez votre boutique en quelques minutes",
+    "submit": "Créer Ma Boutique",
+    "success": "Boutique créée avec succès !",
+    "sections": {
+      "basicInfo": "Informations de base",
+      "branding": "Identité visuelle",
+      "contact": "Contact",
+      "url": "URL de votre boutique"
+    },
+    "fields": {
+      "name": "Nom de la boutique",
+      "namePlaceholder": "Ex: Boutique Aminata",
+      "description": "Description",
+      "descriptionPlaceholder": "Décrivez votre boutique en quelques mots...",
+      "category": "Catégorie",
+      "categoryPlaceholder": "Sélectionnez une catégorie",
+      "country": "Pays",
+      "city": "Ville",
+      "cityPlaceholder": "Ex: Abidjan",
+      "logo": "Logo",
+      "uploadLogo": "Changer le logo",
+      "banner": "Bannière",
+      "uploadBanner": "Cliquez pour ajouter une bannière",
+      "imageHint": "JPG, PNG. Max 2 Mo.",
+      "primaryColor": "Couleur principale",
+      "whatsapp": "Numéro WhatsApp",
+      "whatsappPlaceholder": "+225 07 00 00 00 00",
+      "whatsappHint": "Les clients pourront vous contacter via WhatsApp.",
+      "slug": "Adresse web",
+      "slugSuggestions": "Suggestions disponibles :"
+    },
+    "categories": {
+      "fashion": "Mode & Vêtements",
+      "electronics": "Électronique",
+      "food": "Alimentation",
+      "beauty": "Beauté & Cosmétique",
+      "home": "Maison & Déco",
+      "sports": "Sports & Loisirs",
+      "books": "Livres & Papeterie",
+      "art": "Art & Artisanat",
+      "services": "Services",
+      "other": "Autre"
+    },
+    "preview": {
+      "title": "Aperçu",
+      "shopName": "Nom de votre boutique",
+      "show": "Voir l'aperçu"
+    },
+    "errors": {
+      "fileTooLarge": "Le fichier est trop volumineux (max 2 Mo)",
+      "slugTaken": "Cette adresse est déjà prise",
+      "generic": "Erreur lors de la création"
     }
   },
   "footer": {

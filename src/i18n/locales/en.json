@@ -204,6 +204,7 @@
     },
     "nav": {
       "dashboard": "Dashboard",
+      "createShop": "Create my shop",
       "products": "Products",
       "orders": "Orders",
       "customers": "Customers",
@@ -398,6 +399,62 @@
         "title": "Innovation",
         "description": "Modern tools adapted to our realities."
       }
+    }
+  },
+  "createShop": {
+    "title": "Create My Shop",
+    "subtitle": "Set up your shop in minutes",
+    "submit": "Create My Shop",
+    "success": "Shop created successfully!",
+    "sections": {
+      "basicInfo": "Basic Information",
+      "branding": "Branding",
+      "contact": "Contact",
+      "url": "Your Shop URL"
+    },
+    "fields": {
+      "name": "Shop name",
+      "namePlaceholder": "E.g. Aminata's Boutique",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe your shop in a few words...",
+      "category": "Category",
+      "categoryPlaceholder": "Select a category",
+      "country": "Country",
+      "city": "City",
+      "cityPlaceholder": "E.g. Abidjan",
+      "logo": "Logo",
+      "uploadLogo": "Change logo",
+      "banner": "Banner",
+      "uploadBanner": "Click to add a banner",
+      "imageHint": "JPG, PNG. Max 2 MB.",
+      "primaryColor": "Primary color",
+      "whatsapp": "WhatsApp number",
+      "whatsappPlaceholder": "+225 07 00 00 00 00",
+      "whatsappHint": "Customers will be able to contact you via WhatsApp.",
+      "slug": "Web address",
+      "slugSuggestions": "Available suggestions:"
+    },
+    "categories": {
+      "fashion": "Fashion & Clothing",
+      "electronics": "Electronics",
+      "food": "Food & Beverages",
+      "beauty": "Beauty & Cosmetics",
+      "home": "Home & Decor",
+      "sports": "Sports & Leisure",
+      "books": "Books & Stationery",
+      "art": "Art & Crafts",
+      "services": "Services",
+      "other": "Other"
+    },
+    "preview": {
+      "title": "Preview",
+      "shopName": "Your shop name",
+      "show": "Show preview"
+    },
+    "errors": {
+      "fileTooLarge": "File is too large (max 2 MB)",
+      "slugTaken": "This address is already taken",
+      "generic": "Error creating shop"
     }
   },
   "footer": {

@@ -6,9 +6,16 @@ export interface Shop {
   name: string;
   slug: string;
   description: string | null;
+  category: string | null;
+  city: string | null;
+  country: string | null;
   logo_url: string | null;
+  banner_url: string | null;
+  primary_color: string | null;
+  whatsapp: string | null;
   currency: CurrencyCode;
   is_verified: boolean;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
