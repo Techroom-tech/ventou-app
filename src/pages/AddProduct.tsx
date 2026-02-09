@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CategoryCombobox } from '@/components/dashboard/CategoryCombobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const CATEGORIES = ['electronics', 'fashion', 'home', 'beauty', 'food', 'other'] as const;
+const DEFAULT_CATEGORIES = ['Électronique', 'Mode', 'Maison & Déco', 'Beauté', 'Alimentaire'];
 
 export default function AddProduct() {
   const { t } = useTranslation();
@@ -29,6 +29,7 @@ export default function AddProduct() {
   const [sku, setSku] = useState('');
   const [stock, setStock] = useState('0');
   const [isPublished, setIsPublished] = useState(false);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [images, setImages] = useState<string[]>([]);
   const [seoOpen, setSeoOpen] = useState(false);
   const [slug, setSlug] = useState('');
@@ -113,18 +114,12 @@ export default function AddProduct() {
             </div>
             <div className="space-y-2">
               <Label>{t('dashboard.addProduct.category')}</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('dashboard.addProduct.categoryPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {t(`dashboard.addProduct.categories.${cat}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryCombobox
+                value={category}
+                onChange={setCategory}
+                categories={categories}
+                onAddCategory={(cat) => setCategories((prev) => [...prev, cat])}
+              />
             </div>
           </CardContent>
         </Card>

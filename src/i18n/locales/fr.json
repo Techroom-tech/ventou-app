@@ -213,14 +213,8 @@
       "descriptionPlaceholder": "Décrivez votre produit en détail…",
       "category": "Catégorie",
       "categoryPlaceholder": "Sélectionnez une catégorie",
-      "categories": {
-        "electronics": "Électronique",
-        "fashion": "Mode",
-        "home": "Maison & Déco",
-        "beauty": "Beauté",
-        "food": "Alimentaire",
-        "other": "Autre"
-      },
+      "addCategory": "+ Créer une catégorie",
+      "newCategoryPlaceholder": "Nom de la catégorie",
       "pricing": "Tarification",
       "originalPrice": "Prix original (FCFA)",
       "discountPrice": "Prix réduit (FCFA)",
