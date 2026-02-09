@@ -1,185 +1,131 @@
 
-# Plan d'intégration Supabase - Authentification VENTOU
+# Creation de la page A propos - VENTOU
 
 ## Objectif
-Intégrer Supabase pour gérer l'authentification complète (inscription, connexion, réinitialisation de mot de passe) avec stockage des profils utilisateurs.
-
-## Credentials Supabase
-- **URL**: `https://chpplckgndznakuvcqbx.supabase.co`
-- **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHBsY2tnbmR6bmFrdXZjcWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NTgxMjEwLCJleHAiOjIwODYxNTcyMTB9.oimHRR-gDoli9w26pif2pcurnrZQlN7mR51rBc_-gek`
+Creer une page "A propos" fidele au mockup fourni, presentant la mission, les defis, les solutions et les valeurs de VENTOU.
 
 ---
 
-## Etapes d'implementation
+## Structure de la page (basee sur le mockup)
 
-### 1. Configuration Supabase Client
-Creer le dossier `src/integrations/supabase/` avec :
-- `client.ts` : Client Supabase configure
-- `types.ts` : Types TypeScript pour la base de donnees
+### 1. Header simple
+- Fleche de retour vers l'accueil
+- Titre centre "A propos de Ventou"
 
-### 2. Base de donnees - Table Profiles
-Creer une table `profiles` dans Supabase :
+### 2. Section Hero - Mission
+- Image d'arriere-plan avec une femme africaine
+- Badge orange "NOTRE MISSION"
+- Titre: "Democratiser l'e-commerce en Afrique de l'Ouest"
+- Sous-titre: "Connecter les vendeurs locaux au monde digital, simplement et sans barrieres."
 
-```text
-+-------------------+
-|     profiles      |
-+-------------------+
-| id (uuid, PK, FK) | -> reference auth.users(id)
-| first_name (text) |
-| last_name (text)  |
-| avatar_url (text) |
-| created_at        |
-| updated_at        |
-+-------------------+
-```
+### 3. Section - Le defi actuel
+- Icone d'alerte orange
+- Titre "Le defi actuel"
+- Carte avec fond clair et icone decorative
+- Titre: "Des obstacles a la croissance"
+- Texte explicatif sur les defis des entrepreneurs locaux
 
-**Politiques RLS** :
-- Les utilisateurs peuvent lire leur propre profil
-- Les utilisateurs peuvent mettre a jour leur propre profil
-- Creation automatique du profil via trigger lors de l'inscription
+### 4. Bouton CTA
+- Bouton orange "Commencer maintenant" avec fleche
 
-### 3. Hook d'authentification
-Creer `src/hooks/useAuth.ts` :
-- Gestion de l'etat de connexion avec `onAuthStateChange`
-- Fonctions : `signUp`, `signIn`, `signOut`, `resetPassword`
-- Chargement automatique du profil utilisateur
+### 5. Section - Simple. Securise. Local.
+- Image d'une main tenant un telephone
+- Titre "Simple. Securise. Local."
+- Texte sur l'integration Mobile Money et boutiques verifiees
+- Deux points cles avec icones:
+  - Paiements instantanes via Orange Money, Wave et MTN
+  - Boutiques digitales pretes en 2 minutes
 
-### 4. Contexte d'authentification
-Creer `src/contexts/AuthContext.tsx` :
-- Provider global pour l'application
-- Expose l'utilisateur, le profil et les fonctions d'auth
-- Gestion de l'etat de chargement
+### 6. Section - Nos valeurs
+- Titre "Nos valeurs"
+- Trois cartes de valeurs:
+  - **Securite**: Icone bouclier orange, transactions protegees
+  - **Proximite**: Icone signal, equipe locale disponible 7j/7
+  - **Innovation**: Icone ampoule, outils modernes adaptes
 
-### 5. Mise a jour des pages d'authentification
-Modifier les pages existantes pour utiliser Supabase :
+---
 
-**Login.tsx** :
-- Remplacer le mock par `supabase.auth.signInWithPassword`
-- Gestion des erreurs avec messages traduits
-- Redirection vers dashboard apres connexion
+## Fichiers a creer
 
-**Signup.tsx** :
-- Remplacer le mock par `supabase.auth.signUp`
-- Passer les metadata (first_name, last_name)
-- Afficher message de verification email
+### 1. `src/pages/About.tsx`
+Page principale avec toutes les sections du mockup
 
-**ForgotPassword.tsx** :
-- Remplacer le mock par `supabase.auth.resetPasswordForEmail`
-- Configurer l'URL de redirection
+### 2. Images placeholder
+Utilisation d'images Unsplash via URL pour:
+- Hero: femme africaine en tenue traditionnelle
+- Section solution: main tenant un smartphone
 
-### 6. Nouvelle page - Reset Password
-Creer `src/pages/ResetPassword.tsx` :
-- Page de creation du nouveau mot de passe
-- Accessible via le lien email Supabase
-- Utilise `supabase.auth.updateUser`
+---
 
-### 7. Protection des routes
-Creer `src/components/ProtectedRoute.tsx` :
-- Wrapper pour les routes authentifiees
-- Redirection vers login si non connecte
+## Fichiers a modifier
 
-### 8. Dashboard utilisateur
-Creer une page `src/pages/Dashboard.tsx` :
-- Page d'accueil apres connexion
-- Affichage du profil utilisateur
-- Bouton de deconnexion
+### 1. `src/App.tsx`
+Ajouter la route `/about` pour la page A propos
+
+### 2. `src/pages/Index.tsx`
+Ajouter un lien vers la page A propos dans le footer
+
+### 3. `src/i18n/locales/fr.json`
+Ajouter les traductions pour la page A propos
+
+### 4. `src/i18n/locales/en.json`
+Ajouter les traductions anglaises correspondantes
 
 ---
 
 ## Details techniques
 
-### Structure des fichiers a creer
+### Composants utilises
+- Lucide icons: `ArrowLeft`, `ArrowRight`, `AlertTriangle`, `Shield`, `Wifi`, `Lightbulb`, `Smartphone`, `Store`
+- Button de shadcn/ui
+- Link de react-router-dom
+
+### Styles
+- Design mobile-first fidele au mockup
+- Coins arrondis sur les cartes (rounded-2xl, rounded-3xl)
+- Couleur accent orange (#FF6B35) pour les badges et icones
+- Fond gris clair (bg-secondary/30) pour les sections alternees
+- Animations fade-in existantes
+
+### Structure des traductions
 ```text
-src/
-  integrations/
-    supabase/
-      client.ts
-      types.ts
-  contexts/
-    AuthContext.tsx
-  hooks/
-    useAuth.ts
-  components/
-    ProtectedRoute.tsx
-  pages/
-    ResetPassword.tsx
-    Dashboard.tsx
-```
-
-### Fichiers a modifier
-```text
-src/App.tsx          -> Ajouter AuthProvider + nouvelles routes
-src/pages/Login.tsx  -> Integrer Supabase signIn
-src/pages/Signup.tsx -> Integrer Supabase signUp
-src/pages/ForgotPassword.tsx -> Integrer Supabase resetPassword
-src/pages/Index.tsx  -> Afficher bouton conditionnel si connecte
-```
-
-### Migration SQL pour Supabase
-```sql
--- Table profiles
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  first_name TEXT,
-  last_name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- RLS
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- Politiques
-CREATE POLICY "Users can view own profile"
-  ON public.profiles FOR SELECT
-  TO authenticated
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile"
-  ON public.profiles FOR UPDATE
-  TO authenticated
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can insert own profile"
-  ON public.profiles FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() = id);
-
--- Trigger pour creation automatique
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, first_name, last_name)
-  VALUES (
-    NEW.id,
-    NEW.raw_user_meta_data->>'first_name',
-    NEW.raw_user_meta_data->>'last_name'
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+about:
+  title: "A propos de Ventou"
+  mission:
+    badge: "NOTRE MISSION"
+    title: "Democratiser l'e-commerce en Afrique de l'Ouest"
+    subtitle: "Connecter les vendeurs locaux..."
+  challenge:
+    title: "Le defi actuel"
+    cardTitle: "Des obstacles a la croissance"
+    cardText: "Aujourd'hui, les paiements complexes..."
+  cta: "Commencer maintenant"
+  solution:
+    title: "Simple. Securise. Local."
+    description: "Nous integrons nativement le Mobile Money..."
+    feature1: "Paiements instantanes via Orange Money, Wave & MTN."
+    feature2: "Boutiques digitales pretes en 2 minutes."
+  values:
+    title: "Nos valeurs"
+    security:
+      title: "Securite"
+      description: "Transactions protegees et donnees cryptees."
+    proximity:
+      title: "Proximite"
+      description: "Une equipe locale disponible 7j/7 pour vous."
+    innovation:
+      title: "Innovation"
+      description: "Des outils modernes adaptes a nos realites."
 ```
 
 ---
 
-## Flux utilisateur final
+## Resume des modifications
 
-1. **Inscription** : L'utilisateur s'inscrit -> Email de verification envoye -> Profil cree automatiquement
-2. **Connexion** : L'utilisateur se connecte -> Redirection vers Dashboard
-3. **Mot de passe oublie** : Email avec lien -> Page ResetPassword -> Nouveau mot de passe
-4. **Deconnexion** : Bouton dans Dashboard -> Retour a la page d'accueil
-
----
-
-## Prochaines etapes apres approbation
-1. Executer la migration SQL dans Supabase
-2. Creer les fichiers de configuration
-3. Implementer le contexte et le hook d'auth
-4. Mettre a jour les pages existantes
-5. Creer les nouvelles pages (ResetPassword, Dashboard)
-6. Tester le flux complet
+| Fichier | Action |
+|---------|--------|
+| `src/pages/About.tsx` | Creer |
+| `src/App.tsx` | Modifier (ajouter route) |
+| `src/pages/Index.tsx` | Modifier (ajouter lien footer) |
+| `src/i18n/locales/fr.json` | Modifier (ajouter traductions) |
+| `src/i18n/locales/en.json` | Modifier (ajouter traductions) |
