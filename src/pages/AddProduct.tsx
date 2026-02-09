@@ -12,6 +12,7 @@ import { CategoryCombobox } from '@/components/dashboard/CategoryCombobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
+import { useProducts } from '@/contexts/ProductContext';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_CATEGORIES = ['Électronique', 'Mode', 'Maison & Déco', 'Beauté', 'Alimentaire'];
@@ -20,6 +21,7 @@ export default function AddProduct() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addProduct } = useProducts();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -57,6 +59,15 @@ export default function AddProduct() {
       });
       return;
     }
+    addProduct({
+      shop_id: 'shop-001',
+      name: name.trim(),
+      description: description.trim() || null,
+      price: Number(price),
+      stock_quantity: Number(stock) || 0,
+      image_url: images[0] || null,
+      is_active: isPublished,
+    });
     toast({
       title: t('common.success'),
       description: t('dashboard.addProduct.saved'),
