@@ -106,8 +106,44 @@
       "generic": "An error occurred, please try again"
     }
   },
+  "about": {
+    "title": "About Ventou",
+    "mission": {
+      "badge": "OUR MISSION",
+      "title": "Democratizing e-commerce in West Africa",
+      "subtitle": "Connecting local sellers to the digital world, simply and without barriers."
+    },
+    "challenge": {
+      "title": "The current challenge",
+      "cardTitle": "Obstacles to growth",
+      "cardText": "Today, complex payments, lack of suitable tools, and mistrust are holding back local entrepreneurs in their digital development."
+    },
+    "cta": "Get started now",
+    "solution": {
+      "title": "Simple. Secure. Local.",
+      "description": "We natively integrate Mobile Money and create verified shops to reassure your customers.",
+      "feature1": "Instant payments via Orange Money, Wave & MTN.",
+      "feature2": "Digital shops ready in 2 minutes."
+    },
+    "values": {
+      "title": "Our values",
+      "security": {
+        "title": "Security",
+        "description": "Protected transactions and encrypted data."
+      },
+      "proximity": {
+        "title": "Proximity",
+        "description": "A local team available 7 days a week for you."
+      },
+      "innovation": {
+        "title": "Innovation",
+        "description": "Modern tools adapted to our realities."
+      }
+    }
+  },
   "footer": {
     "copyright": "© 2024 VENTOU. All rights reserved.",
+    "about": "About",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
     "contact": "Contact"
