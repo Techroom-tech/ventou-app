@@ -20,3 +20,32 @@ export interface Profile {
   created_at: string;
   updated_at: string;
 }
+
+// Available currencies for sellers
+export const CURRENCIES = [
+  { code: 'XOF', symbol: 'FCFA', name: 'Franc CFA (BCEAO)' },
+  { code: 'XAF', symbol: 'FCFA', name: 'Franc CFA (BEAC)' },
+  { code: 'GHS', symbol: '₵', name: 'Cedi ghanéen' },
+  { code: 'NGN', symbol: '₦', name: 'Naira nigérian' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'USD', symbol: '$', name: 'Dollar US' },
+] as const;
+
+export type CurrencyCode = typeof CURRENCIES[number]['code'];
+
+export const DEFAULT_CURRENCY: CurrencyCode = 'XOF';
+
+export const formatCurrency = (amount: number, currencyCode: CurrencyCode = 'XOF'): string => {
+  const currency = CURRENCIES.find(c => c.code === currencyCode);
+  if (!currency) return `${amount} ${currencyCode}`;
+  
+  // Format with thousand separators
+  const formatted = new Intl.NumberFormat('fr-FR').format(amount);
+  
+  // FCFA currencies go after the number
+  if (currencyCode === 'XOF' || currencyCode === 'XAF') {
+    return `${formatted} ${currency.symbol}`;
+  }
+  
+  return `${currency.symbol}${formatted}`;
+};
