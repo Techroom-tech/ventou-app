@@ -175,6 +175,52 @@
     "profile": "Profil",
     "settings": "Paramètres"
   },
+  "dashboard": {
+    "welcome": "Bon retour,",
+    "overview": "Vue d'ensemble",
+    "overviewSubtitle": "Voici ce qui se passe dans votre boutique aujourd'hui.",
+    "stats": {
+      "totalSales": "Ventes totales",
+      "ordersToday": "Commandes aujourd'hui"
+    },
+    "actions": {
+      "addProduct": "Ajouter un produit",
+      "addProductSubtitle": "Élargissez votre catalogue",
+      "shareShop": "Partager",
+      "shareShopSubtitle": "Copier le lien",
+      "withdraw": "Retrait",
+      "withdrawSubtitle": "Via MoMo"
+    },
+    "orders": {
+      "recent": "Commandes récentes",
+      "viewAll": "Tout voir",
+      "noOrders": "Aucune commande",
+      "ago": "il y a"
+    },
+    "status": {
+      "paid": "PAYÉ",
+      "pending": "EN ATTENTE",
+      "cancelled": "ANNULÉ"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "products": "Produits",
+      "orders": "Commandes",
+      "customers": "Clients",
+      "marketing": "Marketing",
+      "settings": "Paramètres",
+      "wallet": "Portefeuille"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "empty": "Aucune notification",
+      "newOrder": "Nouvelle commande reçue",
+      "paymentConfirmed": "Paiement confirmé"
+    },
+    "account": {
+      "verified": "Vérifié"
+    }
+  },
   "auth": {
     "login": {
       "title": "Connexion",

@@ -175,6 +175,52 @@
     "profile": "Profile",
     "settings": "Settings"
   },
+  "dashboard": {
+    "welcome": "Welcome back,",
+    "overview": "Overview",
+    "overviewSubtitle": "Here's what's happening in your shop today.",
+    "stats": {
+      "totalSales": "Total Sales",
+      "ordersToday": "Orders Today"
+    },
+    "actions": {
+      "addProduct": "Add New Product",
+      "addProductSubtitle": "Expand your catalog instantly",
+      "shareShop": "Share Shop",
+      "shareShopSubtitle": "Get link",
+      "withdraw": "Withdraw",
+      "withdrawSubtitle": "Via MoMo"
+    },
+    "orders": {
+      "recent": "Recent Orders",
+      "viewAll": "View All",
+      "noOrders": "No orders yet",
+      "ago": "ago"
+    },
+    "status": {
+      "paid": "PAID",
+      "pending": "PENDING",
+      "cancelled": "CANCELLED"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "products": "Products",
+      "orders": "Orders",
+      "customers": "Customers",
+      "marketing": "Marketing",
+      "settings": "Settings",
+      "wallet": "Wallet"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "empty": "No new notifications",
+      "newOrder": "New order received",
+      "paymentConfirmed": "Payment confirmed"
+    },
+    "account": {
+      "verified": "Verified"
+    }
+  },
   "auth": {
     "login": {
       "title": "Login",
