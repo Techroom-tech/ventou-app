@@ -1,4 +1,96 @@
 {
+  "home": {
+    "badge": "NOUVEAU : SUPPORT WAVE INTÉGRÉ",
+    "hero": {
+      "title1": "Vendez partout en",
+      "title2": "Afrique de l'Ouest",
+      "subtitle": "La plateforme tout-en-un pour les commerçants modernes. Acceptez les paiements Mobile Money et gérez votre stock sans effort.",
+      "cta": "Créer ma boutique",
+      "demo": "Voir démo",
+      "notification": "Commande #2894 payée",
+      "notificationSuccess": "SUCCÈS"
+    },
+    "features": {
+      "title": "Fonctionnalités Clés",
+      "subtitle": "Tout ce dont vous avez besoin pour gérer votre commerce",
+      "mobile": {
+        "title": "Paiements Mobile",
+        "description": "Encaissez via Orange Money, MTN, Wave et Moov instantanément."
+      },
+      "stock": {
+        "title": "Gestion de Stock",
+        "description": "Suivez vos alertes et stocks en temps réel."
+      },
+      "analytics": {
+        "title": "Statistiques",
+        "description": "Analysez vos ventes et performances en un clic."
+      }
+    },
+    "howItWorks": {
+      "title": "Comment ça marche ?",
+      "step1": {
+        "title": "Inscrivez-vous",
+        "description": "Créez votre compte en moins de 2 minutes avec votre numéro de téléphone."
+      },
+      "step2": {
+        "title": "Ajoutez vos produits",
+        "description": "Prenez des photos, fixez vos prix et partagez le lien de votre boutique."
+      },
+      "step3": {
+        "title": "Encaissez vos gains",
+        "description": "Recevez vos paiements directement sur votre compte Mobile Money préféré."
+      }
+    },
+    "security": {
+      "badge": "SÉCURITÉ GARANTIE",
+      "title": "Votre argent est en sécurité",
+      "subtitle": "Nous utilisons les protocoles de sécurité bancaire les plus récents pour assurer que chaque transaction est protégée.",
+      "support": {
+        "title": "Support local 24/7",
+        "description": "en Français & Anglais"
+      },
+      "refund": {
+        "title": "Remboursements simplifiés"
+      },
+      "encryption": {
+        "title": "Données cryptées de bout en bout"
+      }
+    },
+    "partners": {
+      "title": "PARTENAIRES DE CONFIANCE"
+    },
+    "testimonials": {
+      "title": "Ce que disent nos vendeurs",
+      "testimonial1": {
+        "text": "Ventou a complètement changé mon business. Je peux vendre mes tissus à des clients au Sénégal et en Côte d'Ivoire sans souci de paiement.",
+        "author": "Aminata Diop",
+        "location": "Vendeuse de tissus, Dakar"
+      },
+      "testimonial2": {
+        "text": "J'ai doublé mes ventes en 3 mois. La gestion de stock est incroyable.",
+        "author": "Kofi Mensah",
+        "location": "Vendeur électronique, Accra"
+      }
+    },
+    "cta": {
+      "title": "Prêt à développer votre activité ?",
+      "subtitle": "Rejoignez plus de 5 000 vendeurs qui font confiance à Ventou pour gérer leur commerce en ligne.",
+      "button": "Commencer gratuitement"
+    },
+    "footer": {
+      "description": "La plateforme e-commerce simplifiée pour l'Afrique de l'Ouest.",
+      "company": "SOCIÉTÉ",
+      "legal": "LÉGAL",
+      "about": "À propos",
+      "pricing": "Tarifs",
+      "careers": "Carrières",
+      "privacy": "Confidentialité",
+      "terms": "CGU",
+      "contact": "Contact",
+      "copyright": "© 2025 Ventou Inc. Tous droits réservés.",
+      "floatingCta": "Créer ma boutique"
+    }
+  },
   "support": {
     "title": "Support Client",
     "hero": {

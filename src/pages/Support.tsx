@@ -7,8 +7,8 @@ import { MessageSquare, Mail, FileText, Clock, Send, ArrowRight } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Header } from '@/components/Header';
 import {
   Select,
   SelectContent,
@@ -31,7 +31,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { LanguageToggle } from '@/components/LanguageToggle';
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: 'Le nom doit contenir au moins 2 caractères' }),
@@ -75,21 +74,9 @@ const Support = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">V</span>
-            </div>
-            <span className="text-lg font-bold text-foreground">VENTOU</span>
-          </Link>
-          <h1 className="text-lg font-semibold text-foreground">{t('support.title')}</h1>
-          <LanguageToggle />
-        </div>
-      </header>
+      <Header pageTitle={t('support.title')} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 md:py-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 md:py-10 pt-20 md:pt-24">
         {/* Hero Section */}
         <section className="text-center mb-8 md:mb-12">
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3">

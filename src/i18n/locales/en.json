@@ -1,4 +1,96 @@
 {
+  "home": {
+    "badge": "NEW: WAVE SUPPORT INTEGRATED",
+    "hero": {
+      "title1": "Sell everywhere in",
+      "title2": "West Africa",
+      "subtitle": "The all-in-one platform for modern merchants. Accept Mobile Money payments and manage your inventory effortlessly.",
+      "cta": "Create my shop",
+      "demo": "Watch demo",
+      "notification": "Order #2894 paid",
+      "notificationSuccess": "SUCCESS"
+    },
+    "features": {
+      "title": "Key Features",
+      "subtitle": "Everything you need to manage your business",
+      "mobile": {
+        "title": "Mobile Payments",
+        "description": "Accept Orange Money, MTN, Wave and Moov instantly."
+      },
+      "stock": {
+        "title": "Inventory Management",
+        "description": "Track your alerts and stock in real-time."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "description": "Analyze your sales and performance in one click."
+      }
+    },
+    "howItWorks": {
+      "title": "How it works?",
+      "step1": {
+        "title": "Sign up",
+        "description": "Create your account in less than 2 minutes with your phone number."
+      },
+      "step2": {
+        "title": "Add your products",
+        "description": "Take photos, set your prices and share your shop link."
+      },
+      "step3": {
+        "title": "Collect your earnings",
+        "description": "Receive payments directly to your preferred Mobile Money account."
+      }
+    },
+    "security": {
+      "badge": "SECURITY GUARANTEED",
+      "title": "Your money is safe",
+      "subtitle": "We use the latest banking security protocols to ensure every transaction is protected.",
+      "support": {
+        "title": "24/7 Local Support",
+        "description": "in French & English"
+      },
+      "refund": {
+        "title": "Simplified refunds"
+      },
+      "encryption": {
+        "title": "End-to-end encrypted data"
+      }
+    },
+    "partners": {
+      "title": "TRUSTED PARTNERS"
+    },
+    "testimonials": {
+      "title": "What our sellers say",
+      "testimonial1": {
+        "text": "Ventou completely changed my business. I can sell my fabrics to customers in Senegal and Ivory Coast without payment worries.",
+        "author": "Aminata Diop",
+        "location": "Fabric seller, Dakar"
+      },
+      "testimonial2": {
+        "text": "I doubled my sales in 3 months. The inventory management is incredible.",
+        "author": "Kofi Mensah",
+        "location": "Electronics seller, Accra"
+      }
+    },
+    "cta": {
+      "title": "Ready to grow your business?",
+      "subtitle": "Join over 5,000 sellers who trust Ventou to manage their online business.",
+      "button": "Start for free"
+    },
+    "footer": {
+      "description": "The simplified e-commerce platform for West Africa.",
+      "company": "COMPANY",
+      "legal": "LEGAL",
+      "about": "About",
+      "pricing": "Pricing",
+      "careers": "Careers",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "contact": "Contact",
+      "copyright": "© 2025 Ventou Inc. All rights reserved.",
+      "floatingCta": "Create my shop"
+    }
+  },
   "support": {
     "title": "Customer Support",
     "hero": {
