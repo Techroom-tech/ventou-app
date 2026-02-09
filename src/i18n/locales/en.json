@@ -242,14 +242,8 @@
       "descriptionPlaceholder": "Describe your product in detail…",
       "category": "Category",
       "categoryPlaceholder": "Select a category",
-      "categories": {
-        "electronics": "Electronics",
-        "fashion": "Fashion",
-        "home": "Home & Living",
-        "beauty": "Beauty",
-        "food": "Food",
-        "other": "Other"
-      },
+      "addCategory": "+ Create a category",
+      "newCategoryPlaceholder": "Category name",
       "pricing": "Pricing",
       "originalPrice": "Original Price (FCFA)",
       "discountPrice": "Discounted Price (FCFA)",
