@@ -1,0 +1,185 @@
+import { Shop, Product, Order, Notification, Wallet, DashboardStats } from '@/types/shop';
+
+export const mockShop: Shop = {
+  id: 'shop-001',
+  owner_id: 'user-001',
+  name: "Kofi's Electronics",
+  slug: 'kofis-electronics',
+  description: 'Meilleurs produits électroniques à Accra',
+  logo_url: null,
+  currency: 'XOF',
+  is_verified: true,
+  created_at: '2024-06-15T10:00:00Z',
+  updated_at: '2025-02-01T10:00:00Z',
+};
+
+export const mockProducts: Product[] = [
+  {
+    id: 'prod-001',
+    shop_id: 'shop-001',
+    name: 'Samsung Galaxy A15',
+    description: 'Smartphone 128GB',
+    price: 95000,
+    stock_quantity: 24,
+    image_url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=80&h=80&fit=crop',
+    is_active: true,
+    created_at: '2024-12-01T10:00:00Z',
+    updated_at: '2025-01-15T10:00:00Z',
+  },
+  {
+    id: 'prod-002',
+    shop_id: 'shop-001',
+    name: 'Écouteurs Bluetooth JBL',
+    description: 'Sans fil, autonomie 20h',
+    price: 25000,
+    stock_quantity: 42,
+    image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&h=80&fit=crop',
+    is_active: true,
+    created_at: '2024-12-05T10:00:00Z',
+    updated_at: '2025-01-20T10:00:00Z',
+  },
+  {
+    id: 'prod-003',
+    shop_id: 'shop-001',
+    name: 'Chargeur rapide USB-C',
+    description: '65W Power Delivery',
+    price: 8500,
+    stock_quantity: 100,
+    image_url: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=80&h=80&fit=crop',
+    is_active: true,
+    created_at: '2024-12-10T10:00:00Z',
+    updated_at: '2025-01-25T10:00:00Z',
+  },
+  {
+    id: 'prod-004',
+    shop_id: 'shop-001',
+    name: 'Coque iPhone 15 Pro',
+    description: 'Protection antichoc',
+    price: 5000,
+    stock_quantity: 65,
+    image_url: null,
+    is_active: true,
+    created_at: '2025-01-02T10:00:00Z',
+    updated_at: '2025-02-01T10:00:00Z',
+  },
+];
+
+const now = new Date();
+const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600000).toISOString();
+const daysAgo = (d: number) => new Date(now.getTime() - d * 86400000).toISOString();
+
+export const mockOrders: Order[] = [
+  {
+    id: 'ord-001',
+    shop_id: 'shop-001',
+    order_number: '#ORD-1024',
+    customer_name: 'Ama Serwaa',
+    customer_phone: '+233 24 123 4567',
+    total_amount: 95000,
+    status: 'PAID',
+    payment_method: 'MoMo',
+    created_at: hoursAgo(1),
+    updated_at: hoursAgo(1),
+    items: [{ id: 'item-001', order_id: 'ord-001', product_id: 'prod-001', quantity: 1, unit_price: 95000 }],
+  },
+  {
+    id: 'ord-002',
+    shop_id: 'shop-001',
+    order_number: '#ORD-1023',
+    customer_name: 'Kwame Asante',
+    customer_phone: '+233 20 987 6543',
+    total_amount: 25000,
+    status: 'PENDING',
+    payment_method: 'Wave',
+    created_at: hoursAgo(3),
+    updated_at: hoursAgo(3),
+    items: [{ id: 'item-002', order_id: 'ord-002', product_id: 'prod-002', quantity: 1, unit_price: 25000 }],
+  },
+  {
+    id: 'ord-003',
+    shop_id: 'shop-001',
+    order_number: '#ORD-1022',
+    customer_name: 'Fatou Diallo',
+    customer_phone: '+221 77 456 7890',
+    total_amount: 17000,
+    status: 'PAID',
+    payment_method: 'Orange',
+    created_at: hoursAgo(5),
+    updated_at: hoursAgo(5),
+    items: [{ id: 'item-003', order_id: 'ord-003', product_id: 'prod-003', quantity: 2, unit_price: 8500 }],
+  },
+  {
+    id: 'ord-004',
+    shop_id: 'shop-001',
+    order_number: '#ORD-1021',
+    customer_name: 'Moussa Traoré',
+    customer_phone: '+225 07 890 1234',
+    total_amount: 120000,
+    status: 'PAID',
+    payment_method: 'MoMo',
+    created_at: hoursAgo(8),
+    updated_at: hoursAgo(8),
+    items: [
+      { id: 'item-004', order_id: 'ord-004', product_id: 'prod-001', quantity: 1, unit_price: 95000 },
+      { id: 'item-005', order_id: 'ord-004', product_id: 'prod-002', quantity: 1, unit_price: 25000 },
+    ],
+  },
+  {
+    id: 'ord-005',
+    shop_id: 'shop-001',
+    order_number: '#ORD-1020',
+    customer_name: 'Adama Coulibaly',
+    customer_phone: '+223 76 543 2100',
+    total_amount: 5000,
+    status: 'CANCELLED',
+    payment_method: 'Cash',
+    created_at: daysAgo(1),
+    updated_at: daysAgo(1),
+    items: [{ id: 'item-006', order_id: 'ord-005', product_id: 'prod-004', quantity: 1, unit_price: 5000 }],
+  },
+];
+
+export const mockNotifications: Notification[] = [
+  {
+    id: 'notif-001',
+    shop_id: 'shop-001',
+    type: 'new_order',
+    title: 'Nouvelle commande #ORD-1024',
+    message: 'Ama Serwaa a passé une commande de 95 000 FCFA',
+    is_read: false,
+    created_at: hoursAgo(1),
+  },
+  {
+    id: 'notif-002',
+    shop_id: 'shop-001',
+    type: 'payment_confirmed',
+    title: 'Paiement confirmé',
+    message: 'Le paiement de #ORD-1022 a été confirmé via Orange Money',
+    is_read: false,
+    created_at: hoursAgo(5),
+  },
+  {
+    id: 'notif-003',
+    shop_id: 'shop-001',
+    type: 'info',
+    title: 'Bienvenue sur Ventou !',
+    message: 'Votre boutique est maintenant active. Ajoutez vos premiers produits.',
+    is_read: true,
+    created_at: daysAgo(7),
+  },
+];
+
+export const mockWallet: Wallet = {
+  id: 'wallet-001',
+  shop_id: 'shop-001',
+  balance: 257000,
+  currency: 'XOF',
+  updated_at: hoursAgo(1),
+};
+
+export const mockStats: DashboardStats = {
+  totalSales: 257000,
+  ordersToday: 4,
+  salesChange: 12.5,
+  ordersChange: 8.3,
+};
