@@ -191,6 +191,19 @@
       "withdraw": "Retrait",
       "withdrawSubtitle": "Via MoMo"
     },
+    "products": {
+      "title": "Catalogue Produits",
+      "subtitle": "{{count}} produit(s) dans votre catalogue",
+      "searchPlaceholder": "Rechercher un produit…",
+      "emptyTitle": "Votre catalogue est vide",
+      "emptyDescription": "Ajoutez votre premier produit pour commencer à vendre sur Ventou. C'est simple et rapide.",
+      "inStock": "{{count}} en stock",
+      "features": {
+        "csv": "Import CSV",
+        "stock": "Gestion de Stock",
+        "variants": "Variantes"
+      }
+    },
     "orders": {
       "recent": "Commandes récentes",
       "viewAll": "Tout voir",

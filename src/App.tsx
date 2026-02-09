@@ -14,6 +14,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import Products from "./pages/Products";
 import About from "./pages/About";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
@@ -40,6 +41,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/products"
+              element={
+                <ProtectedRoute>
+                  <Products />
                 </ProtectedRoute>
               }
             />
