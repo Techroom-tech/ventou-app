@@ -1,131 +1,84 @@
 
-# Creation de la page A propos - VENTOU
+# Rendre la page À propos responsive (Desktop & Tablette)
 
-## Objectif
-Creer une page "A propos" fidele au mockup fourni, presentant la mission, les defis, les solutions et les valeurs de VENTOU.
-
----
-
-## Structure de la page (basee sur le mockup)
-
-### 1. Header simple
-- Fleche de retour vers l'accueil
-- Titre centre "A propos de Ventou"
-
-### 2. Section Hero - Mission
-- Image d'arriere-plan avec une femme africaine
-- Badge orange "NOTRE MISSION"
-- Titre: "Democratiser l'e-commerce en Afrique de l'Ouest"
-- Sous-titre: "Connecter les vendeurs locaux au monde digital, simplement et sans barrieres."
-
-### 3. Section - Le defi actuel
-- Icone d'alerte orange
-- Titre "Le defi actuel"
-- Carte avec fond clair et icone decorative
-- Titre: "Des obstacles a la croissance"
-- Texte explicatif sur les defis des entrepreneurs locaux
-
-### 4. Bouton CTA
-- Bouton orange "Commencer maintenant" avec fleche
-
-### 5. Section - Simple. Securise. Local.
-- Image d'une main tenant un telephone
-- Titre "Simple. Securise. Local."
-- Texte sur l'integration Mobile Money et boutiques verifiees
-- Deux points cles avec icones:
-  - Paiements instantanes via Orange Money, Wave et MTN
-  - Boutiques digitales pretes en 2 minutes
-
-### 6. Section - Nos valeurs
-- Titre "Nos valeurs"
-- Trois cartes de valeurs:
-  - **Securite**: Icone bouclier orange, transactions protegees
-  - **Proximite**: Icone signal, equipe locale disponible 7j/7
-  - **Innovation**: Icone ampoule, outils modernes adaptes
+## Probleme actuel
+La page utilise `max-w-lg` (512px) partout, ce qui donne un affichage trop etroit sur les grands ecrans.
 
 ---
 
-## Fichiers a creer
+## Modifications a apporter
 
-### 1. `src/pages/About.tsx`
-Page principale avec toutes les sections du mockup
+### 1. Header
+- Elargir le conteneur: `max-w-lg` → `max-w-6xl`
+- Centrer le titre correctement sur grands ecrans
 
-### 2. Images placeholder
-Utilisation d'images Unsplash via URL pour:
-- Hero: femme africaine en tenue traditionnelle
-- Section solution: main tenant un smartphone
+### 2. Section Hero
+- Elargir: `max-w-lg` → `max-w-6xl`
+- Augmenter la hauteur sur desktop: `h-[400px]` → `h-[400px] md:h-[500px] lg:h-[600px]`
+- Agrandir les textes: `text-2xl` → `text-2xl md:text-4xl lg:text-5xl`
+- Centrer le contenu sur desktop avec une mise en page plus aeree
+
+### 3. Section Challenge + CTA
+- Creer une grille 2 colonnes sur tablette/desktop
+- Challenge a gauche, CTA a droite
+- Padding adaptatif: `px-6` → `px-6 md:px-12 lg:px-24`
+
+### 4. Section Solution
+- Layout en 2 colonnes sur desktop: image a gauche, texte a droite
+- Grille responsive pour les features
+
+### 5. Section Valeurs
+- Grille 3 colonnes sur desktop: `space-y-4` → `grid md:grid-cols-2 lg:grid-cols-3 gap-4`
+- Cartes de valeurs cote a cote
 
 ---
 
-## Fichiers a modifier
+## Structure responsive
 
-### 1. `src/App.tsx`
-Ajouter la route `/about` pour la page A propos
-
-### 2. `src/pages/Index.tsx`
-Ajouter un lien vers la page A propos dans le footer
-
-### 3. `src/i18n/locales/fr.json`
-Ajouter les traductions pour la page A propos
-
-### 4. `src/i18n/locales/en.json`
-Ajouter les traductions anglaises correspondantes
+```text
+Mobile (< 768px)          Tablette (768-1024px)       Desktop (> 1024px)
++------------------+      +------------------------+   +--------------------------------+
+|     Header       |      |        Header          |   |            Header              |
++------------------+      +------------------------+   +--------------------------------+
+|                  |      |                        |   |                                |
+|      Hero        |      |         Hero           |   |             Hero               |
+|    (400px)       |      |       (500px)          |   |           (600px)              |
++------------------+      +------------------------+   +--------------------------------+
+|    Challenge     |      | Challenge  |   CTA     |   |   Challenge    |     CTA       |
++------------------+      +------------------------+   +--------------------------------+
+|       CTA        |      |                        |   |                                |
++------------------+      |  Image   |   Solution  |   |    Image    |    Solution      |
+|      Image       |      +------------------------+   +--------------------------------+
++------------------+      |   Val 1  |   Val 2     |   |  Val 1  |  Val 2  |  Val 3     |
+|     Solution     |      +------------------------+   +--------------------------------+
++------------------+      |   Val 3  |             |
+|      Val 1       |      +------------------------+
+|      Val 2       |
+|      Val 3       |
++------------------+
+```
 
 ---
 
 ## Details techniques
 
-### Composants utilises
-- Lucide icons: `ArrowLeft`, `ArrowRight`, `AlertTriangle`, `Shield`, `Wifi`, `Lightbulb`, `Smartphone`, `Store`
-- Button de shadcn/ui
-- Link de react-router-dom
+### Classes Tailwind a utiliser
+- Conteneurs: `max-w-6xl mx-auto`
+- Padding adaptatif: `px-4 md:px-8 lg:px-16`
+- Grilles: `grid md:grid-cols-2 lg:grid-cols-3 gap-6`
+- Textes: `text-2xl md:text-3xl lg:text-4xl`
 
-### Styles
-- Design mobile-first fidele au mockup
-- Coins arrondis sur les cartes (rounded-2xl, rounded-3xl)
-- Couleur accent orange (#FF6B35) pour les badges et icones
-- Fond gris clair (bg-secondary/30) pour les sections alternees
-- Animations fade-in existantes
-
-### Structure des traductions
-```text
-about:
-  title: "A propos de Ventou"
-  mission:
-    badge: "NOTRE MISSION"
-    title: "Democratiser l'e-commerce en Afrique de l'Ouest"
-    subtitle: "Connecter les vendeurs locaux..."
-  challenge:
-    title: "Le defi actuel"
-    cardTitle: "Des obstacles a la croissance"
-    cardText: "Aujourd'hui, les paiements complexes..."
-  cta: "Commencer maintenant"
-  solution:
-    title: "Simple. Securise. Local."
-    description: "Nous integrons nativement le Mobile Money..."
-    feature1: "Paiements instantanes via Orange Money, Wave & MTN."
-    feature2: "Boutiques digitales pretes en 2 minutes."
-  values:
-    title: "Nos valeurs"
-    security:
-      title: "Securite"
-      description: "Transactions protegees et donnees cryptees."
-    proximity:
-      title: "Proximite"
-      description: "Une equipe locale disponible 7j/7 pour vous."
-    innovation:
-      title: "Innovation"
-      description: "Des outils modernes adaptes a nos realites."
-```
+### Fichier a modifier
+- `src/pages/About.tsx` uniquement
 
 ---
 
-## Resume des modifications
+## Resume des changements
 
-| Fichier | Action |
-|---------|--------|
-| `src/pages/About.tsx` | Creer |
-| `src/App.tsx` | Modifier (ajouter route) |
-| `src/pages/Index.tsx` | Modifier (ajouter lien footer) |
-| `src/i18n/locales/fr.json` | Modifier (ajouter traductions) |
-| `src/i18n/locales/en.json` | Modifier (ajouter traductions) |
+| Section | Mobile | Tablette | Desktop |
+|---------|--------|----------|---------|
+| Header | max-w-lg | max-w-6xl | max-w-6xl |
+| Hero | h-400px, text-2xl | h-500px, text-3xl | h-600px, text-4xl |
+| Challenge + CTA | Empiles | 2 colonnes | 2 colonnes |
+| Solution | Empiles | 2 colonnes | 2 colonnes (image + texte) |
+| Valeurs | 1 colonne | 2 colonnes | 3 colonnes |
