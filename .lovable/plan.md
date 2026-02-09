@@ -1,77 +1,167 @@
 
-# Creation de la page Support Client - VENTOU
+
+# Refonte complete de la page d'accueil + Synchronisation des headers
 
 ## Objectif
-Creer une page Support Client complete et responsive (mobile, tablette, desktop) basee sur le mockup fourni, SANS fleche de retour.
+1. Recreer la page d'accueil (Index.tsx) selon le mockup
+2. Creer un composant Header reutilisable pour toutes les pages
+3. Synchroniser le header sur Index, About et Support
 
 ---
 
-## Structure de la page
+## Analyse du mockup
 
-### 1. Header simple
-- Titre centre "Support Client" uniquement (pas de fleche de retour)
+### Header unifie (pour toutes les pages)
+- Logo "Ventou" a gauche (orange)
+- Bouton "S'inscrire" orange a droite
+- Toggle langue integre
+- Pas de fleche de retour
 
-### 2. Section Hero
-- Titre: "Besoin d'aide ?" (noir) + "Nous sommes la." (orange)
-- Sous-titre: "Notre equipe est dediee a votre reussite sur Ventou. Choisissez comment vous souhaitez nous contacter."
-
-### 3. Options de contact (3 cartes)
-- **WhatsApp Business** (carte principale, pleine largeur)
-  - Icone verte MessageSquare
-  - "Reponse instantanee"
-  - Fleche vers la droite
-- **Email** (demi-largeur)
-  - Icone orange Mail
-  - "Reponse sous 24h"
-- **Centre d'Aide** (demi-largeur)
-  - Icone orange FileText
-  - "Articles & Guides"
-
-### 4. Bandeau disponibilite
-- Icone horloge orange
-- "Disponibilite : Lun - Ven, 9h - 18h GMT"
-
-### 5. Formulaire de contact
-- Titre avec bordure orange a gauche: "Envoyez un message"
-- Champs: Nom complet, Adresse Email, Sujet (dropdown), Message (textarea)
-- Bouton orange "Envoyer le message"
-
-### 6. Section FAQ
-- Titre "Questions frequentes" + lien "Tout voir"
-- 3 questions en accordeon
+### Sections de la page d'accueil
+1. **Hero**: Badge "NOUVEAU", titre bicolore, CTA, notification de succes
+2. **Fonctionnalites**: 3 cartes (Paiements, Stock, Stats)
+3. **Comment ca marche**: 3 etapes numerotees
+4. **Securite**: Bouclier + points de confiance
+5. **Partenaires**: Logos Orange, MTN, Wave, Moov
+6. **Temoignages**: Cartes avec etoiles
+7. **CTA final**: Derniere invitation
+8. **Footer**: Liens + bouton flottant mobile
 
 ---
 
-## Responsive Design
+## Structure responsive
 
-| Element | Mobile | Tablette/Desktop |
-|---------|--------|------------------|
-| Contact cards | Empilees | WhatsApp pleine largeur, Email + Centre cote a cote |
-| Form + FAQ | Empiles | Cote a cote (2 colonnes) |
-| Textes | Petits | Plus grands (md:text-xl, lg:text-2xl) |
+```text
+Mobile (< 768px)          Tablette (768-1024px)       Desktop (> 1024px)
++------------------+      +------------------------+   +--------------------------------+
+| Logo  | S'inscrire|     | Logo    |    S'inscrire|   | Logo        |      S'inscrire  |
++------------------+      +------------------------+   +--------------------------------+
+|      Hero        |      |         Hero           |   |   Hero (gauche) | Image droite |
++------------------+      +------------------------+   +--------------------------------+
+|   Features x1    |      |   Features x2          |   |      Features x3               |
++------------------+      +------------------------+   +--------------------------------+
+|   Steps x1       |      |   Steps x3             |   |      Steps x3                  |
++------------------+      +------------------------+   +--------------------------------+
+|   Security       |      |   Security x2          |   |      Security x2               |
++------------------+      +------------------------+   +--------------------------------+
+|   Partners       |      |   Partners             |   |      Partners                  |
++------------------+      +------------------------+   +--------------------------------+
+|  Testimonials    |      |  Testimonials x2       |   |   Testimonials x2              |
++------------------+      +------------------------+   +--------------------------------+
+|   CTA + Footer   |      |   CTA + Footer         |   |      CTA + Footer              |
++------------------+      +------------------------+   +--------------------------------+
+```
 
 ---
 
-## Fichiers a creer/modifier
+## Fichiers a creer
+
+### 1. `src/components/Header.tsx` (NOUVEAU)
+Composant Header reutilisable avec:
+- Logo Ventou (lien vers /)
+- Toggle langue
+- Bouton S'inscrire / Dashboard (selon auth)
+- Props optionnelle: `pageTitle` pour afficher un titre centre (About, Support)
+
+---
+
+## Fichiers a modifier
+
+### 1. `src/pages/Index.tsx`
+Refonte complete avec toutes les sections du mockup
+
+### 2. `src/pages/About.tsx`
+- Remplacer le header inline par `<Header pageTitle={t('about.title')} />`
+- Supprimer la fleche de retour
+
+### 3. `src/pages/Support.tsx`
+- Remplacer le header inline par `<Header pageTitle={t('support.title')} />`
+- Garder la meme structure
+
+### 4. `src/i18n/locales/fr.json`
+Ajouter les traductions pour la page d'accueil
+
+### 5. `src/i18n/locales/en.json`
+Ajouter les traductions anglaises
+
+---
+
+## Composant Header unifie
+
+```text
++----------------------------------------------------------+
+|  [V] VENTOU           [Titre Page]        [FR] [S'inscrire]|
++----------------------------------------------------------+
+
+- Sur mobile: titre cache si trop long
+- Sur desktop: espacement equilibre
+- Props: pageTitle? (optionnel, pour pages internes)
+```
+
+---
+
+## Details techniques
+
+### Icones Lucide utilisees
+- ArrowRight, Play (Hero)
+- Smartphone, Package, BarChart3 (Features)
+- UserPlus, Camera, Wallet (Steps)
+- Shield, ShieldCheck, Headphones, RefreshCw, Lock (Security)
+- Star, MapPin (Testimonials)
+- CheckCircle (Notification)
+
+### Nouvelles traductions (home namespace)
+```text
+home:
+  badge: "NOUVEAU: SUPPORT WAVE INTEGRE"
+  hero:
+    title1: "Vendez partout en"
+    title2: "Afrique de l'Ouest"
+    subtitle: "La plateforme tout-en-un..."
+    cta: "Creer ma boutique"
+    demo: "Voir demo"
+  features:
+    title: "Fonctionnalites Cles"
+    subtitle: "Tout ce dont vous avez besoin..."
+    mobile/stock/analytics: {...}
+  howItWorks:
+    title: "Comment ca marche ?"
+    step1/step2/step3: {...}
+  security:
+    badge: "SECURITE GARANTIE"
+    title: "Votre argent est en securite"
+    support/refund/encryption: {...}
+  partners:
+    title: "PARTENAIRES DE CONFIANCE"
+  testimonials:
+    title: "Ce que disent nos vendeurs"
+    testimonial1/testimonial2: {...}
+  cta:
+    title: "Pret a developper votre activite ?"
+    button: "Commencer gratuitement"
+  footer: {...}
+```
+
+---
+
+## Resume des modifications
 
 | Fichier | Action |
 |---------|--------|
-| `src/pages/Support.tsx` | Creer |
-| `src/App.tsx` | Ajouter route `/support` |
-| `src/pages/Index.tsx` | Lien footer Contact → `/support` |
-| `src/i18n/locales/fr.json` | Ajouter traductions |
-| `src/i18n/locales/en.json` | Ajouter traductions |
+| `src/components/Header.tsx` | Creer (composant reutilisable) |
+| `src/pages/Index.tsx` | Modifier (refonte complete) |
+| `src/pages/About.tsx` | Modifier (utiliser Header) |
+| `src/pages/Support.tsx` | Modifier (utiliser Header) |
+| `src/i18n/locales/fr.json` | Modifier (ajouter home) |
+| `src/i18n/locales/en.json` | Modifier (ajouter home) |
 
 ---
 
-## Composants utilises
-- shadcn/ui: Button, Input, Textarea, Select, Accordion, Card, Label
-- Lucide: MessageSquare, Mail, FileText, Clock, Send, ArrowRight, ChevronDown
+## Fonctionnalites speciales
 
----
+1. **Notification animee** - Carte "Commande payee" avec animation
+2. **Logos partenaires** - Textes styles pour Orange, MTN, Wave, Moov
+3. **Temoignages** - Etoiles dorees + photos rondes
+4. **Bouton flottant** - CTA fixe en bas sur mobile uniquement
+5. **Toggle langue** - Integre dans le header unifie
 
-## Fonctionnalites
-1. WhatsApp: ouvre `https://wa.me/NUMERO`
-2. Email: ouvre `mailto:support@ventou.shop`
-3. Formulaire avec validation zod + toast de confirmation
-4. FAQ en accordeon anime
