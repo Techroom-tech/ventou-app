@@ -219,6 +219,63 @@
     },
     "account": {
       "verified": "Verified"
+    },
+    "products": {
+      "title": "Product Catalog",
+      "subtitle": "{{count}} product(s) in your catalog",
+      "searchPlaceholder": "Search a product…",
+      "emptyTitle": "Your catalog is empty",
+      "emptyDescription": "Add your first product to start selling on Ventou. It's simple and fast.",
+      "inStock": "{{count}} in stock",
+      "features": {
+        "csv": "CSV Import",
+        "stock": "Stock Management",
+        "variants": "Variants"
+      }
+    },
+    "addProduct": {
+      "title": "Add New Product",
+      "generalInfo": "General Information",
+      "name": "Product Name",
+      "namePlaceholder": "E.g. Bluetooth Headphones",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe your product in detail…",
+      "category": "Category",
+      "categoryPlaceholder": "Select a category",
+      "categories": {
+        "electronics": "Electronics",
+        "fashion": "Fashion",
+        "home": "Home & Living",
+        "beauty": "Beauty",
+        "food": "Food",
+        "other": "Other"
+      },
+      "pricing": "Pricing",
+      "originalPrice": "Original Price (FCFA)",
+      "discountPrice": "Discounted Price (FCFA)",
+      "discountHint": "Leave blank if no discount applies.",
+      "inventory": "Inventory",
+      "sku": "SKU (Stock Keeping Unit)",
+      "skuPlaceholder": "E.g. HEAD-BT-001",
+      "stockQuantity": "Quantity in Stock",
+      "status": "Product Status",
+      "statusHint": "Toggle to publish this product immediately.",
+      "currently": "Currently",
+      "published": "Published",
+      "draft": "Draft",
+      "media": "Product Media",
+      "clickUpload": "Click to upload",
+      "dragDrop": "or drag and drop images here",
+      "seo": "SEO Settings",
+      "urlSlug": "URL Slug",
+      "slugPlaceholder": "my-product",
+      "metaDescription": "Meta Description",
+      "metaPlaceholder": "Brief description for search engines…",
+      "savePublish": "Save & Publish",
+      "saved": "Product saved successfully!",
+      "validation": {
+        "required": "Name and price are required."
+      }
     }
   },
   "auth": {

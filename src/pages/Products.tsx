@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { ProductsEmptyState } from '@/components/dashboard/ProductsEmptyState';
@@ -10,6 +11,7 @@ import { mockProducts } from '@/data/mockData';
 
 export default function Products() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isLoading] = useState(false);
   const [showEmpty] = useState(false); // Toggle to true to preview empty state
 
@@ -28,7 +30,7 @@ export default function Products() {
               {t('dashboard.products.subtitle', { count: products.length })}
             </p>
           </div>
-          <Button className="gap-2 w-full sm:w-auto">
+          <Button className="gap-2 w-full sm:w-auto" onClick={() => navigate('/dashboard/products/new')}>
             <Plus className="h-4 w-4" />
             {t('dashboard.actions.addProduct')}
           </Button>

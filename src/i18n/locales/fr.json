@@ -204,6 +204,50 @@
         "variants": "Variantes"
       }
     },
+    "addProduct": {
+      "title": "Ajouter un produit",
+      "generalInfo": "Informations générales",
+      "name": "Nom du produit",
+      "namePlaceholder": "Ex: Écouteurs Bluetooth",
+      "description": "Description",
+      "descriptionPlaceholder": "Décrivez votre produit en détail…",
+      "category": "Catégorie",
+      "categoryPlaceholder": "Sélectionnez une catégorie",
+      "categories": {
+        "electronics": "Électronique",
+        "fashion": "Mode",
+        "home": "Maison & Déco",
+        "beauty": "Beauté",
+        "food": "Alimentaire",
+        "other": "Autre"
+      },
+      "pricing": "Tarification",
+      "originalPrice": "Prix original (FCFA)",
+      "discountPrice": "Prix réduit (FCFA)",
+      "discountHint": "Laissez vide si aucune réduction ne s'applique.",
+      "inventory": "Inventaire",
+      "sku": "SKU (Référence)",
+      "skuPlaceholder": "Ex: HEAD-BT-001",
+      "stockQuantity": "Quantité en stock",
+      "status": "Statut du produit",
+      "statusHint": "Activez pour publier ce produit immédiatement.",
+      "currently": "Actuellement",
+      "published": "Publié",
+      "draft": "Brouillon",
+      "media": "Photos du produit",
+      "clickUpload": "Cliquez pour télécharger",
+      "dragDrop": "ou glissez-déposez vos images ici",
+      "seo": "Paramètres SEO",
+      "urlSlug": "URL Slug",
+      "slugPlaceholder": "mon-produit",
+      "metaDescription": "Meta Description",
+      "metaPlaceholder": "Brève description pour les moteurs de recherche…",
+      "savePublish": "Enregistrer & Publier",
+      "saved": "Produit enregistré avec succès !",
+      "validation": {
+        "required": "Le nom et le prix sont obligatoires."
+      }
+    },
     "orders": {
       "recent": "Commandes récentes",
       "viewAll": "Tout voir",
