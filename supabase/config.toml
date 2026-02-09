@@ -1,0 +1,2 @@
+[functions.check-slug]
+verify_jwt = false

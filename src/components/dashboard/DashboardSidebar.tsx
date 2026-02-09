@@ -8,12 +8,14 @@ import {
   Megaphone,
   Settings,
   BadgeCheck,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mockShop } from '@/data/mockData';
 
 const navItems = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { key: 'createShop', icon: Store, path: '/dashboard/create-shop' },
   { key: 'products', icon: Package, path: '/dashboard/products' },
   { key: 'orders', icon: ShoppingCart, path: '/dashboard/orders' },
   { key: 'customers', icon: Users, path: '/dashboard/customers' },
