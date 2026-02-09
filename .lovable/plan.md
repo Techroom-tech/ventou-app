@@ -1,84 +1,77 @@
 
-# Rendre la page À propos responsive (Desktop & Tablette)
+# Creation de la page Support Client - VENTOU
 
-## Probleme actuel
-La page utilise `max-w-lg` (512px) partout, ce qui donne un affichage trop etroit sur les grands ecrans.
+## Objectif
+Creer une page Support Client complete et responsive (mobile, tablette, desktop) basee sur le mockup fourni, SANS fleche de retour.
 
 ---
 
-## Modifications a apporter
+## Structure de la page
 
-### 1. Header
-- Elargir le conteneur: `max-w-lg` → `max-w-6xl`
-- Centrer le titre correctement sur grands ecrans
+### 1. Header simple
+- Titre centre "Support Client" uniquement (pas de fleche de retour)
 
 ### 2. Section Hero
-- Elargir: `max-w-lg` → `max-w-6xl`
-- Augmenter la hauteur sur desktop: `h-[400px]` → `h-[400px] md:h-[500px] lg:h-[600px]`
-- Agrandir les textes: `text-2xl` → `text-2xl md:text-4xl lg:text-5xl`
-- Centrer le contenu sur desktop avec une mise en page plus aeree
+- Titre: "Besoin d'aide ?" (noir) + "Nous sommes la." (orange)
+- Sous-titre: "Notre equipe est dediee a votre reussite sur Ventou. Choisissez comment vous souhaitez nous contacter."
 
-### 3. Section Challenge + CTA
-- Creer une grille 2 colonnes sur tablette/desktop
-- Challenge a gauche, CTA a droite
-- Padding adaptatif: `px-6` → `px-6 md:px-12 lg:px-24`
+### 3. Options de contact (3 cartes)
+- **WhatsApp Business** (carte principale, pleine largeur)
+  - Icone verte MessageSquare
+  - "Reponse instantanee"
+  - Fleche vers la droite
+- **Email** (demi-largeur)
+  - Icone orange Mail
+  - "Reponse sous 24h"
+- **Centre d'Aide** (demi-largeur)
+  - Icone orange FileText
+  - "Articles & Guides"
 
-### 4. Section Solution
-- Layout en 2 colonnes sur desktop: image a gauche, texte a droite
-- Grille responsive pour les features
+### 4. Bandeau disponibilite
+- Icone horloge orange
+- "Disponibilite : Lun - Ven, 9h - 18h GMT"
 
-### 5. Section Valeurs
-- Grille 3 colonnes sur desktop: `space-y-4` → `grid md:grid-cols-2 lg:grid-cols-3 gap-4`
-- Cartes de valeurs cote a cote
+### 5. Formulaire de contact
+- Titre avec bordure orange a gauche: "Envoyez un message"
+- Champs: Nom complet, Adresse Email, Sujet (dropdown), Message (textarea)
+- Bouton orange "Envoyer le message"
 
----
-
-## Structure responsive
-
-```text
-Mobile (< 768px)          Tablette (768-1024px)       Desktop (> 1024px)
-+------------------+      +------------------------+   +--------------------------------+
-|     Header       |      |        Header          |   |            Header              |
-+------------------+      +------------------------+   +--------------------------------+
-|                  |      |                        |   |                                |
-|      Hero        |      |         Hero           |   |             Hero               |
-|    (400px)       |      |       (500px)          |   |           (600px)              |
-+------------------+      +------------------------+   +--------------------------------+
-|    Challenge     |      | Challenge  |   CTA     |   |   Challenge    |     CTA       |
-+------------------+      +------------------------+   +--------------------------------+
-|       CTA        |      |                        |   |                                |
-+------------------+      |  Image   |   Solution  |   |    Image    |    Solution      |
-|      Image       |      +------------------------+   +--------------------------------+
-+------------------+      |   Val 1  |   Val 2     |   |  Val 1  |  Val 2  |  Val 3     |
-|     Solution     |      +------------------------+   +--------------------------------+
-+------------------+      |   Val 3  |             |
-|      Val 1       |      +------------------------+
-|      Val 2       |
-|      Val 3       |
-+------------------+
-```
+### 6. Section FAQ
+- Titre "Questions frequentes" + lien "Tout voir"
+- 3 questions en accordeon
 
 ---
 
-## Details techniques
+## Responsive Design
 
-### Classes Tailwind a utiliser
-- Conteneurs: `max-w-6xl mx-auto`
-- Padding adaptatif: `px-4 md:px-8 lg:px-16`
-- Grilles: `grid md:grid-cols-2 lg:grid-cols-3 gap-6`
-- Textes: `text-2xl md:text-3xl lg:text-4xl`
-
-### Fichier a modifier
-- `src/pages/About.tsx` uniquement
+| Element | Mobile | Tablette/Desktop |
+|---------|--------|------------------|
+| Contact cards | Empilees | WhatsApp pleine largeur, Email + Centre cote a cote |
+| Form + FAQ | Empiles | Cote a cote (2 colonnes) |
+| Textes | Petits | Plus grands (md:text-xl, lg:text-2xl) |
 
 ---
 
-## Resume des changements
+## Fichiers a creer/modifier
 
-| Section | Mobile | Tablette | Desktop |
-|---------|--------|----------|---------|
-| Header | max-w-lg | max-w-6xl | max-w-6xl |
-| Hero | h-400px, text-2xl | h-500px, text-3xl | h-600px, text-4xl |
-| Challenge + CTA | Empiles | 2 colonnes | 2 colonnes |
-| Solution | Empiles | 2 colonnes | 2 colonnes (image + texte) |
-| Valeurs | 1 colonne | 2 colonnes | 3 colonnes |
+| Fichier | Action |
+|---------|--------|
+| `src/pages/Support.tsx` | Creer |
+| `src/App.tsx` | Ajouter route `/support` |
+| `src/pages/Index.tsx` | Lien footer Contact → `/support` |
+| `src/i18n/locales/fr.json` | Ajouter traductions |
+| `src/i18n/locales/en.json` | Ajouter traductions |
+
+---
+
+## Composants utilises
+- shadcn/ui: Button, Input, Textarea, Select, Accordion, Card, Label
+- Lucide: MessageSquare, Mail, FileText, Clock, Send, ArrowRight, ChevronDown
+
+---
+
+## Fonctionnalites
+1. WhatsApp: ouvre `https://wa.me/NUMERO`
+2. Email: ouvre `mailto:support@ventou.shop`
+3. Formulaire avec validation zod + toast de confirmation
+4. FAQ en accordeon anime
