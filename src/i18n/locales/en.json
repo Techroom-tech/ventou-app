@@ -1,4 +1,64 @@
 {
+  "support": {
+    "title": "Customer Support",
+    "hero": {
+      "title1": "Need help?",
+      "title2": "We're here.",
+      "subtitle": "Our team is dedicated to your success on Ventou. Choose how you'd like to contact us."
+    },
+    "contact": {
+      "whatsapp": {
+        "title": "WhatsApp Business",
+        "subtitle": "Instant response"
+      },
+      "email": {
+        "title": "Email",
+        "subtitle": "Response within 24h"
+      },
+      "helpCenter": {
+        "title": "Help Center",
+        "subtitle": "Articles & Guides"
+      }
+    },
+    "availability": "Availability: Mon - Fri, 9am - 6pm GMT",
+    "form": {
+      "title": "Send a message",
+      "name": "Full name",
+      "namePlaceholder": "E.g. John Doe",
+      "email": "Email address",
+      "emailPlaceholder": "name@example.com",
+      "subject": "Subject",
+      "subjectPlaceholder": "Select a subject",
+      "subjects": {
+        "order": "Question about my order",
+        "payment": "Payment issue",
+        "account": "My account",
+        "seller": "Become a seller",
+        "other": "Other"
+      },
+      "message": "Message",
+      "messagePlaceholder": "Describe your problem or question...",
+      "submit": "Send message",
+      "success": "Message sent!",
+      "successDescription": "We'll get back to you as soon as possible."
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "seeAll": "See all",
+      "q1": {
+        "question": "How do I reset my password?",
+        "answer": "Click 'Forgot password' on the login page, enter your email and follow the instructions sent to your inbox."
+      },
+      "q2": {
+        "question": "How do I track my order?",
+        "answer": "Log in to your account, go to 'My orders' and click on the order to see its real-time status."
+      },
+      "q3": {
+        "question": "How do I become a seller?",
+        "answer": "Create an account, then select 'Become a seller' in your profile. Fill in the required information and your shop will be active within 24h."
+      }
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",

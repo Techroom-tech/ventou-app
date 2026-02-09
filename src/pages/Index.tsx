@@ -124,7 +124,7 @@ const Index = () => {
             <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               {t('footer.privacy')}
             </Link>
-            <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               {t('footer.contact')}
             </Link>
           </div>

@@ -1,4 +1,64 @@
 {
+  "support": {
+    "title": "Support Client",
+    "hero": {
+      "title1": "Besoin d'aide ?",
+      "title2": "Nous sommes là.",
+      "subtitle": "Notre équipe est dédiée à votre réussite sur Ventou. Choisissez comment vous souhaitez nous contacter."
+    },
+    "contact": {
+      "whatsapp": {
+        "title": "WhatsApp Business",
+        "subtitle": "Réponse instantanée"
+      },
+      "email": {
+        "title": "Email",
+        "subtitle": "Réponse sous 24h"
+      },
+      "helpCenter": {
+        "title": "Centre d'Aide",
+        "subtitle": "Articles & Guides"
+      }
+    },
+    "availability": "Disponibilité : Lun - Ven, 9h - 18h GMT",
+    "form": {
+      "title": "Envoyez un message",
+      "name": "Nom complet",
+      "namePlaceholder": "Ex: Jean Dupont",
+      "email": "Adresse Email",
+      "emailPlaceholder": "nom@exemple.com",
+      "subject": "Sujet",
+      "subjectPlaceholder": "Sélectionnez un sujet",
+      "subjects": {
+        "order": "Question sur ma commande",
+        "payment": "Problème de paiement",
+        "account": "Mon compte",
+        "seller": "Devenir vendeur",
+        "other": "Autre"
+      },
+      "message": "Message",
+      "messagePlaceholder": "Décrivez votre problème ou question...",
+      "submit": "Envoyer le message",
+      "success": "Message envoyé !",
+      "successDescription": "Nous vous répondrons dans les plus brefs délais."
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "seeAll": "Tout voir",
+      "q1": {
+        "question": "Comment réinitialiser mon mot de passe ?",
+        "answer": "Cliquez sur 'Mot de passe oublié' sur la page de connexion, entrez votre email et suivez les instructions reçues par mail."
+      },
+      "q2": {
+        "question": "Comment suivre ma commande ?",
+        "answer": "Connectez-vous à votre compte, accédez à 'Mes commandes' et cliquez sur la commande concernée pour voir son statut en temps réel."
+      },
+      "q3": {
+        "question": "Comment devenir vendeur ?",
+        "answer": "Créez un compte, puis sélectionnez 'Devenir vendeur' dans votre profil. Remplissez les informations requises et votre boutique sera active sous 24h."
+      }
+    }
+  },
   "common": {
     "loading": "Chargement...",
     "error": "Une erreur est survenue",
