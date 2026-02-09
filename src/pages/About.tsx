@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Header } from '@/components/Header';
 import { 
-  ArrowLeft, 
   ArrowRight, 
   AlertTriangle, 
   Shield, 
@@ -18,19 +18,9 @@ const About = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 lg:px-16 h-14 flex items-center">
-          <Link to="/" className="p-2 -ml-2 hover:bg-secondary/50 rounded-full transition-colors">
-            <ArrowLeft className="h-5 w-5 text-foreground" />
-          </Link>
-          <h1 className="flex-1 text-center font-semibold text-foreground pr-7">
-            {t('about.title')}
-          </h1>
-        </div>
-      </header>
+      <Header pageTitle={t('about.title')} />
 
-      <main className="max-w-6xl mx-auto">
+      <main className="max-w-6xl mx-auto pt-16">
         {/* Hero Section - Mission */}
         <section className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
           <div 
