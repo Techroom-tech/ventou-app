@@ -120,7 +120,7 @@ export default function CreateShop() {
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const [slugSuggestions, setSlugSuggestions] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -171,8 +171,9 @@ export default function CreateShop() {
         setSlugStatus('taken');
         setSlugSuggestions(data.suggestions || []);
       }
-    } catch {
-      setSlugStatus('idle');
+    } catch (err) {
+      console.error('check-slug failed:', err);
+      setSlugStatus('error');
     }
   }, []);
 
@@ -205,7 +206,7 @@ export default function CreateShop() {
       toast({ title: t('createShop.errors.generic'), description: 'Not authenticated', variant: 'destructive' });
       return;
     }
-    if (slugStatus !== 'available') {
+    if (slugStatus !== 'available' && slugStatus !== 'error') {
       toast({ title: t('createShop.errors.slugNotVerified'), variant: 'destructive' });
       return;
     }
@@ -606,7 +607,7 @@ export default function CreateShop() {
                 {/* Submit */}
                 <Button
                   type="submit"
-                  disabled={isSubmitting || slugStatus !== 'available'}
+                  disabled={isSubmitting || (slugStatus !== 'available' && slugStatus !== 'error')}
                   className="w-full h-12 text-base font-semibold btn-ventou"
                 >
                   {isSubmitting ? (
@@ -616,10 +617,11 @@ export default function CreateShop() {
                   )}
                 </Button>
                 {slugStatus !== 'available' && (
-                  <p className="text-sm text-muted-foreground text-center mt-2">
+                  <p className={`text-sm text-center mt-2 ${slugStatus === 'error' ? 'text-amber-500' : 'text-muted-foreground'}`}>
                     {slugStatus === 'checking' && t('createShop.slugHelp.checking', 'Vérification du nom en cours...')}
                     {slugStatus === 'taken' && t('createShop.slugHelp.taken', 'Ce nom est déjà pris, choisissez-en un autre')}
                     {slugStatus === 'idle' && t('createShop.slugHelp.idle', 'Remplissez le nom de votre boutique pour continuer')}
+                    {slugStatus === 'error' && t('createShop.slugHelp.error', 'Vérification impossible, vous pouvez continuer')}
                   </p>
                 )}
               </form>
