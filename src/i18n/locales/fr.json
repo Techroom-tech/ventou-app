@@ -463,6 +463,14 @@
       "validation": "Veuillez vérifier les champs suivants"
     }
   },
+  "storefront": {
+    "notFound": "Boutique introuvable",
+    "notFoundDescription": "Cette boutique n'existe pas ou n'est plus active.",
+    "contact": "Contacter via WhatsApp",
+    "products": "Nos produits",
+    "noProducts": "Aucun produit pour le moment",
+    "poweredBy": "Propulsé par"
+  },
   "footer": {
     "copyright": "© 2024 VENTOU. Tous droits réservés.",
     "about": "À propos",
