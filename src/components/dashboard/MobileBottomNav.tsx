@@ -1,18 +1,27 @@
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Wallet } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Wallet, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useShop } from '@/hooks/useShop';
 
-const items = [
+const fullItems = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { key: 'products', icon: Package, path: '/dashboard/products' },
   { key: 'orders', icon: ShoppingCart, path: '/dashboard/orders' },
   { key: 'wallet', icon: Wallet, path: '/dashboard/wallet' },
 ];
 
+const onboardingItems = [
+  { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { key: 'createShop', icon: Store, path: '/dashboard/create-shop' },
+];
+
 export function MobileBottomNav() {
   const { t } = useTranslation();
   const location = useLocation();
+  const { hasShop } = useShop();
+
+  const items = hasShop ? fullItems : onboardingItems;
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
