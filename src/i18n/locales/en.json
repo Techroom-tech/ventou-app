@@ -459,7 +459,8 @@
     "errors": {
       "fileTooLarge": "File is too large (max 2 MB)",
       "slugTaken": "This address is already taken",
-      "generic": "Error creating shop"
+      "generic": "Error creating shop",
+      "validation": "Please check the following fields"
     }
   },
   "footer": {

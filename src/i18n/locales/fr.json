@@ -459,7 +459,8 @@
     "errors": {
       "fileTooLarge": "Le fichier est trop volumineux (max 2 Mo)",
       "slugTaken": "Cette adresse est déjà prise",
-      "generic": "Erreur lors de la création"
+      "generic": "Erreur lors de la création",
+      "validation": "Veuillez vérifier les champs suivants"
     }
   },
   "footer": {
