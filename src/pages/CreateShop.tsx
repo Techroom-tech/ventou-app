@@ -256,7 +256,7 @@ export default function CreateShop() {
 
       await queryClient.invalidateQueries({ queryKey: ['shop'] });
       toast({ title: t('createShop.success') });
-      navigate('/dashboard');
+      navigate('/dashboard/shop-created');
     } catch (error: any) {
       console.error('Error creating shop:', error);
       toast({
