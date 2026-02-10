@@ -1,140 +1,69 @@
 
-# Implementation des 4 phases : Panier WhatsApp, Detail produit, Dark mode, Promotions
 
-## Phase 1 : Panier WhatsApp
+# Corrections : Slug unique, lien correct, vitrine accessible sans produits
 
-### Nouveaux fichiers
+## Problemes identifies
 
-**`src/components/storefront/CartContext.tsx`**
-- Context React avec `CartProvider` gerant un state local (pas de persistence)
-- Actions : `addToCart(product, qty)`, `removeFromCart(productId)`, `updateQuantity(productId, qty)`, `clearCart()`, `cartCount`, `cartTotal`
-- Chaque item stocke : `product` (Product complet), `quantity`
+1. **Le slug n'apparait pas** sur la page de succes (affiche ".ventou.shop" au lieu de "tuk.ventou.shop") car `useShop()` ne retrouve pas la boutique (le cache n'est peut-etre pas encore a jour).
+2. **Pas de protection contre les doublons** : le bouton "Creer" n'est desactive que si `slugStatus === 'taken'`, pas si le slug n'a pas ete verifie (`idle` ou `checking`).
+3. **Pas de lien testable** : en preview, le sous-domaine `slug.ventou.shop` ne fonctionne pas. Il faut un bouton "Voir ma boutique" pointant vers `/shop/:slug`.
+4. **La vitrine affiche une page vide** quand il n'y a pas de produits : il faut un etat d'accueil montrant le nom, un avatar genere a partir des initiales si pas de logo, et la description si elle existe.
 
-**`src/components/storefront/CartDrawer.tsx`**
-- Drawer (vaul) s'ouvrant depuis le bas sur mobile, sheet laterale sur desktop
-- Liste des articles avec image miniature, nom, prix, selecteur de quantite (+/-)
-- Sous-total affiche avec `formatCurrency`
-- Bouton "Commander via WhatsApp" qui genere un message structure :
-  ```
-  Bonjour ! Je souhaite commander :
-  - 2x T-shirt bleu (5 000 FCFA)
-  - 1x Sac cuir (15 000 FCFA)
-  Total : 25 000 FCFA
-  ```
-- Bouton "Vider le panier"
+---
 
-**`src/components/storefront/CartButton.tsx`**
-- Bouton flottant (fixed bottom-right) avec icone panier + badge rouge du nombre d'articles
-- Ouvre le CartDrawer au clic
-- Anime quand un produit est ajoute (petit bounce)
+## Modifications prevues
 
-### Modifications
+### 1. `src/pages/CreateShop.tsx` -- Renforcer la validation du slug
 
-**`src/pages/ShopStorefront.tsx`**
-- Wrapper avec `CartProvider`
-- Ajouter bouton "Ajouter au panier" sur chaque carte produit
-- Inclure `CartButton` en bas de page
+**Bouton submit (ligne 600)** : remplacer la condition `slugStatus === 'taken'` par `slugStatus !== 'available'` pour bloquer la soumission si le slug n'a pas ete verifie ou est en cours de verification.
 
-## Phase 2 : Detail produit
+**onSubmit (ligne 208)** : meme changement, bloquer si `slugStatus !== 'available'` au lieu de seulement `=== 'taken'`.
 
-### Nouveau fichier
+**Gestion d'erreur (ligne 260)** : detecter l'erreur PostgreSQL `23505` (unique_violation) et afficher un message specifique "Ce nom de boutique vient d'etre pris".
 
-**`src/components/storefront/ProductDetailSheet.tsx`**
-- Sheet/Drawer responsive (drawer en bas sur mobile, dialog sur desktop)
-- Recoit un `Product` et le `Shop` en props
-- Affiche : image grande, nom, description complete, prix (avec promo si applicable)
-- Selecteur de quantite
-- Bouton "Ajouter au panier" et bouton "Acheter maintenant" (WhatsApp direct)
+**Navigation apres succes (ligne 259)** : passer le slug dans le state de navigation pour que la page de succes puisse l'utiliser immediatement sans attendre le cache.
 
-### Modifications
+### 2. `src/pages/ShopCreatedSuccess.tsx` -- Corriger le lien + ajouter bouton "Voir"
 
-**`src/pages/ShopStorefront.tsx`**
-- Clic sur une carte produit ouvre `ProductDetailSheet` au lieu de ne rien faire
-- State `selectedProduct` pour gerer l'ouverture
+- Recuperer le slug depuis `useLocation().state` en priorite (transmis par CreateShop), sinon fallback sur `useShop().shop?.slug`.
+- Afficher correctement `slug.ventou.shop` dans le lien (le slug ne sera plus vide).
+- Ajouter un bouton **"Voir ma boutique"** qui navigue vers `/shop/:slug` pour tester en preview.
+- Mettre a jour les traductions i18n avec la cle `shopCreated.viewShop`.
 
-## Phase 3 : Dark mode
+### 3. `src/pages/ShopStorefront.tsx` -- Vitrine sans produits + avatar genere
 
-### Nouveau fichier
+Quand la boutique n'a aucun produit, au lieu d'un simple texte "Aucun produit", afficher un etat d'accueil attractif :
+- Un avatar genere a partir des initiales du nom de la boutique (2 premieres lettres) si aucun logo n'est fourni, avec la couleur primaire comme fond.
+- La description de la boutique si elle existe.
+- Un message d'encouragement type "Cette boutique arrive bientot avec ses produits !"
 
-**`src/components/ThemeToggle.tsx`**
-- Bouton Sun/Moon qui bascule entre light/dark via `next-themes`
-- Compact : juste une icone dans un bouton ghost
+Modifier aussi le header et les zones logo : quand `shop.logo_url` est `null`, generer un avatar rond avec les initiales du nom au lieu d'une icone generique `Store`.
 
-### Modifications
+### 4. Traductions i18n
 
-**`src/App.tsx`**
-- Wrapper global avec `ThemeProvider` de `next-themes` (attribute="class", defaultTheme="light")
-- Place autour de tout le contenu
+Nouvelles cles a ajouter dans `fr.json` et `en.json` :
+- `shopCreated.viewShop` : "Voir ma boutique" / "View my shop"
+- `createShop.errors.slugNotVerified` : "Veuillez attendre la verification du nom" / "Please wait for name verification"
+- `createShop.errors.slugConflict` : "Ce nom vient d'etre pris, veuillez en choisir un autre" / "This name was just taken, please choose another"
+- `storefront.comingSoon` : "Cette boutique arrive bientot avec ses produits !" / "This shop is coming soon with its products!"
 
-**`src/pages/ShopStorefront.tsx`**
-- Ajouter le `ThemeToggle` dans le header de la vitrine
-
-**`index.html`**
-- S'assurer que la classe `dark` est supportee (le tailwind.config a deja `darkMode: "class"`)
-
-## Phase 4 : Promotions (prix barre)
-
-### Modifications
-
-**`src/types/shop.ts`**
-- Ajouter `compare_at_price: number | null` au type `Product`
-
-**`src/pages/ShopStorefront.tsx`**
-- Si `compare_at_price` existe et est superieur au `price`, afficher :
-  - L'ancien prix barre en gris
-  - Le nouveau prix en couleur primaire
-  - Badge "PROMO" en haut de la carte
-
-**`src/pages/AddProduct.tsx`**
-- Le champ `discountPrice` existe deja dans le formulaire
-- Ajuster la logique : `price` = prix de vente, `discountPrice` = ancien prix (compare_at_price)
-- Envoyer `compare_at_price` lors de la sauvegarde en base
-
-**`src/components/storefront/ProductDetailSheet.tsx`**
-- Afficher aussi le prix barre dans la vue detail
-- Calculer et afficher le pourcentage de reduction
-
-## Traductions i18n (fr.json + en.json)
-
-Nouvelles cles sous `storefront` :
-- `search` : "Rechercher un produit..."
-- `buyNow` : "Acheter maintenant"
-- `addToCart` : "Ajouter au panier"
-- `cart` : "Mon panier"
-- `cartEmpty` : "Votre panier est vide"
-- `orderViaWhatsapp` : "Commander via WhatsApp"
-- `clearCart` : "Vider le panier"
-- `total` : "Total"
-- `quantity` : "Quantite"
-- `promo` : "PROMO"
-- `discount` : "-{{percent}}%"
-- `interestedMessage` : "Bonjour ! Je souhaite commander :\n{{items}}\nTotal : {{total}}\nMerci !"
-- `aboutShop` : "A propos"
-- `allRights` : "Tous droits reserves."
+---
 
 ## Recapitulatif des fichiers
 
 | Action | Fichier |
 |--------|---------|
-| Creer | `src/components/storefront/CartContext.tsx` |
-| Creer | `src/components/storefront/CartDrawer.tsx` |
-| Creer | `src/components/storefront/CartButton.tsx` |
-| Creer | `src/components/storefront/ProductDetailSheet.tsx` |
-| Creer | `src/components/ThemeToggle.tsx` |
-| Recrire | `src/pages/ShopStorefront.tsx` |
-| Modifier | `src/App.tsx` (ThemeProvider) |
-| Modifier | `src/types/shop.ts` (compare_at_price) |
-| Modifier | `src/pages/AddProduct.tsx` (logique promo) |
-| Modifier | `src/i18n/locales/fr.json` |
-| Modifier | `src/i18n/locales/en.json` |
+| Modifier | `src/pages/CreateShop.tsx` (validation slug + navigation avec state) |
+| Modifier | `src/pages/ShopCreatedSuccess.tsx` (recuperer slug du state + bouton "Voir") |
+| Modifier | `src/pages/ShopStorefront.tsx` (avatar initiales + etat sans produit) |
+| Modifier | `src/i18n/locales/fr.json` (nouvelles cles) |
+| Modifier | `src/i18n/locales/en.json` (nouvelles cles) |
 
-## Ordre d'implementation
+## Detail technique : Avatar avec initiales
 
-1. Types (`shop.ts`) -- ajouter compare_at_price
-2. CartContext -- base du panier
-3. CartDrawer + CartButton -- UI du panier
-4. ProductDetailSheet -- vue detail
-5. ThemeToggle + ThemeProvider -- dark mode
-6. ShopStorefront -- integration de tout
-7. AddProduct -- logique promo
-8. Traductions i18n
+Quand `shop.logo_url` est null, generer un avatar avec :
+- Les 2 premieres lettres du nom de la boutique en majuscules
+- Fond = `shop.primary_color` (ou couleur par defaut)
+- Texte blanc, police bold
+- Utilise dans le header, la section info, et le footer de la vitrine
+
