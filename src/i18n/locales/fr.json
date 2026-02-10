@@ -463,6 +463,16 @@
       "validation": "Veuillez vérifier les champs suivants"
     }
   },
+  "shopCreated": {
+    "title": "Félicitations, votre boutique est en ligne !",
+    "subtitle": "Votre boutique {{slug}}.ventou.shop est prête à accueillir vos premiers clients.",
+    "linkLabel": "Lien de la boutique",
+    "copied": "Lien copié !",
+    "shareHint": "Partagez ce lien pour commencer à vendre",
+    "addProduct": "Ajouter mon premier produit",
+    "share": "Partager",
+    "goToDashboard": "Aller au tableau de bord"
+  },
   "storefront": {
     "notFound": "Boutique introuvable",
     "notFoundDescription": "Cette boutique n'existe pas ou n'est plus active.",

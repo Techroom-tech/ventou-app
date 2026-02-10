@@ -23,6 +23,7 @@ import About from "./pages/About";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import ShopStorefront from "./pages/ShopStorefront";
+import ShopCreatedSuccess from "./pages/ShopCreatedSuccess";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <CreateShop />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/shop-created"
+              element={
+                <ProtectedRoute>
+                  <ShopCreatedSuccess />
                 </ProtectedRoute>
               }
             />
