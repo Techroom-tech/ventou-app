@@ -459,6 +459,8 @@
     "errors": {
       "fileTooLarge": "File is too large (max 2 MB)",
       "slugTaken": "This address is already taken",
+      "slugNotVerified": "Please wait for name verification",
+      "slugConflict": "This name was just taken, please choose another",
       "generic": "Error creating shop",
       "validation": "Please check the following fields"
     }
@@ -471,6 +473,7 @@
     "shareHint": "Share this link to start selling",
     "addProduct": "Add my first product",
     "share": "Share",
+    "viewShop": "View my shop",
     "goToDashboard": "Go to dashboard"
   },
   "storefront": {
@@ -479,6 +482,7 @@
     "contact": "Contact via WhatsApp",
     "products": "Our products",
     "noProducts": "No products yet",
+    "comingSoon": "This shop is coming soon with its products!",
     "poweredBy": "Powered by",
     "search": "Search a product...",
     "buyNow": "Buy now",

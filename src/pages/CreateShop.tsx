@@ -205,8 +205,8 @@ export default function CreateShop() {
       toast({ title: t('createShop.errors.generic'), description: 'Not authenticated', variant: 'destructive' });
       return;
     }
-    if (slugStatus === 'taken') {
-      toast({ title: t('createShop.errors.slugTaken'), variant: 'destructive' });
+    if (slugStatus !== 'available') {
+      toast({ title: t('createShop.errors.slugNotVerified'), variant: 'destructive' });
       return;
     }
 
@@ -256,14 +256,23 @@ export default function CreateShop() {
 
       await queryClient.invalidateQueries({ queryKey: ['shop'] });
       toast({ title: t('createShop.success') });
-      navigate('/dashboard/shop-created');
+      navigate('/dashboard/shop-created', { state: { slug: values.slug } });
     } catch (error: any) {
       console.error('Error creating shop:', error);
-      toast({
-        title: t('createShop.errors.generic'),
-        description: error.message,
-        variant: 'destructive',
-      });
+      if (error?.code === '23505') {
+        toast({
+          title: t('createShop.errors.slugConflict'),
+          variant: 'destructive',
+        });
+        setSlugStatus('taken');
+        checkSlug(values.slug);
+      } else {
+        toast({
+          title: t('createShop.errors.generic'),
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -597,7 +606,7 @@ export default function CreateShop() {
                 {/* Submit */}
                 <Button
                   type="submit"
-                  disabled={isSubmitting || slugStatus === 'taken'}
+                  disabled={isSubmitting || slugStatus !== 'available'}
                   className="w-full h-12 text-base font-semibold btn-ventou"
                 >
                   {isSubmitting ? (

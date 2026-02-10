@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { X, Check, Copy, Share2, ArrowRight, Plus } from 'lucide-react';
+import { X, Check, Copy, Share2, ArrowRight, Plus, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useShop } from '@/hooks/useShop';
@@ -10,11 +10,13 @@ import Confetti from '@/components/Confetti';
 export default function ShopCreatedSuccess() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { shop } = useShop();
   const [copied, setCopied] = useState(false);
 
-  const slug = shop?.slug || '';
+  // Priority: slug from navigation state (immediate), fallback to cached shop
+  const slug = (location.state as any)?.slug || shop?.slug || '';
   const shopUrl = `${slug}.ventou.shop`;
   const fullUrl = `https://${shopUrl}`;
 
@@ -25,7 +27,6 @@ export default function ShopCreatedSuccess() {
       toast({ title: t('shopCreated.copied') });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
       const input = document.createElement('input');
       input.value = fullUrl;
       document.body.appendChild(input);
@@ -79,15 +80,14 @@ export default function ShopCreatedSuccess() {
         >
           {t('common.success')}
         </span>
-        <div className="w-9" /> {/* spacer */}
+        <div className="w-9" />
       </header>
 
       {/* Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-8 md:py-16">
         <div className="w-full max-w-md space-y-8 text-center">
-          {/* Success icon with decorative dots */}
+          {/* Success icon */}
           <div className="relative flex justify-center">
-            {/* Decorative dots */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative w-32 h-32 md:w-40 md:h-40">
                 {[...Array(8)].map((_, i) => (
@@ -106,8 +106,6 @@ export default function ShopCreatedSuccess() {
                 ))}
               </div>
             </div>
-
-            {/* Circle with check */}
             <div
               className="relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center animate-scale-in"
               style={{ backgroundColor: 'hsl(var(--ventou-orange))' }}
@@ -139,12 +137,7 @@ export default function ShopCreatedSuccess() {
               <span className="flex-1 text-sm font-medium text-foreground truncate">
                 {shopUrl}
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCopy}
-                className="shrink-0"
-              >
+              <Button variant="ghost" size="icon" onClick={handleCopy} className="shrink-0">
                 {copied ? (
                   <Check className="h-4 w-4" style={{ color: 'hsl(var(--ventou-success))' }} />
                 ) : (
@@ -154,6 +147,19 @@ export default function ShopCreatedSuccess() {
             </div>
             <p className="text-xs text-muted-foreground">{t('shopCreated.shareHint')}</p>
           </div>
+
+          {/* View shop button */}
+          {slug && (
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/shop/${slug}`)}
+              className="w-full h-12 text-base font-semibold gap-2 rounded-xl"
+              size="lg"
+            >
+              <Eye className="h-5 w-5" />
+              {t('shopCreated.viewShop')}
+            </Button>
+          )}
 
           {/* Add product CTA */}
           <Button
@@ -167,32 +173,16 @@ export default function ShopCreatedSuccess() {
 
           {/* Share row */}
           <div className="flex items-center justify-center gap-3">
-            <Button
-              variant="outline"
-              onClick={handleShare}
-              className="gap-2 rounded-xl flex-1 max-w-[160px]"
-            >
+            <Button variant="outline" onClick={handleShare} className="gap-2 rounded-xl flex-1 max-w-[160px]">
               <Share2 className="h-4 w-4" />
               {t('shopCreated.share')}
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={shareWhatsApp}
-              className="rounded-xl shrink-0"
-              aria-label="WhatsApp"
-            >
+            <Button variant="outline" size="icon" onClick={shareWhatsApp} className="rounded-xl shrink-0" aria-label="WhatsApp">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="hsl(142, 76%, 36%)">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
               </svg>
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={shareFacebook}
-              className="rounded-xl shrink-0"
-              aria-label="Facebook"
-            >
+            <Button variant="outline" size="icon" onClick={shareFacebook} className="rounded-xl shrink-0" aria-label="Facebook">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="hsl(220, 46%, 48%)">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
