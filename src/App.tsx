@@ -25,6 +25,7 @@ import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import ShopStorefront from "./pages/ShopStorefront";
 import ShopCreatedSuccess from "./pages/ShopCreatedSuccess";
+import ShopStorefrontRoute from "./pages/ShopStorefrontRoute";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,7 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
+            <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
