@@ -1,89 +1,50 @@
 
 
-# Reorganisation du flux "Creer Ma Boutique"
+# Fix: Cache Invalidation + Button Submit Issue
 
-## Probleme actuel
-"Creer Ma Boutique" est un lien permanent dans la sidebar, comme si c'etait une section reguliere. Or, un vendeur ne cree sa boutique qu'une seule fois -- ce n'est pas une action recurrente.
+## Two Problems Identified
 
-## Nouvelle logique
+### Problem 1: Dashboard doesn't update after shop creation
+In `CreateShop.tsx` line 251, after creating the shop, the code navigates to `/dashboard` but never invalidates the React Query cache for `useShop`. So the dashboard still shows the old cached result (no shop).
 
-### Principe
-- **Pas de boutique** : le Dashboard affiche un ecran d'onboarding invitant a creer la boutique (au lieu des stats/orders)
-- **Boutique creee** : le Dashboard affiche normalement les stats, et le lien "Creer Ma Boutique" disparait de la sidebar
-- **Modifier la boutique** : se fait dans la section Parametres (nouvelle sous-section)
+**Fix**: Import `useQueryClient` from `@tanstack/react-query`, and call `queryClient.invalidateQueries({ queryKey: ['shop'] })` after successful creation, before navigating.
 
-### Flux utilisateur
+### Problem 2: "Creer Ma Boutique" button does nothing
+The form uses `react-hook-form` with `zod` validation. When the user clicks submit, `form.handleSubmit(onSubmit)` runs validation first. If validation fails silently (no visible error messages scrolled into view), it looks like nothing happens.
 
-```text
-Utilisateur se connecte
-        |
-        v
-  A-t-il une boutique ?
-   /              \
-  Non              Oui
-   |                |
-   v                v
-Ecran onboarding   Dashboard normal
-dans /dashboard    (stats, commandes)
-"Creer Ma Boutique"
-   |
-   v
-Clic sur CTA
-   |
-   v
-/dashboard/create-shop
-(formulaire actuel)
-   |
-   v
-Boutique creee -> retour /dashboard (normal)
-```
+Likely causes:
+- The `slug` field validation requires the slug to be checked (`slugStatus`), but the check-slug edge function may be failing silently (returning an error or not deployed), leaving `slugStatus` at `'idle'` or `'checking'`
+- Zod validation errors on fields like `category` (required but possibly empty) may not be visible if the user hasn't scrolled up
+
+**Fix**:
+- Add `console.log` of form errors in `onSubmit` rejection for debugging
+- Add a toast notification when form validation fails, showing which fields need attention
+- Ensure the slug check doesn't block submission when the edge function is unavailable -- treat `'idle'` and `'checking'` as acceptable states (only block on `'taken'`)
 
 ---
 
-## Changements prevus
+## Technical Changes
 
-### 1. Hook `useShop` (nouveau fichier)
-Creer `src/hooks/useShop.ts` qui :
-- Charge la boutique du user connecte depuis Supabase (`shops` table, `owner_id = user.id`)
-- Retourne `{ shop, isLoading, hasShop }`
-- Utilise `@tanstack/react-query` pour le cache
+### File: `src/pages/CreateShop.tsx`
 
-### 2. Dashboard (`src/pages/Dashboard.tsx`)
-- Si `hasShop === false` : afficher un ecran d'onboarding avec un message engageant et un gros bouton CTA "Creer Ma Boutique" qui redirige vers `/dashboard/create-shop`
-- Si `hasShop === true` : afficher le dashboard normal (stats, commandes, actions rapides)
-
-### 3. Sidebar (`src/components/dashboard/DashboardSidebar.tsx`)
-- Retirer "Creer Ma Boutique" de la liste `navItems`
-- Utiliser `useShop` pour conditionner l'affichage : si pas de boutique, ne montrer que Dashboard et Creer Ma Boutique ; si boutique existe, montrer tous les liens sauf Creer Ma Boutique
-
-### 4. Page Parametres (future, esquisse)
-- La route `/dashboard/settings` contiendra une section "Ma Boutique" pour modifier nom, logo, banniere, couleur, WhatsApp, etc.
-- Reutilisera les memes composants de formulaire que `CreateShop.tsx`
-- A implementer dans un prochain ticket (hors scope de ce plan)
-
-### 5. Navigation mobile (`MobileBottomNav.tsx`)
-- Meme logique conditionnelle : masquer les onglets non pertinents si pas de boutique
-
----
-
-## Section technique
-
-| Action | Fichier |
-|--------|---------|
-| Creer | `src/hooks/useShop.ts` |
-| Modifier | `src/pages/Dashboard.tsx` -- ajouter ecran onboarding conditionnel |
-| Modifier | `src/components/dashboard/DashboardSidebar.tsx` -- retirer createShop, conditionner les liens |
-| Modifier | `src/components/dashboard/MobileBottomNav.tsx` -- conditionner les liens |
-| Conserver | `src/pages/CreateShop.tsx` -- la page reste inchangee, accessible via `/dashboard/create-shop` |
-
-### Hook useShop
-```typescript
-// Requete Supabase : select * from shops where owner_id = user.id limit 1
-// Retourne { shop: Shop | null, isLoading, hasShop: boolean, refetch }
-```
-
-### Ecran onboarding dans Dashboard
-- Carte centree avec icone Store, titre "Bienvenue sur Ventou", description encourageante
-- Bouton CTA orange "Creer Ma Boutique"
-- Design coherent avec le reste du dashboard (memes cards, memes couleurs)
+1. **Add `useQueryClient` import** from `@tanstack/react-query`
+2. **Instantiate** `const queryClient = useQueryClient()` in the component
+3. **After successful shop creation** (line ~250), add:
+   ```typescript
+   queryClient.invalidateQueries({ queryKey: ['shop'] });
+   ```
+4. **Add form error handling** to surface validation failures:
+   ```typescript
+   // On the form element, add onInvalid logging
+   <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+     console.error('Form validation errors:', errors);
+     toast({
+       title: t('createShop.errors.validation'),
+       description: Object.keys(errors).join(', '),
+       variant: 'destructive',
+     });
+   })} ...>
+   ```
+5. **Add try/catch around the entire onSubmit** to catch any uncaught async errors
+6. **Add i18n key** `createShop.errors.validation` in both FR and EN locale files
 
