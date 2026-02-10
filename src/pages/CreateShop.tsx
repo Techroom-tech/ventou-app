@@ -199,7 +199,12 @@ export default function CreateShop() {
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!user) return;
+    console.log('onSubmit called, user:', !!user, 'slugStatus:', slugStatus);
+    if (!user) {
+      console.error('No user found, cannot create shop');
+      toast({ title: t('createShop.errors.generic'), description: 'Not authenticated', variant: 'destructive' });
+      return;
+    }
     if (slugStatus === 'taken') {
       toast({ title: t('createShop.errors.slugTaken'), variant: 'destructive' });
       return;
