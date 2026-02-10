@@ -18,6 +18,31 @@ interface ShopStorefrontProps {
   slug: string;
 }
 
+/** Generate initials avatar from shop name */
+function ShopAvatar({ name, color, size = 'md' }: { name: string; color: string; size?: 'sm' | 'md' | 'lg' }) {
+  const initials = name
+    .split(/\s+/)
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const sizeClasses = {
+    sm: 'w-7 h-7 text-xs',
+    md: 'w-9 h-9 text-sm',
+    lg: 'w-20 h-20 text-2xl',
+  };
+
+  return (
+    <div
+      className={`${sizeClasses[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0`}
+      style={{ backgroundColor: color }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 function StorefrontContent({ slug }: ShopStorefrontProps) {
   const { t } = useTranslation();
   const { addToCart } = useCart();
@@ -101,25 +126,25 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   }
 
   const primaryColor = shop.primary_color || '#1E3A5F';
+  const hasProducts = filteredProducts.length > 0;
+  const isEmptyShop = !productsLoading && (!products || products.length === 0);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header / Navigation */}
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo + Name */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0 flex items-center justify-center">
-              {shop.logo_url ? (
+            {shop.logo_url ? (
+              <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
                 <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
-              ) : (
-                <Store className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
+              </div>
+            ) : (
+              <ShopAvatar name={shop.name} color={primaryColor} size="md" />
+            )}
             <span className="font-bold text-lg truncate">{shop.name}</span>
           </div>
 
-          {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6">
             <button onClick={() => scrollTo('products-section')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {t('storefront.products')}
@@ -132,30 +157,17 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
             </button>
           </nav>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={() => setCartOpen(true)}
-            >
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
               <ShoppingCart className="h-5 w-5" />
             </Button>
-            {/* Mobile menu toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
 
-        {/* Mobile Nav */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t bg-card px-4 py-3 space-y-2 animate-fade-in">
             <button onClick={() => scrollTo('products-section')} className="block w-full text-left text-sm font-medium py-2 text-muted-foreground hover:text-foreground">
@@ -171,7 +183,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         )}
       </header>
 
-      {/* Hero / Banner */}
+      {/* Banner */}
       <section className="w-full relative" style={{ backgroundColor: primaryColor }}>
         {shop.banner_url ? (
           <img src={shop.banner_url} alt="" className="w-full h-48 md:h-64 object-cover" />
@@ -188,7 +200,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
               {shop.logo_url ? (
                 <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
               ) : (
-                <Store className="h-8 w-8 text-muted-foreground" />
+                <ShopAvatar name={shop.name} color={primaryColor} size="lg" />
               )}
             </div>
             <div className="pb-1">
@@ -227,108 +239,134 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
           </div>
         )}
 
-        {/* Search */}
-        <div id="products-section" className="pb-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('storefront.search')}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        {/* Products Grid */}
-        <div className="pb-12">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5" />
-            {t('storefront.products')}
-            {filteredProducts.length > 0 && (
-              <span className="text-sm font-normal text-muted-foreground">({filteredProducts.length})</span>
-            )}
-          </h2>
-
-          {productsLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-72 rounded-lg" />
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-16">
-              <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">
-                {searchQuery ? t('dashboard.products.noResults') : t('storefront.noProducts')}
+        {/* Empty shop - Coming soon state */}
+        {isEmptyShop ? (
+          <div id="products-section" className="pb-12">
+            <div className="text-center py-16 space-y-6">
+              {shop.logo_url ? (
+                <div className="w-24 h-24 rounded-full mx-auto overflow-hidden border-4 border-muted">
+                  <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="flex justify-center">
+                  <ShopAvatar name={shop.name} color={primaryColor} size="lg" />
+                </div>
+              )}
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold">{shop.name}</h2>
+                {shop.description && (
+                  <p className="text-muted-foreground max-w-md mx-auto">{shop.description}</p>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('storefront.comingSoon')}
               </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts.map(product => {
-                const hasPromo = product.compare_at_price && product.compare_at_price > product.price;
-                const discountPercent = hasPromo
-                  ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
-                  : 0;
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div id="products-section" className="pb-4">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t('storefront.search')}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-                return (
-                  <div
-                    key={product.id}
-                    className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setDetailOpen(true);
-                    }}
-                  >
-                    <div className="aspect-[4/3] bg-muted relative overflow-hidden">
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ShoppingBag className="h-10 w-10 text-muted-foreground" />
-                        </div>
-                      )}
-                      {hasPromo && (
-                        <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs">
-                          {t('storefront.discount', { percent: discountPercent })}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-medium text-sm line-clamp-2 mb-2">{product.name}</h3>
-                      <div className="flex items-center gap-2">
-                        {hasPromo && (
-                          <span className="text-xs text-muted-foreground line-through">
-                            {formatCurrency(product.compare_at_price!, shop.currency)}
-                          </span>
-                        )}
-                        <span className="font-bold" style={{ color: primaryColor }}>
-                          {formatCurrency(product.price, shop.currency)}
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="w-full mt-3 gap-2"
-                        onClick={e => {
-                          e.stopPropagation();
-                          addToCart(product);
+            {/* Products Grid */}
+            <div className="pb-12">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5" />
+                {t('storefront.products')}
+                {hasProducts && (
+                  <span className="text-sm font-normal text-muted-foreground">({filteredProducts.length})</span>
+                )}
+              </h2>
+
+              {productsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="h-72 rounded-lg" />
+                  ))}
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center py-16">
+                  <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">{t('dashboard.products.noResults')}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredProducts.map(product => {
+                    const hasPromo = product.compare_at_price && product.compare_at_price > product.price;
+                    const discountPercent = hasPromo
+                      ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
+                      : 0;
+
+                    return (
+                      <div
+                        key={product.id}
+                        className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setDetailOpen(true);
                         }}
                       >
-                        <ShoppingCart className="h-3.5 w-3.5" />
-                        {t('storefront.addToCart')}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+                        <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ShoppingBag className="h-10 w-10 text-muted-foreground" />
+                            </div>
+                          )}
+                          {hasPromo && (
+                            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs">
+                              {t('storefront.discount', { percent: discountPercent })}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-medium text-sm line-clamp-2 mb-2">{product.name}</h3>
+                          <div className="flex items-center gap-2">
+                            {hasPromo && (
+                              <span className="text-xs text-muted-foreground line-through">
+                                {formatCurrency(product.compare_at_price!, shop.currency)}
+                              </span>
+                            )}
+                            <span className="font-bold" style={{ color: primaryColor }}>
+                              {formatCurrency(product.price, shop.currency)}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full mt-3 gap-2"
+                            onClick={e => {
+                              e.stopPropagation();
+                              addToCart(product);
+                            }}
+                          >
+                            <ShoppingCart className="h-3.5 w-3.5" />
+                            {t('storefront.addToCart')}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Footer */}
@@ -336,13 +374,13 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex items-center justify-center">
-                {shop.logo_url ? (
+              {shop.logo_url ? (
+                <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex items-center justify-center">
                   <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Store className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <ShopAvatar name={shop.name} color={primaryColor} size="sm" />
+              )}
               <span className="text-sm font-medium">{shop.name}</span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -358,7 +396,6 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         </div>
       </footer>
 
-      {/* Cart Button + Drawers */}
       <CartButton onClick={() => setCartOpen(true)} />
       <CartDrawer
         open={cartOpen}

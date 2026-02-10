@@ -459,6 +459,8 @@
     "errors": {
       "fileTooLarge": "Le fichier est trop volumineux (max 2 Mo)",
       "slugTaken": "Cette adresse est déjà prise",
+      "slugNotVerified": "Veuillez attendre la vérification du nom",
+      "slugConflict": "Ce nom vient d'être pris, veuillez en choisir un autre",
       "generic": "Erreur lors de la création",
       "validation": "Veuillez vérifier les champs suivants"
     }
@@ -471,6 +473,7 @@
     "shareHint": "Partagez ce lien pour commencer à vendre",
     "addProduct": "Ajouter mon premier produit",
     "share": "Partager",
+    "viewShop": "Voir ma boutique",
     "goToDashboard": "Aller au tableau de bord"
   },
   "storefront": {
@@ -479,6 +482,7 @@
     "contact": "Contacter via WhatsApp",
     "products": "Nos produits",
     "noProducts": "Aucun produit pour le moment",
+    "comingSoon": "Cette boutique arrive bientôt avec ses produits !",
     "poweredBy": "Propulsé par",
     "search": "Rechercher un produit...",
     "buyNow": "Acheter maintenant",
