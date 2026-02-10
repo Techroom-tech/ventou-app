@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { Store, Upload, Check, X, Loader2, MessageCircle, Palette, Globe, Camera } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -113,6 +114,7 @@ export default function CreateShop() {
   const { toast } = useToast();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -247,6 +249,7 @@ export default function CreateShop() {
         }
       }
 
+      await queryClient.invalidateQueries({ queryKey: ['shop'] });
       toast({ title: t('createShop.success') });
       navigate('/dashboard');
     } catch (error: any) {
@@ -277,7 +280,14 @@ export default function CreateShop() {
           {/* Form - 2 cols */}
           <div className="lg:col-span-2 space-y-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.error('Form validation errors:', errors);
+                toast({
+                  title: t('createShop.errors.validation'),
+                  description: Object.keys(errors).join(', '),
+                  variant: 'destructive',
+                });
+              })} className="space-y-6">
                 {/* Section 1: Basic Info */}
                 <Card>
                   <CardHeader>
