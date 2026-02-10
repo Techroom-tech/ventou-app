@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { toast } from "sonner";
 import '@/i18n';
 
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -31,6 +33,17 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const subdomain = getSubdomain();
+
+  // Catch unhandled promise rejections to prevent white screens
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", event.reason);
+      toast.error("Une erreur est survenue. Veuillez réessayer.");
+      event.preventDefault();
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
 
   if (subdomain) {
     return (
