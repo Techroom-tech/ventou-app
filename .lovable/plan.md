@@ -1,69 +1,92 @@
 
 
-# Corrections : Slug unique, lien correct, vitrine accessible sans produits
+# Corrections globales : Auth, bouton grise, et problemes divers
 
 ## Problemes identifies
 
-1. **Le slug n'apparait pas** sur la page de succes (affiche ".ventou.shop" au lieu de "tuk.ventou.shop") car `useShop()` ne retrouve pas la boutique (le cache n'est peut-etre pas encore a jour).
-2. **Pas de protection contre les doublons** : le bouton "Creer" n'est desactive que si `slugStatus === 'taken'`, pas si le slug n'a pas ete verifie (`idle` ou `checking`).
-3. **Pas de lien testable** : en preview, le sous-domaine `slug.ventou.shop` ne fonctionne pas. Il faut un bouton "Voir ma boutique" pointant vers `/shop/:slug`.
-4. **La vitrine affiche une page vide** quand il n'y a pas de produits : il faut un etat d'accueil montrant le nom, un avatar genere a partir des initiales si pas de logo, et la description si elle existe.
+### 1. ProtectedRoute est desactive (CRITIQUE)
+Le fichier `ProtectedRoute.tsx` ne fait AUCUNE verification d'authentification. Il affiche simplement les enfants sans verifier si l'utilisateur est connecte. Cela signifie que n'importe qui peut acceder au dashboard et a la page de creation de boutique sans etre connecte. C'est pourquoi "Se connecter" apparait en haut a droite -- l'utilisateur n'est pas authentifie mais il accede quand meme a la page.
+
+### 2. Le bouton "Creer Ma Boutique" est grise
+Le bouton de soumission est desactive quand `slugStatus !== 'available'`. Comme le champ slug commence vide, le statut est `idle` et le bouton reste grise. Le comportement est correct MAIS :
+- Si l'utilisateur n'est pas connecte (probleme 1), meme en remplissant le formulaire, la creation echouera car `user` sera `null`.
+- Il faut ajouter un message d'aide sous le bouton pour expliquer pourquoi il est desactive.
+
+### 3. Apres l'inscription, pas de redirection vers le dashboard
+L'inscription montre juste un ecran "Verifiez votre email" mais apres la confirmation par email et la connexion, il n'y a pas de redirection automatique vers le dashboard.
+
+### 4. Le header du dashboard affiche du contenu mock
+`DashboardHeader.tsx` utilise `mockShop.name` en dur au lieu du vrai nom de la boutique de l'utilisateur.
 
 ---
 
-## Modifications prevues
+## Corrections prevues
 
-### 1. `src/pages/CreateShop.tsx` -- Renforcer la validation du slug
+### 1. Reactiver ProtectedRoute (`src/components/ProtectedRoute.tsx`)
 
-**Bouton submit (ligne 600)** : remplacer la condition `slugStatus === 'taken'` par `slugStatus !== 'available'` pour bloquer la soumission si le slug n'a pas ete verifie ou est en cours de verification.
+Ajouter la verification d'authentification :
+- Si l'auth est en cours de chargement, afficher un spinner
+- Si l'utilisateur n'est pas connecte, rediriger vers `/login` en sauvegardant la page d'origine
+- Si l'utilisateur est connecte, afficher le contenu
 
-**onSubmit (ligne 208)** : meme changement, bloquer si `slugStatus !== 'available'` au lieu de seulement `=== 'taken'`.
+### 2. Ameliorer le bouton "Creer Ma Boutique" (`src/pages/CreateShop.tsx`)
 
-**Gestion d'erreur (ligne 260)** : detecter l'erreur PostgreSQL `23505` (unique_violation) et afficher un message specifique "Ce nom de boutique vient d'etre pris".
+- Ajouter un texte d'aide sous le bouton expliquant les conditions requises (slug doit etre verifie)
+- Afficher un message different selon l'etat du slug : "Entrez un nom pour votre boutique", "Verification en cours...", "Ce nom est deja pris"
 
-**Navigation apres succes (ligne 259)** : passer le slug dans le state de navigation pour que la page de succes puisse l'utiliser immediatement sans attendre le cache.
+### 3. Corriger le header du dashboard (`src/components/dashboard/DashboardHeader.tsx`)
 
-### 2. `src/pages/ShopCreatedSuccess.tsx` -- Corriger le lien + ajouter bouton "Voir"
+- Remplacer `mockShop.name` par le vrai nom de la boutique (via `useShop()`)
+- Si pas de boutique, afficher "Ventou" ou ne pas afficher de nom
 
-- Recuperer le slug depuis `useLocation().state` en priorite (transmis par CreateShop), sinon fallback sur `useShop().shop?.slug`.
-- Afficher correctement `slug.ventou.shop` dans le lien (le slug ne sera plus vide).
-- Ajouter un bouton **"Voir ma boutique"** qui navigue vers `/shop/:slug` pour tester en preview.
-- Mettre a jour les traductions i18n avec la cle `shopCreated.viewShop`.
+### 4. Ajouter un bouton de deconnexion visible
 
-### 3. `src/pages/ShopStorefront.tsx` -- Vitrine sans produits + avatar genere
-
-Quand la boutique n'a aucun produit, au lieu d'un simple texte "Aucun produit", afficher un etat d'accueil attractif :
-- Un avatar genere a partir des initiales du nom de la boutique (2 premieres lettres) si aucun logo n'est fourni, avec la couleur primaire comme fond.
-- La description de la boutique si elle existe.
-- Un message d'encouragement type "Cette boutique arrive bientot avec ses produits !"
-
-Modifier aussi le header et les zones logo : quand `shop.logo_url` est `null`, generer un avatar rond avec les initiales du nom au lieu d'une icone generique `Store`.
-
-### 4. Traductions i18n
-
-Nouvelles cles a ajouter dans `fr.json` et `en.json` :
-- `shopCreated.viewShop` : "Voir ma boutique" / "View my shop"
-- `createShop.errors.slugNotVerified` : "Veuillez attendre la verification du nom" / "Please wait for name verification"
-- `createShop.errors.slugConflict` : "Ce nom vient d'etre pris, veuillez en choisir un autre" / "This name was just taken, please choose another"
-- `storefront.comingSoon` : "Cette boutique arrive bientot avec ses produits !" / "This shop is coming soon with its products!"
+- Ajouter un menu utilisateur dans le header du dashboard avec l'option de deconnexion
+- L'avatar dans le header devrait ouvrir un dropdown avec "Mon compte" et "Se deconnecter"
 
 ---
 
-## Recapitulatif des fichiers
+## Fichiers a modifier
 
-| Action | Fichier |
-|--------|---------|
-| Modifier | `src/pages/CreateShop.tsx` (validation slug + navigation avec state) |
-| Modifier | `src/pages/ShopCreatedSuccess.tsx` (recuperer slug du state + bouton "Voir") |
-| Modifier | `src/pages/ShopStorefront.tsx` (avatar initiales + etat sans produit) |
-| Modifier | `src/i18n/locales/fr.json` (nouvelles cles) |
-| Modifier | `src/i18n/locales/en.json` (nouvelles cles) |
+| Action | Fichier | Modification |
+|--------|---------|-------------|
+| Modifier | `src/components/ProtectedRoute.tsx` | Ajouter la verification auth avec redirection vers /login |
+| Modifier | `src/pages/CreateShop.tsx` | Ajouter un message d'aide sous le bouton submit |
+| Modifier | `src/components/dashboard/DashboardHeader.tsx` | Remplacer mockShop par le vrai shop + ajouter menu de deconnexion |
 
-## Detail technique : Avatar avec initiales
+---
 
-Quand `shop.logo_url` est null, generer un avatar avec :
-- Les 2 premieres lettres du nom de la boutique en majuscules
-- Fond = `shop.primary_color` (ou couleur par defaut)
-- Texte blanc, police bold
-- Utilise dans le header, la section info, et le footer de la vitrine
+## Detail technique
+
+### ProtectedRoute.tsx
+
+```text
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
+
+- Si isLoading: afficher un spinner centre
+- Si !user: Navigate vers /login avec state { from: location }
+- Sinon: afficher children
+```
+
+### DashboardHeader.tsx
+
+```text
+- Importer useShop
+- Remplacer mockShop.name par shop?.name || 'Ventou'
+- Ajouter un DropdownMenu sur l'avatar avec :
+  - "Mon compte" (lien vers /dashboard/settings)
+  - "Se deconnecter" (appel signOut + redirection /login)
+```
+
+### CreateShop.tsx - Message sous le bouton
+
+```text
+Sous le bouton submit, ajouter un texte conditionnel :
+- Si slug est vide : "Remplissez le nom de votre boutique pour continuer"
+- Si slugStatus === 'checking' : "Verification du nom en cours..."
+- Si slugStatus === 'taken' : "Ce nom est deja pris, choisissez-en un autre"
+- Si slugStatus === 'available' : (rien, le bouton est actif)
+```
 
