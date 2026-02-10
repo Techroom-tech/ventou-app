@@ -22,6 +22,7 @@ export const mockShop: Shop = {
 
 export const mockProducts: Product[] = [
   {
+    compare_at_price: null,
     id: 'prod-001',
     shop_id: 'shop-001',
     name: 'Samsung Galaxy A15',
@@ -34,6 +35,7 @@ export const mockProducts: Product[] = [
     updated_at: '2025-01-15T10:00:00Z',
   },
   {
+    compare_at_price: null,
     id: 'prod-002',
     shop_id: 'shop-001',
     name: 'Écouteurs Bluetooth JBL',
@@ -46,6 +48,7 @@ export const mockProducts: Product[] = [
     updated_at: '2025-01-20T10:00:00Z',
   },
   {
+    compare_at_price: null,
     id: 'prod-003',
     shop_id: 'shop-001',
     name: 'Chargeur rapide USB-C',
@@ -58,6 +61,7 @@ export const mockProducts: Product[] = [
     updated_at: '2025-01-25T10:00:00Z',
   },
   {
+    compare_at_price: null,
     id: 'prod-004',
     shop_id: 'shop-001',
     name: 'Coque iPhone 15 Pro',

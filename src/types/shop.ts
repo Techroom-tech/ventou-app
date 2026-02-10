@@ -28,6 +28,7 @@ export interface Product {
   price: number;
   stock_quantity: number;
   image_url: string | null;
+  compare_at_price: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
