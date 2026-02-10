@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Store, Upload, Check, X, Loader2, MessageCircle, Palette, Globe, Camera } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -285,6 +286,7 @@ export default function CreateShop() {
 
   return (
     <DashboardLayout>
+      <ErrorBoundary fallbackMessage="Erreur lors du chargement du formulaire">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">{t('createShop.title')}</h1>
@@ -641,6 +643,7 @@ export default function CreateShop() {
           )}
         </div>
       </div>
+      </ErrorBoundary>
     </DashboardLayout>
   );
 }
