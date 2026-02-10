@@ -8,6 +8,7 @@ import '@/i18n';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { getSubdomain } from "@/lib/subdomain";
 
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -21,10 +22,26 @@ import CreateShop from "./pages/CreateShop";
 import About from "./pages/About";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
+import ShopStorefront from "./pages/ShopStorefront";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  const subdomain = getSubdomain();
+
+  if (subdomain) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <ShopStorefront slug={subdomain} />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -80,6 +97,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
