@@ -1,50 +1,74 @@
 
 
-# Fix: Cache Invalidation + Button Submit Issue
+# Sous-domaines dynamiques : afficher les boutiques sur tuk.ventou.shop
 
-## Two Problems Identified
+## Statut DNS
 
-### Problem 1: Dashboard doesn't update after shop creation
-In `CreateShop.tsx` line 251, after creating the shop, the code navigates to `/dashboard` but never invalidates the React Query cache for `useShop`. So the dashboard still shows the old cached result (no shop).
+Ton Cloudflare est parfaitement configure :
+- `ventou.shop` affiche l'app Ventou
+- `tuk.ventou.shop` charge bien l'app (SSL OK, plus d'erreur) mais affiche une 404 car le code ne gere pas encore les sous-domaines
 
-**Fix**: Import `useQueryClient` from `@tanstack/react-query`, and call `queryClient.invalidateQueries({ queryKey: ['shop'] })` after successful creation, before navigating.
+Il ne reste que le code a ajouter.
 
-### Problem 2: "Creer Ma Boutique" button does nothing
-The form uses `react-hook-form` with `zod` validation. When the user clicks submit, `form.handleSubmit(onSubmit)` runs validation first. If validation fails silently (no visible error messages scrolled into view), it looks like nothing happens.
+## Comment ca va marcher
 
-Likely causes:
-- The `slug` field validation requires the slug to be checked (`slugStatus`), but the check-slug edge function may be failing silently (returning an error or not deployed), leaving `slugStatus` at `'idle'` or `'checking'`
-- Zod validation errors on fields like `category` (required but possibly empty) may not be visible if the user hasn't scrolled up
+Quand quelqu'un visite `tuk.ventou.shop`, l'app React se charge normalement. Au demarrage, elle lit `window.location.hostname`, detecte que c'est un sous-domaine (`tuk`), et affiche la page vitrine de cette boutique au lieu du site principal.
 
-**Fix**:
-- Add `console.log` of form errors in `onSubmit` rejection for debugging
-- Add a toast notification when form validation fails, showing which fields need attention
-- Ensure the slug check doesn't block submission when the edge function is unavailable -- treat `'idle'` and `'checking'` as acceptable states (only block on `'taken'`)
+```text
+tuk.ventou.shop
+      |
+Cloudflare (wildcard DNS, deja OK)
+      |
+Lovable sert l'app React
+      |
+App detecte "tuk" dans hostname
+      |
+Affiche la vitrine de la boutique "tuk"
+```
 
----
+## Changements
 
-## Technical Changes
+### 1. Nouveau fichier : `src/lib/subdomain.ts`
 
-### File: `src/pages/CreateShop.tsx`
+Fonction utilitaire qui extrait le slug du hostname :
+- `tuk.ventou.shop` retourne `"tuk"`
+- `ventou.shop`, `www.ventou.shop`, `localhost`, `*.lovable.app` retournent `null`
 
-1. **Add `useQueryClient` import** from `@tanstack/react-query`
-2. **Instantiate** `const queryClient = useQueryClient()` in the component
-3. **After successful shop creation** (line ~250), add:
-   ```typescript
-   queryClient.invalidateQueries({ queryKey: ['shop'] });
-   ```
-4. **Add form error handling** to surface validation failures:
-   ```typescript
-   // On the form element, add onInvalid logging
-   <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
-     console.error('Form validation errors:', errors);
-     toast({
-       title: t('createShop.errors.validation'),
-       description: Object.keys(errors).join(', '),
-       variant: 'destructive',
-     });
-   })} ...>
-   ```
-5. **Add try/catch around the entire onSubmit** to catch any uncaught async errors
-6. **Add i18n key** `createShop.errors.validation` in both FR and EN locale files
+### 2. Nouveau fichier : `src/pages/ShopStorefront.tsx`
+
+Page vitrine publique de la boutique :
+- Recoit le `slug` en prop
+- Charge la boutique depuis Supabase (`shops` table, filtre par slug)
+- Charge les produits associes (`products` table, filtre par shop_id)
+- Affiche banniere, logo, nom, description, couleur primaire
+- Grille de produits avec prix et images
+- Bouton WhatsApp pour contacter le vendeur
+- Page "Boutique introuvable" si le slug n'existe pas en base
+
+### 3. Modification de `src/App.tsx`
+
+Au debut du composant App, appeler `getSubdomain()`. Si un sous-domaine est detecte, afficher directement `ShopStorefront` avec le slug, sans charger les routes principales.
+
+### 4. Modification de `src/pages/CreateShop.tsx`
+
+Mettre a jour l'apercu URL affiche au vendeur pour montrer le format `slug.ventou.shop`.
+
+### 5. Traductions i18n (`fr.json` + `en.json`)
+
+Ajouter les cles pour la page vitrine :
+- `storefront.notFound` : Boutique introuvable
+- `storefront.noProducts` : Aucun produit pour le moment
+- `storefront.contact` : Contacter via WhatsApp
+- `storefront.products` : Nos produits
+
+## Fichiers concernes
+
+| Action | Fichier |
+|--------|---------|
+| Creer | `src/lib/subdomain.ts` |
+| Creer | `src/pages/ShopStorefront.tsx` |
+| Modifier | `src/App.tsx` |
+| Modifier | `src/pages/CreateShop.tsx` |
+| Modifier | `src/i18n/locales/fr.json` |
+| Modifier | `src/i18n/locales/en.json` |
 
