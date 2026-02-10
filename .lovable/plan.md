@@ -1,137 +1,89 @@
 
 
-# Creer Ma Boutique - Page d'onboarding vendeur
+# Reorganisation du flux "Creer Ma Boutique"
 
-## Objectif
-Creer une page complete "/dashboard/create-shop" permettant a un vendeur de configurer sa boutique en un seul formulaire avec sections distinctes, connectee au backend Supabase (tables, stockage, RLS).
+## Probleme actuel
+"Creer Ma Boutique" est un lien permanent dans la sidebar, comme si c'etait une section reguliere. Or, un vendeur ne cree sa boutique qu'une seule fois -- ce n'est pas une action recurrente.
 
----
+## Nouvelle logique
 
-## 1. Backend Supabase - Migrations
+### Principe
+- **Pas de boutique** : le Dashboard affiche un ecran d'onboarding invitant a creer la boutique (au lieu des stats/orders)
+- **Boutique creee** : le Dashboard affiche normalement les stats, et le lien "Creer Ma Boutique" disparait de la sidebar
+- **Modifier la boutique** : se fait dans la section Parametres (nouvelle sous-section)
 
-### Table `shops`
-```sql
-CREATE TABLE public.shops (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  description TEXT,
-  category TEXT,
-  city TEXT,
-  country TEXT DEFAULT 'Ivory Coast',
-  logo_url TEXT,
-  banner_url TEXT,
-  primary_color TEXT DEFAULT '#1E3A5F',
-  whatsapp TEXT,
-  currency TEXT DEFAULT 'XOF',
-  is_verified BOOLEAN DEFAULT false,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+### Flux utilisateur
 
-ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
+```text
+Utilisateur se connecte
+        |
+        v
+  A-t-il une boutique ?
+   /              \
+  Non              Oui
+   |                |
+   v                v
+Ecran onboarding   Dashboard normal
+dans /dashboard    (stats, commandes)
+"Creer Ma Boutique"
+   |
+   v
+Clic sur CTA
+   |
+   v
+/dashboard/create-shop
+(formulaire actuel)
+   |
+   v
+Boutique creee -> retour /dashboard (normal)
 ```
 
-### Politiques RLS
-- SELECT : le proprietaire peut lire sa boutique
-- INSERT : un utilisateur authentifie peut creer une boutique avec `owner_id = auth.uid()`
-- UPDATE : le proprietaire peut modifier sa boutique
-
-### Bucket de stockage `shop-assets`
-- Bucket public pour logos et bannieres
-- Politique : upload/update/delete reserves au proprietaire du shop
-
 ---
 
-## 2. Edge Function - Verification du slug
+## Changements prevus
 
-Creer une edge function `check-slug` qui verifie la disponibilite d'un slug et suggere des alternatives si pris.
+### 1. Hook `useShop` (nouveau fichier)
+Creer `src/hooks/useShop.ts` qui :
+- Charge la boutique du user connecte depuis Supabase (`shops` table, `owner_id = user.id`)
+- Retourne `{ shop, isLoading, hasShop }`
+- Utilise `@tanstack/react-query` pour le cache
 
-- Input : `{ slug: string }`
-- Output : `{ available: boolean, suggestions: string[] }`
-- Pas besoin d'authentification pour cette verification
+### 2. Dashboard (`src/pages/Dashboard.tsx`)
+- Si `hasShop === false` : afficher un ecran d'onboarding avec un message engageant et un gros bouton CTA "Creer Ma Boutique" qui redirige vers `/dashboard/create-shop`
+- Si `hasShop === true` : afficher le dashboard normal (stats, commandes, actions rapides)
 
----
+### 3. Sidebar (`src/components/dashboard/DashboardSidebar.tsx`)
+- Retirer "Creer Ma Boutique" de la liste `navItems`
+- Utiliser `useShop` pour conditionner l'affichage : si pas de boutique, ne montrer que Dashboard et Creer Ma Boutique ; si boutique existe, montrer tous les liens sauf Creer Ma Boutique
 
-## 3. Page `CreateShop.tsx`
+### 4. Page Parametres (future, esquisse)
+- La route `/dashboard/settings` contiendra une section "Ma Boutique" pour modifier nom, logo, banniere, couleur, WhatsApp, etc.
+- Reutilisera les memes composants de formulaire que `CreateShop.tsx`
+- A implementer dans un prochain ticket (hors scope de ce plan)
 
-### Structure en sections (formulaire unique, pas de stepper multi-page)
-Inspiree des screenshots fournis, avec un layout desktop sidebar + formulaire principal :
-
-**Section 1 - Informations de base**
-- Nom de la boutique (requis)
-- Categorie (dropdown avec options predefinies)
-- Pays (auto-detecte, editable)
-- Ville
-
-**Section 2 - Branding**
-- Upload logo (avec apercu circulaire, bouton "Changer")
-- Upload banniere (apercu rectangulaire)
-- Selecteur couleur primaire (palette de cercles + input hex)
-
-**Section 3 - Contact**
-- Numero WhatsApp (format international avec prefixe pays)
-- Note explicative : "Les clients pourront vous contacter via WhatsApp"
-
-**Section 4 - URL de la boutique**
-- Slug genere automatiquement depuis le nom
-- Verification de disponibilite en temps reel (appel edge function)
-- Affichage : `{slug}.ventou.shop`
-- Si indisponible : suggestions alternatives cliquables
-- Indicateur vert/rouge de disponibilite
-
-**Apercu en direct (sidebar droite sur desktop, bottom sheet sur mobile)**
-- Montre logo, banniere, nom, couleur primaire, bouton WhatsApp
-- Se met a jour en temps reel au fur et a mesure que l'utilisateur remplit
-
-**Action finale**
-- Bouton CTA orange : "Creer Ma Boutique"
-- On submit :
-  1. Upload logo et banniere vers le bucket `shop-assets`
-  2. Insert dans la table `shops`
-  3. Redirection vers `/dashboard`
-
----
-
-## 4. Routing et navigation
-
-- Ajouter route `/dashboard/create-shop` dans `App.tsx`
-- Ajouter un lien dans la sidebar du dashboard (ou rediriger automatiquement si l'utilisateur n'a pas encore de shop)
-
----
-
-## 5. Traductions
-
-Ajouter les cles i18n dans `fr.json` et `en.json` pour :
-- Tous les labels du formulaire
-- Messages de validation
-- Textes d'aide et pro-tips
-- Indicateurs de disponibilite du slug
-
----
-
-## 6. Fichiers concernes
-
-| Action | Fichier |
-|--------|---------|
-| Creer | Migration SQL (table shops + RLS + bucket) |
-| Creer | `supabase/functions/check-slug/index.ts` |
-| Creer | `src/pages/CreateShop.tsx` |
-| Modifier | `src/App.tsx` (nouvelle route) |
-| Modifier | `src/components/dashboard/DashboardSidebar.tsx` (lien navigation) |
-| Modifier | `src/i18n/locales/fr.json` (traductions) |
-| Modifier | `src/i18n/locales/en.json` (traductions) |
-| Modifier | `src/types/shop.ts` (ajouter champs category, city, country, etc.) |
+### 5. Navigation mobile (`MobileBottomNav.tsx`)
+- Meme logique conditionnelle : masquer les onglets non pertinents si pas de boutique
 
 ---
 
 ## Section technique
 
-- Les images (logo, banniere) sont stockees dans le bucket Supabase `shop-assets` sous le chemin `{shop_id}/logo` et `{shop_id}/banner`
-- Le slug est genere cote client avec `name.toLowerCase().normalize('NFD').replace(...)` puis valide cote serveur
-- La verification du slug utilise une edge function pour eviter d'exposer un acces SELECT public sur la table shops
-- Le formulaire utilise `react-hook-form` + `zod` pour la validation client
-- Le layout utilise le `DashboardLayout` existant avec la sidebar
+| Action | Fichier |
+|--------|---------|
+| Creer | `src/hooks/useShop.ts` |
+| Modifier | `src/pages/Dashboard.tsx` -- ajouter ecran onboarding conditionnel |
+| Modifier | `src/components/dashboard/DashboardSidebar.tsx` -- retirer createShop, conditionner les liens |
+| Modifier | `src/components/dashboard/MobileBottomNav.tsx` -- conditionner les liens |
+| Conserver | `src/pages/CreateShop.tsx` -- la page reste inchangee, accessible via `/dashboard/create-shop` |
+
+### Hook useShop
+```typescript
+// Requete Supabase : select * from shops where owner_id = user.id limit 1
+// Retourne { shop: Shop | null, isLoading, hasShop: boolean, refetch }
+```
+
+### Ecran onboarding dans Dashboard
+- Carte centree avec icone Store, titre "Bienvenue sur Ventou", description encourageante
+- Bouton CTA orange "Creer Ma Boutique"
+- Design coherent avec le reste du dashboard (memes cards, memes couleurs)
 
