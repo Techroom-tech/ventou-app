@@ -5,6 +5,7 @@ import { X, Check, Copy, Share2, ArrowRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useShop } from '@/hooks/useShop';
+import Confetti from '@/components/Confetti';
 
 export default function ShopCreatedSuccess() {
   const { t } = useTranslation();
@@ -62,6 +63,7 @@ export default function ShopCreatedSuccess() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Confetti duration={4000} />
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <button
