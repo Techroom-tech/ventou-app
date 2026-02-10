@@ -479,7 +479,21 @@
     "contact": "Contact via WhatsApp",
     "products": "Our products",
     "noProducts": "No products yet",
-    "poweredBy": "Powered by"
+    "poweredBy": "Powered by",
+    "search": "Search a product...",
+    "buyNow": "Buy now",
+    "addToCart": "Add to cart",
+    "cart": "My cart",
+    "cartEmpty": "Your cart is empty",
+    "orderViaWhatsapp": "Order via WhatsApp",
+    "clearCart": "Clear cart",
+    "total": "Total",
+    "quantity": "Quantity",
+    "promo": "PROMO",
+    "discount": "-{{percent}}%",
+    "interestedMessage": "Hello! I'd like to order:\n{{items}}\nTotal: {{total}}\nThank you!",
+    "aboutShop": "About",
+    "allRights": "All rights reserved."
   },
   "footer": {
     "copyright": "© 2024 VENTOU. All rights reserved.",
