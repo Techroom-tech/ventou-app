@@ -615,6 +615,13 @@ export default function CreateShop() {
                     t('createShop.submit')
                   )}
                 </Button>
+                {slugStatus !== 'available' && (
+                  <p className="text-sm text-muted-foreground text-center mt-2">
+                    {slugStatus === 'checking' && t('createShop.slugHelp.checking', 'Vérification du nom en cours...')}
+                    {slugStatus === 'taken' && t('createShop.slugHelp.taken', 'Ce nom est déjà pris, choisissez-en un autre')}
+                    {slugStatus === 'idle' && t('createShop.slugHelp.idle', 'Remplissez le nom de votre boutique pour continuer')}
+                  </p>
+                )}
               </form>
             </Form>
           </div>
