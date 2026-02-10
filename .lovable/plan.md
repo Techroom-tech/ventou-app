@@ -1,74 +1,63 @@
 
+# Page de succes apres creation de boutique
 
-# Sous-domaines dynamiques : afficher les boutiques sur tuk.ventou.shop
+## Contexte
+Actuellement, apres la creation d'une boutique, l'utilisateur est redirige vers `/dashboard` avec un simple toast. L'objectif est de creer une page de succes intermediaire celebrant la creation, comme dans le screenshot de reference.
 
-## Statut DNS
+## Design de la page
 
-Ton Cloudflare est parfaitement configure :
-- `ventou.shop` affiche l'app Ventou
-- `tuk.ventou.shop` charge bien l'app (SSL OK, plus d'erreur) mais affiche une 404 car le code ne gere pas encore les sous-domaines
+La page affichera :
+- Un header avec bouton fermer (X) et label "SUCCES" en orange
+- Une grande icone de validation (cercle orange avec check blanc) avec des points decoratifs
+- Le titre "Felicitations, votre boutique est en ligne !"
+- Le sous-titre avec le lien de la boutique en gras (slug.ventou.shop)
+- Un encadre "Lien de la boutique" avec le lien copiable (bouton copier)
+- Le texte "Partagez ce lien pour commencer a vendre"
+- Un bouton principal orange "Ajouter mon premier produit" (lien vers /dashboard/products/new)
+- Une rangee avec bouton "Partager" + icones WhatsApp et Facebook
+- Un lien "Aller au tableau de bord" en bas
 
-Il ne reste que le code a ajouter.
-
-## Comment ca va marcher
-
-Quand quelqu'un visite `tuk.ventou.shop`, l'app React se charge normalement. Au demarrage, elle lit `window.location.hostname`, detecte que c'est un sous-domaine (`tuk`), et affiche la page vitrine de cette boutique au lieu du site principal.
-
-```text
-tuk.ventou.shop
-      |
-Cloudflare (wildcard DNS, deja OK)
-      |
-Lovable sert l'app React
-      |
-App detecte "tuk" dans hostname
-      |
-Affiche la vitrine de la boutique "tuk"
-```
+La page sera responsive : centree et compacte sur mobile, avec plus d'espace sur desktop/tablette.
 
 ## Changements
 
-### 1. Nouveau fichier : `src/lib/subdomain.ts`
+### 1. Nouveau fichier : `src/pages/ShopCreatedSuccess.tsx`
 
-Fonction utilitaire qui extrait le slug du hostname :
-- `tuk.ventou.shop` retourne `"tuk"`
-- `ventou.shop`, `www.ventou.shop`, `localhost`, `*.lovable.app` retournent `null`
+Page autonome qui recoit le slug via les parametres d'URL ou via `useShop()`. Elements :
+- Cercle de succes anime (check blanc sur fond orange)
+- Lien copiable avec `navigator.clipboard.writeText()`
+- Bouton "Ajouter mon premier produit" vers `/dashboard/products/new`
+- Bouton "Partager" utilisant `navigator.share()` si disponible (fallback: copie du lien)
+- Boutons WhatsApp et Facebook pour partage direct
+- Lien vers `/dashboard` en bas
+- Responsive : padding et tailles adaptees mobile/tablette/desktop
 
-### 2. Nouveau fichier : `src/pages/ShopStorefront.tsx`
+### 2. Modification de `src/App.tsx`
 
-Page vitrine publique de la boutique :
-- Recoit le `slug` en prop
-- Charge la boutique depuis Supabase (`shops` table, filtre par slug)
-- Charge les produits associes (`products` table, filtre par shop_id)
-- Affiche banniere, logo, nom, description, couleur primaire
-- Grille de produits avec prix et images
-- Bouton WhatsApp pour contacter le vendeur
-- Page "Boutique introuvable" si le slug n'existe pas en base
+Ajouter la route protegee `/dashboard/shop-created` pointant vers `ShopCreatedSuccess`.
 
-### 3. Modification de `src/App.tsx`
+### 3. Modification de `src/pages/CreateShop.tsx`
 
-Au debut du composant App, appeler `getSubdomain()`. Si un sous-domaine est detecte, afficher directement `ShopStorefront` avec le slug, sans charger les routes principales.
+Changer la redirection apres succes : `navigate('/dashboard')` devient `navigate('/dashboard/shop-created')` pour afficher la page de celebration.
 
-### 4. Modification de `src/pages/CreateShop.tsx`
+### 4. Traductions i18n (`fr.json` + `en.json`)
 
-Mettre a jour l'apercu URL affiche au vendeur pour montrer le format `slug.ventou.shop`.
-
-### 5. Traductions i18n (`fr.json` + `en.json`)
-
-Ajouter les cles pour la page vitrine :
-- `storefront.notFound` : Boutique introuvable
-- `storefront.noProducts` : Aucun produit pour le moment
-- `storefront.contact` : Contacter via WhatsApp
-- `storefront.products` : Nos produits
+Ajouter les cles sous `shopCreated` :
+- `title` : "Felicitations, votre boutique est en ligne !"
+- `subtitle` : "Votre boutique **{{slug}}.ventou.shop** est prete a accueillir vos premiers clients."
+- `linkLabel` : "Lien de la boutique"
+- `copied` : "Lien copie !"
+- `shareHint` : "Partagez ce lien pour commencer a vendre"
+- `addProduct` : "Ajouter mon premier produit"
+- `share` : "Partager"
+- `goToDashboard` : "Aller au tableau de bord"
 
 ## Fichiers concernes
 
 | Action | Fichier |
 |--------|---------|
-| Creer | `src/lib/subdomain.ts` |
-| Creer | `src/pages/ShopStorefront.tsx` |
-| Modifier | `src/App.tsx` |
-| Modifier | `src/pages/CreateShop.tsx` |
-| Modifier | `src/i18n/locales/fr.json` |
-| Modifier | `src/i18n/locales/en.json` |
-
+| Creer | `src/pages/ShopCreatedSuccess.tsx` |
+| Modifier | `src/App.tsx` -- ajouter route |
+| Modifier | `src/pages/CreateShop.tsx` -- changer navigate |
+| Modifier | `src/i18n/locales/fr.json` -- cles shopCreated |
+| Modifier | `src/i18n/locales/en.json` -- cles shopCreated |
