@@ -12,13 +12,17 @@ export default function ShopCreatedSuccess() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { shop } = useShop();
+  const { shop, isLoading } = useShop();
   const [copied, setCopied] = useState(false);
 
   // Priority: slug from navigation state (immediate), fallback to cached shop
-  const slug = (location.state as any)?.slug || shop?.slug || '';
-  const shopUrl = `${slug}.ventou.shop`;
-  const fullUrl = `https://${shopUrl}`;
+  const stateSlug = (location.state as any)?.slug;
+  const slug = stateSlug || shop?.slug || '';
+  const shopUrl = slug ? `${slug}.ventou.shop` : '';
+  const fullUrl = slug ? `https://${shopUrl}` : '';
+
+  // Debug: log to help diagnose
+  console.log('[ShopCreatedSuccess] stateSlug:', stateSlug, 'shop?.slug:', shop?.slug, 'final slug:', slug);
 
   const handleCopy = async () => {
     try {
