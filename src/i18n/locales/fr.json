@@ -179,6 +179,11 @@
     "welcome": "Bon retour,",
     "overview": "Vue d'ensemble",
     "overviewSubtitle": "Voici ce qui se passe dans votre boutique aujourd'hui.",
+    "onboarding": {
+      "title": "Bienvenue sur Ventou !",
+      "description": "Créez votre boutique en ligne en quelques minutes et commencez à vendre partout en Afrique de l'Ouest.",
+      "cta": "Créer ma boutique"
+    },
     "stats": {
       "totalSales": "Ventes totales",
       "ordersToday": "Commandes aujourd'hui"

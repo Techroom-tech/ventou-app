@@ -179,6 +179,11 @@
     "welcome": "Welcome back,",
     "overview": "Overview",
     "overviewSubtitle": "Here's what's happening in your shop today.",
+    "onboarding": {
+      "title": "Welcome to Ventou!",
+      "description": "Create your online shop in minutes and start selling across West Africa.",
+      "cta": "Create my shop"
+    },
     "stats": {
       "totalSales": "Total Sales",
       "ordersToday": "Orders Today"

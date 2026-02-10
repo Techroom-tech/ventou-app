@@ -11,11 +11,10 @@ import {
   Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { mockShop } from '@/data/mockData';
+import { useShop } from '@/hooks/useShop';
 
-const navItems = [
+const fullNavItems = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { key: 'createShop', icon: Store, path: '/dashboard/create-shop' },
   { key: 'products', icon: Package, path: '/dashboard/products' },
   { key: 'orders', icon: ShoppingCart, path: '/dashboard/orders' },
   { key: 'customers', icon: Users, path: '/dashboard/customers' },
@@ -23,9 +22,17 @@ const navItems = [
   { key: 'settings', icon: Settings, path: '/dashboard/settings' },
 ];
 
+const onboardingNavItems = [
+  { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { key: 'createShop', icon: Store, path: '/dashboard/create-shop' },
+];
+
 export function DashboardSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
+  const { hasShop, shop } = useShop();
+
+  const navItems = hasShop ? fullNavItems : onboardingNavItems;
 
   return (
     <aside className="hidden lg:flex flex-col w-60 bg-sidebar text-sidebar-foreground min-h-screen fixed left-0 top-0 z-40">
@@ -63,7 +70,7 @@ export function DashboardSidebar() {
       </nav>
 
       {/* Verified badge */}
-      {mockShop.is_verified && (
+      {hasShop && shop?.is_verified && (
         <div className="p-4 mx-3 mb-4 rounded-lg bg-sidebar-accent/30">
           <div className="flex items-center gap-2 text-sm">
             <BadgeCheck className="h-5 w-5 text-sidebar-primary" />
