@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,20 +14,21 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getSubdomain } from "@/lib/subdomain";
 
 import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Products from "./pages/Products";
-import AddProduct from "./pages/AddProduct";
-import CreateShop from "./pages/CreateShop";
-import About from "./pages/About";
-import Support from "./pages/Support";
-import NotFound from "./pages/NotFound";
-import ShopStorefront from "./pages/ShopStorefront";
-import ShopCreatedSuccess from "./pages/ShopCreatedSuccess";
-import ShopStorefrontRoute from "./pages/ShopStorefrontRoute";
+
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Products = lazy(() => import("./pages/Products"));
+const AddProduct = lazy(() => import("./pages/AddProduct"));
+const CreateShop = lazy(() => import("./pages/CreateShop"));
+const About = lazy(() => import("./pages/About"));
+const Support = lazy(() => import("./pages/Support"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
+const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
+const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
 
 const queryClient = new QueryClient();
 
@@ -52,7 +53,9 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <ShopStorefront slug={subdomain} />
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+              <ShopStorefront slug={subdomain} />
+            </Suspense>
           </TooltipProvider>
         </QueryClientProvider>
       </ThemeProvider>
@@ -68,6 +71,7 @@ const App = () => {
       <BrowserRouter>
         <AuthProvider>
           <ProductProvider>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
@@ -120,6 +124,7 @@ const App = () => {
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </ProductProvider>
         </AuthProvider>
       </BrowserRouter>
