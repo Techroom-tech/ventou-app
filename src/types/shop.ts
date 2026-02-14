@@ -20,16 +20,49 @@ export interface Shop {
   updated_at: string;
 }
 
+export type ProductStatus = 'draft' | 'published' | 'hidden';
+export type ProductType = 'physical' | 'digital';
+
 export interface Product {
   id: string;
   shop_id: string;
   name: string;
+  slug: string | null;
   description: string | null;
+  description_json: Record<string, unknown> | null;
   price: number;
   stock_quantity: number;
   image_url: string | null;
   compare_at_price: number | null;
   is_active: boolean;
+  status: ProductStatus;
+  category: string | null;
+  tags: string[];
+  product_type: ProductType;
+  meta_title: string | null;
+  meta_description: string | null;
+  track_stock: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  url: string;
+  storage_path: string | null;
+  position: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  name: string;
+  value: string;
+  price: number | null;
+  stock_quantity: number;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +114,6 @@ export interface Wallet {
 export interface DashboardStats {
   totalSales: number;
   ordersToday: number;
-  salesChange: number; // percentage
-  ordersChange: number; // percentage
+  salesChange: number;
+  ordersChange: number;
 }
