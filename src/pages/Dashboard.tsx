@@ -79,6 +79,8 @@ function DashboardContent() {
 export default function Dashboard() {
   const { hasShop, isLoading } = useShop();
 
+  console.log('[Dashboard] isLoading:', isLoading, 'hasShop:', hasShop);
+
   return (
     <DashboardLayout>
       {isLoading ? (
