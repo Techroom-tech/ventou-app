@@ -22,6 +22,8 @@ export function useShop() {
     enabled: !!user,
   });
 
+  console.log('[useShop] user:', user?.id, 'isLoading:', isLoading, 'hasShop:', !!shop);
+
   return {
     shop: shop ?? null,
     isLoading,
