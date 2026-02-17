@@ -38,14 +38,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let initialSessionHandled = false;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log('[Auth] onAuthStateChange:', event, currentSession?.user?.id ?? 'no user');
+
+        // If listener fires before getSession, mark as handled
+        initialSessionHandled = true;
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          // Use setTimeout to avoid potential race conditions
+          // Use setTimeout to avoid Supabase deadlock on token refresh
           setTimeout(async () => {
             const profileData = await fetchProfile(currentSession.user.id);
             setProfile(profileData);
@@ -58,16 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN get initial session
+    // THEN get initial session — only apply if listener hasn't fired yet
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
+      console.log('[Auth] getSession:', initialSession?.user?.id ?? 'no session');
 
-      if (initialSession?.user) {
-        fetchProfile(initialSession.user.id).then(setProfile);
+      if (!initialSessionHandled) {
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+
+        if (initialSession?.user) {
+          fetchProfile(initialSession.user.id).then(setProfile);
+        }
+
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     });
 
     return () => {
