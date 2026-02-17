@@ -39,14 +39,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let initialSessionHandled = false;
+    let mounted = true;
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log('[Auth] onAuthStateChange:', event, currentSession?.user?.id ?? 'no user');
 
+        if (!mounted) return;
+
         // If listener fires before getSession, mark as handled
         initialSessionHandled = true;
+
+        // Ignore SIGNED_OUT if we still have a valid session in storage
+        // This prevents spurious logouts from failed token refreshes
+        if (event === 'SIGNED_OUT' && !currentSession) {
+          const storedSession = localStorage.getItem('ventou-auth-token');
+          if (storedSession) {
+            console.log('[Auth] SIGNED_OUT fired but storage still has token — verifying...');
+            try {
+              const { data } = await supabase.auth.getSession();
+              if (data.session) {
+                console.log('[Auth] Session still valid, ignoring SIGNED_OUT');
+                return;
+              }
+            } catch (e) {
+              console.error('[Auth] Error verifying session:', e);
+            }
+          }
+        }
 
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -54,8 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession?.user) {
           // Use setTimeout to avoid Supabase deadlock on token refresh
           setTimeout(async () => {
-            const profileData = await fetchProfile(currentSession.user.id);
-            setProfile(profileData);
+            if (!mounted) return;
+            try {
+              const profileData = await fetchProfile(currentSession.user.id);
+              if (mounted) setProfile(profileData);
+            } catch (e) {
+              console.error('[Auth] Profile fetch failed (non-fatal):', e);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -69,12 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       console.log('[Auth] getSession:', initialSession?.user?.id ?? 'no session');
 
+      if (!mounted) return;
       if (!initialSessionHandled) {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          fetchProfile(initialSession.user.id).then(setProfile);
+          fetchProfile(initialSession.user.id).then((p) => {
+            if (mounted) setProfile(p);
+          });
         }
 
         setIsLoading(false);
@@ -82,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
