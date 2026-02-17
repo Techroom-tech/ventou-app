@@ -40,58 +40,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let initialSessionHandled = false;
     let mounted = true;
+    let profileFetched = false; // Prevent duplicate profile fetches
 
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log('[Auth] onAuthStateChange:', event, currentSession?.user?.id ?? 'no user');
+        console.log('[Auth] Session:', currentSession ? 'exists' : 'null');
 
         if (!mounted) return;
-
-        // If listener fires before getSession, mark as handled
         initialSessionHandled = true;
 
-        // Ignore SIGNED_OUT if we still have a valid session in storage
-        // This prevents spurious logouts from failed token refreshes
+        // Only fetch profile on SIGNED_IN or INITIAL_SESSION, NOT on TOKEN_REFRESHED
+        const shouldFetchProfile = (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && !profileFetched;
+
+        // Protect against spurious SIGNED_OUT from failed token refresh (429)
         if (event === 'SIGNED_OUT' && !currentSession) {
           const storedSession = localStorage.getItem('ventou-auth-token');
           if (storedSession) {
-            console.log('[Auth] SIGNED_OUT fired but storage still has token — verifying...');
-            try {
-              const { data } = await supabase.auth.getSession();
-              if (data.session) {
-                console.log('[Auth] Session still valid, ignoring SIGNED_OUT');
-                return;
-              }
-            } catch (e) {
-              console.error('[Auth] Error verifying session:', e);
-            }
+            console.log('[Auth] SIGNED_OUT fired but storage still has token — ignoring');
+            // Don't clear state, don't logout — the token may still be valid
+            return;
           }
+          // Genuine logout
+          console.log('[Auth] Genuine logout');
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          profileFetched = false;
+          setIsLoading(false);
+          return;
         }
 
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
-        if (currentSession?.user) {
-          // Use setTimeout to avoid Supabase deadlock on token refresh
+        if (currentSession?.user && shouldFetchProfile) {
+          profileFetched = true;
           setTimeout(async () => {
             if (!mounted) return;
             try {
               const profileData = await fetchProfile(currentSession.user.id);
-              if (mounted) setProfile(profileData);
+              if (mounted) {
+                console.log('[Auth] Profile:', profileData);
+                setProfile(profileData);
+              }
             } catch (e) {
+              // NEVER logout on profile error
               console.error('[Auth] Profile fetch failed (non-fatal):', e);
+              if (mounted) setProfile(null);
             }
           }, 0);
-        } else {
-          setProfile(null);
         }
 
         setIsLoading(false);
       }
     );
 
-    // THEN get initial session — only apply if listener hasn't fired yet
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       console.log('[Auth] getSession:', initialSession?.user?.id ?? 'no session');
 
@@ -100,10 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
-        if (initialSession?.user) {
-          fetchProfile(initialSession.user.id).then((p) => {
-            if (mounted) setProfile(p);
-          });
+        if (initialSession?.user && !profileFetched) {
+          profileFetched = true;
+          fetchProfile(initialSession.user.id)
+            .then((p) => { if (mounted) setProfile(p); })
+            .catch((e) => {
+              console.error('[Auth] Profile fetch failed (non-fatal):', e);
+              if (mounted) setProfile(null);
+            });
         }
 
         setIsLoading(false);
