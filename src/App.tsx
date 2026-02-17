@@ -13,7 +13,7 @@ import { ProductProvider } from "@/contexts/ProductContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getSubdomain } from "@/lib/subdomain";
 
-import Index from "./pages/Index";
+const Index = lazy(() => import("./pages/Index"));
 
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
