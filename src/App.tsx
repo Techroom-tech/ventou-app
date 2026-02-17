@@ -11,6 +11,7 @@ import '@/i18n';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DashboardGuard } from "@/components/DashboardGuard";
 import { getSubdomain } from "@/lib/subdomain";
 
 const Index = lazy(() => import("./pages/Index"));
@@ -83,41 +84,41 @@ const App = () => {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute><DashboardGuard>
                   <Dashboard />
-                </ProtectedRoute>
+                </DashboardGuard></ProtectedRoute>
               }
             />
             <Route
               path="/dashboard/products"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute><DashboardGuard>
                   <Products />
-                </ProtectedRoute>
+                </DashboardGuard></ProtectedRoute>
               }
             />
             <Route
               path="/dashboard/products/new"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute><DashboardGuard>
                   <AddProduct />
-                </ProtectedRoute>
+                </DashboardGuard></ProtectedRoute>
               }
             />
             <Route
               path="/dashboard/create-shop"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute><DashboardGuard>
                   <CreateShop />
-                </ProtectedRoute>
+                </DashboardGuard></ProtectedRoute>
               }
             />
             <Route
               path="/dashboard/shop-created"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute><DashboardGuard>
                   <ShopCreatedSuccess />
-                </ProtectedRoute>
+                </DashboardGuard></ProtectedRoute>
               }
             />
             <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
