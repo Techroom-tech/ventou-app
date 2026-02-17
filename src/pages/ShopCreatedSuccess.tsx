@@ -23,20 +23,7 @@ export default function ShopCreatedSuccess() {
 
   console.log('[ShopCreatedSuccess] isLoading:', isLoading, 'stateSlug:', stateSlug, 'shop?.slug:', shop?.slug, 'final slug:', slug);
 
-  // Wait for shop data to load before rendering (avoids empty state on refresh)
-  if (isLoading && !stateSlug) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  // If no shop and no state slug after loading, redirect to create
-  if (!isLoading && !slug) {
-    navigate('/dashboard/create-shop', { replace: true });
-    return null;
-  }
+  // Guard ensures shop exists or we're on an allowed page — no redirect needed here
 
   const handleCopy = async () => {
     try {

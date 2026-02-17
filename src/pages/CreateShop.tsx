@@ -340,10 +340,7 @@ export default function CreateShop() {
     );
   }
 
-  // ─── Already has shop ──────────────────────────────────────
-  if (hasShop) {
-    return <AlreadyHasShop />;
-  }
+  // Guard handles hasShop redirect — no check needed here
 
   const canSubmit = slugStatus === 'available' || slugStatus === 'error';
 
