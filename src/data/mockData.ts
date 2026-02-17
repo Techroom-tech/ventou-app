@@ -20,8 +20,21 @@ export const mockShop: Shop = {
   updated_at: '2025-02-01T10:00:00Z',
 };
 
+const defaultProductFields = {
+  slug: null,
+  description_json: null,
+  status: 'published' as const,
+  category: null,
+  tags: [] as string[],
+  product_type: 'physical' as const,
+  meta_title: null,
+  meta_description: null,
+  track_stock: true,
+};
+
 export const mockProducts: Product[] = [
   {
+    ...defaultProductFields,
     compare_at_price: null,
     id: 'prod-001',
     shop_id: 'shop-001',
@@ -35,6 +48,7 @@ export const mockProducts: Product[] = [
     updated_at: '2025-01-15T10:00:00Z',
   },
   {
+    ...defaultProductFields,
     compare_at_price: null,
     id: 'prod-002',
     shop_id: 'shop-001',
@@ -48,6 +62,7 @@ export const mockProducts: Product[] = [
     updated_at: '2025-01-20T10:00:00Z',
   },
   {
+    ...defaultProductFields,
     compare_at_price: null,
     id: 'prod-003',
     shop_id: 'shop-001',
@@ -61,6 +76,7 @@ export const mockProducts: Product[] = [
     updated_at: '2025-01-25T10:00:00Z',
   },
   {
+    ...defaultProductFields,
     compare_at_price: null,
     id: 'prod-004',
     shop_id: 'shop-001',

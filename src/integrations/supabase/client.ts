@@ -3,11 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = 'https://chpplckgndznakuvcqbx.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHBsY2tnbmR6bmFrdXZjcWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1ODEyMTAsImV4cCI6MjA4NjE1NzIxMH0.oimHRR-gDoli9w26pif2pcurnrZQlN7mR51rBc_-gek';
 
+// Use a consistent storage key so all *.ventou.shop origins share the same token
+const STORAGE_KEY = 'ventou-auth-token';
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    storageKey: STORAGE_KEY,
+    flowType: 'pkce',
   },
 });
 
