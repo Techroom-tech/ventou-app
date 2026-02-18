@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, X, Star, GripVertical, Loader2 } from 'lucide-react';
+import { Upload, X, Star, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -17,14 +17,14 @@ interface ImageUploaderProps {
   shopId: string;
 }
 
-async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
+async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<Blob> {
   return new Promise((resolve) => {
     const img = new window.Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let { width, height } = img;
       if (width > maxWidth) {
-        height = (height * maxWidth) / width;
+        height = Math.round((height * maxWidth) / width);
         width = maxWidth;
       }
       canvas.width = width;
@@ -37,6 +37,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promis
         quality
       );
     };
+    img.onerror = () => resolve(file);
     img.src = URL.createObjectURL(file);
   });
 }
@@ -44,44 +45,57 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promis
 export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const uploadFiles = useCallback(async (files: FileList | File[]) => {
     setUploading(true);
+    setUploadError(null);
     const newImages: UploadedImage[] = [];
 
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) continue;
       try {
         const compressed = await compressImage(file);
-        const ext = 'webp';
-        const path = `${shopId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `${shopId}/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
 
-        const { error } = await supabase.storage
+        console.log('[ImageUploader] Uploading to path:', path);
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(path, compressed, { contentType: 'image/webp' });
+          .upload(path, compressed, { contentType: 'image/webp', upsert: false });
 
-        if (error) {
-          console.error('Upload error:', error);
+        if (uploadError) {
+          console.error('[ImageUploader] Upload error:', uploadError);
+          setUploadError(`Erreur upload: ${uploadError.message}`);
           continue;
         }
 
-        const { data: { publicUrl } } = supabase.storage
+        console.log('[ImageUploader] Upload success:', uploadData);
+
+        const { data: urlData } = supabase.storage
           .from('product-images')
           .getPublicUrl(path);
 
+        console.log('[ImageUploader] Public URL:', urlData.publicUrl);
+
         newImages.push({
-          url: publicUrl,
+          url: urlData.publicUrl,
           storage_path: path,
           is_primary: images.length === 0 && newImages.length === 0,
           position: images.length + newImages.length,
         });
       } catch (err) {
-        console.error('Compression/upload error:', err);
+        console.error('[ImageUploader] Unexpected error:', err);
+        setUploadError('Erreur inattendue lors de l\'upload');
       }
     }
 
-    onChange([...images, ...newImages]);
+    if (newImages.length > 0) {
+      const updated = [...images, ...newImages];
+      console.log('[ImageUploader] Updated images state:', updated);
+      onChange(updated);
+    }
     setUploading(false);
   }, [images, onChange, shopId]);
 
@@ -93,7 +107,6 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
 
   const removeImage = (index: number) => {
     const updated = images.filter((_, i) => i !== index);
-    // If removed image was primary, make first one primary
     if (images[index].is_primary && updated.length > 0) {
       updated[0] = { ...updated[0], is_primary: true };
     }
@@ -110,23 +123,25 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !uploading && inputRef.current?.click()}
         className={cn(
-          'flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 cursor-pointer transition-colors',
+          'flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition-colors',
+          uploading ? 'cursor-wait opacity-70' : 'cursor-pointer',
           dragOver ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
         )}
       >
         {uploading ? (
-          <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+          <>
+            <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+            <span className="text-sm font-medium">Upload en cours...</span>
+          </>
         ) : (
-          <Upload className="h-8 w-8 text-muted-foreground" />
+          <>
+            <Upload className="h-8 w-8 text-muted-foreground" />
+            <span className="text-sm font-medium">Cliquer ou glisser des images</span>
+            <span className="text-xs text-muted-foreground">PNG, JPG, WebP • Compression automatique</span>
+          </>
         )}
-        <span className="text-sm font-medium">
-          {uploading ? 'Upload en cours...' : 'Cliquer ou glisser des images'}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          PNG, JPG, WebP • Compression automatique
-        </span>
         <input
           ref={inputRef}
           type="file"
@@ -136,6 +151,10 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
           onChange={(e) => e.target.files && uploadFiles(e.target.files)}
         />
       </div>
+
+      {uploadError && (
+        <p className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-2">{uploadError}</p>
+      )}
 
       {images.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -147,7 +166,15 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
                 img.is_primary ? 'border-primary' : 'border-border'
               )}
             >
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
+              <img
+                src={img.url}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('[ImageUploader] Image load error for:', img.url);
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
               <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/20 transition-colors" />
               <button
                 type="button"
