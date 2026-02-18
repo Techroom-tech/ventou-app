@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { Product } from '@/types/shop';
 
 interface CartItem {
@@ -18,8 +18,40 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+function getStorageKey(shopId: string) {
+  return `ventou-cart-${shopId}`;
+}
+
+function loadFromStorage(shopId: string): CartItem[] {
+  try {
+    const raw = localStorage.getItem(getStorageKey(shopId));
+    if (!raw) return [];
+    return JSON.parse(raw) as CartItem[];
+  } catch {
+    return [];
+  }
+}
+
+function saveToStorage(shopId: string, items: CartItem[]) {
+  try {
+    localStorage.setItem(getStorageKey(shopId), JSON.stringify(items));
+  } catch {
+    // storage quota exceeded — ignore
+  }
+}
+
+interface CartProviderProps {
+  children: ReactNode;
+  shopId: string;
+}
+
+export function CartProvider({ children, shopId }: CartProviderProps) {
+  const [items, setItems] = useState<CartItem[]>(() => loadFromStorage(shopId));
+
+  // Persist to localStorage on every change
+  useEffect(() => {
+    saveToStorage(shopId, items);
+  }, [shopId, items]);
 
   const addToCart = useCallback((product: Product, qty = 1) => {
     setItems(prev => {
@@ -51,8 +83,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const cartTotal = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const cartCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
+  const cartTotal = useMemo(() => items.reduce((sum, i) => sum + i.product.price * i.quantity, 0), [items]);
 
   return (
     <CartContext.Provider

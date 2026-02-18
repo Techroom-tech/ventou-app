@@ -16,6 +16,8 @@ export const mockShop: Shop = {
   currency: 'XOF',
   is_verified: true,
   is_active: true,
+  enable_whatsapp_order: true,
+  enable_cod: true,
   created_at: '2024-06-15T10:00:00Z',
   updated_at: '2025-02-01T10:00:00Z',
 };

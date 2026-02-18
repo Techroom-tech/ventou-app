@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { CartProvider, useCart } from '@/components/storefront/CartContext';
 import CartButton from '@/components/storefront/CartButton';
 import CartDrawer from '@/components/storefront/CartDrawer';
+import CheckoutDrawer from '@/components/storefront/CheckoutDrawer';
 import ProductDetailSheet from '@/components/storefront/ProductDetailSheet';
 
 interface ShopStorefrontProps {
@@ -48,6 +49,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const { addToCart } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -305,6 +307,8 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                     const discountPercent = hasPromo
                       ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
                       : 0;
+                    const isOutOfStock = product.track_stock && product.stock_quantity === 0;
+                    const isLowStock = product.track_stock && product.stock_quantity > 0 && product.stock_quantity <= 5;
 
                     return (
                       <div
@@ -330,8 +334,18 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                           )}
                           {hasPromo && (
                             <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs">
-                              {t('storefront.discount', { percent: discountPercent })}
+                              -{discountPercent}%
                             </Badge>
+                          )}
+                          {isLowStock && (
+                            <Badge className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground text-xs">
+                              {t('storefront.stockLow', { count: product.stock_quantity })}
+                            </Badge>
+                          )}
+                          {isOutOfStock && (
+                            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                              <Badge variant="secondary">{t('storefront.outOfStock')}</Badge>
+                            </div>
                           )}
                         </div>
                         <div className="p-4">
@@ -349,6 +363,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                           <Button
                             size="sm"
                             className="w-full mt-3 gap-2"
+                            disabled={isOutOfStock}
                             onClick={e => {
                               e.stopPropagation();
                               addToCart(product);
@@ -396,13 +411,21 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
       </footer>
 
       <CartButton onClick={() => setCartOpen(true)} />
+
       <CartDrawer
         open={cartOpen}
         onOpenChange={setCartOpen}
-        whatsapp={shop.whatsapp}
+        onCheckout={() => setCheckoutOpen(true)}
         currency={shop.currency}
         shopName={shop.name}
       />
+
+      <CheckoutDrawer
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        shop={shop}
+      />
+
       <ProductDetailSheet
         product={selectedProduct}
         shop={shop}
@@ -415,7 +438,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
 
 export default function ShopStorefront({ slug }: ShopStorefrontProps) {
   return (
-    <CartProvider>
+    <CartProvider shopId={slug}>
       <StorefrontContent slug={slug} />
     </CartProvider>
   );
