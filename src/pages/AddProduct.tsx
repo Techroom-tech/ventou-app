@@ -198,8 +198,9 @@ export default function AddProduct() {
       shop_id: shop.id,
       name: name.trim(),
       slug: slug || generateSlug(name),
-      // Store description as JSON string in the text 'description' column
-      description: descriptionJsonRef.current ? JSON.stringify(descriptionJsonRef.current) : null,
+      // Send description as JSON object (column type = jsonb)
+      description: descriptionJsonRef.current || null,
+      description_json: descriptionJsonRef.current || null,
       price: Number(price) || 0,
       compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
       stock_quantity: Number(stockQuantity) || 0,
