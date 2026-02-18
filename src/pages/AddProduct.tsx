@@ -300,8 +300,9 @@ export default function AddProduct() {
     try {
       await saveProduct('draft');
       toast({ title: 'Brouillon sauvegardé', description: 'Votre produit a été enregistré.' });
-    } catch {
-      toast({ title: 'Erreur', description: 'Impossible de sauvegarder le produit.', variant: 'destructive' });
+    } catch (err: any) {
+      console.error('[AddProduct] handleSaveDraft error:', err);
+      toast({ title: 'Erreur', description: err?.message || 'Impossible de sauvegarder le produit.', variant: 'destructive' });
     }
   };
 
@@ -314,8 +315,9 @@ export default function AddProduct() {
       await saveProduct('published');
       toast({ title: 'Produit publié !', description: 'Votre produit est maintenant visible.' });
       navigate('/dashboard/products');
-    } catch {
-      toast({ title: 'Erreur', description: 'Impossible de publier le produit.', variant: 'destructive' });
+    } catch (err: any) {
+      console.error('[AddProduct] handlePublish error:', err);
+      toast({ title: 'Erreur', description: err?.message || 'Impossible de publier le produit.', variant: 'destructive' });
     }
   };
 

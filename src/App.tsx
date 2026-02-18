@@ -121,6 +121,7 @@ const App = () => {
                 </DashboardGuard></ProtectedRoute>
               }
             />
+            <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
