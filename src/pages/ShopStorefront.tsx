@@ -59,7 +59,6 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         .from('shops')
         .select('*')
         .eq('slug', slug)
-        .eq('is_active', true)
         .maybeSingle();
       if (error) throw error;
       return data as Shop | null;
