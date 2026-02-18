@@ -16,8 +16,30 @@ export interface Shop {
   currency: CurrencyCode;
   is_verified: boolean;
   is_active: boolean;
+  enable_whatsapp_order: boolean;
+  enable_cod: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface StorefrontOrder {
+  id?: string;
+  shop_id: string;
+  customer_name: string;
+  phone: string;
+  city: string;
+  quartier?: string;
+  notes?: string;
+  location_url?: string;
+  items: Array<{
+    product_id: string;
+    name: string;
+    quantity: number;
+    unit_price: number;
+  }>;
+  total: number;
+  status: string;
+  payment_method: string;
 }
 
 export type ProductStatus = 'draft' | 'published' | 'hidden';

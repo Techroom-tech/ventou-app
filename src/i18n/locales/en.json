@@ -497,7 +497,35 @@
     "discount": "-{{percent}}%",
     "interestedMessage": "Hello! I'd like to order:\n{{items}}\nTotal: {{total}}\nThank you!",
     "aboutShop": "About",
-    "allRights": "All rights reserved."
+    "allRights": "All rights reserved.",
+    "checkout": "Checkout",
+    "checkoutTitle": "Your order",
+    "customerName": "Full name",
+    "phone": "Phone",
+    "city": "City",
+    "quartier": "Neighborhood / Zone",
+    "notes": "Delivery notes",
+    "locationUrl": "Location link (e.g. Google Maps)",
+    "paymentMethod": "Payment method",
+    "cod": "Cash on delivery",
+    "orderSummary": "Order summary",
+    "confirmOrder": "Confirm order",
+    "orderSuccess": "Order placed!",
+    "orderSuccessDescription": "You will be contacted to confirm delivery.",
+    "tabs": {
+      "details": "Details",
+      "shipping": "Shipping",
+      "reviews": "Reviews"
+    },
+    "shipping": {
+      "info": "Delivery available in your city.",
+      "contact": "Contact the seller for delivery details."
+    },
+    "stockLow": "Only {{count}} left in stock!",
+    "outOfStock": "Out of stock",
+    "selectPayment": "Choose your payment method",
+    "orderConfirmed": "Order confirmed!",
+    "submitting": "Submitting..."
   },
   "footer": {
     "copyright": "© 2024 VENTOU. All rights reserved.",

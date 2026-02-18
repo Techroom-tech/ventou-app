@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Minus, Plus, ShoppingBag, ShoppingCart, MessageCircle } from 'lucide-react';
+import {
+  Minus, Plus, ShoppingBag, ShoppingCart, MessageCircle, X,
+  ChevronLeft, ChevronRight, Truck, Star,
+} from 'lucide-react';
 import { Product, Shop } from '@/types/shop';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { useCart } from './CartContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Drawer,
   DrawerClose,
@@ -15,6 +19,14 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from '@/components/ui/drawer';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -23,17 +35,187 @@ interface ProductDetailSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function ProductDetailSheet({ product, shop, open, onOpenChange }: ProductDetailSheetProps) {
+function QuantitySelector({
+  quantity,
+  onDecrease,
+  onIncrease,
+}: {
+  quantity: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={onDecrease}>
+        <Minus className="h-3.5 w-3.5" />
+      </Button>
+      <span className="w-10 text-center font-semibold text-base">{quantity}</span>
+      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={onIncrease}>
+        <Plus className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function ProductImages({ product }: { product: Product }) {
+  // Only main image for now (future: multi-image gallery from product_images)
+  return (
+    <div className="relative overflow-hidden bg-muted aspect-square group">
+      {product.image_url ? (
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <ShoppingBag className="h-16 w-16 text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductInfo({
+  product,
+  shop,
+  quantity,
+  onDecrease,
+  onIncrease,
+  onAddToCart,
+  onBuyNow,
+  showBuyNow,
+  compact,
+}: {
+  product: Product;
+  shop: Shop;
+  quantity: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  onAddToCart: () => void;
+  onBuyNow: () => void;
+  showBuyNow: boolean;
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
-  const { addToCart } = useCart();
-  const [quantity, setQuantity] = useState(1);
-
-  if (!product) return null;
-
   const hasPromo = product.compare_at_price && product.compare_at_price > product.price;
   const discountPercent = hasPromo
     ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
     : 0;
+  const isOutOfStock = product.track_stock && product.stock_quantity === 0;
+  const isLowStock = product.track_stock && product.stock_quantity > 0 && product.stock_quantity <= 5;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Name + badges */}
+      <div>
+        <h2 className={`font-bold leading-tight ${compact ? 'text-lg' : 'text-2xl'}`}>{product.name}</h2>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {hasPromo && (
+            <Badge className="bg-destructive text-destructive-foreground">
+              -{discountPercent}%
+            </Badge>
+          )}
+          {isOutOfStock && (
+            <Badge variant="secondary">{t('storefront.outOfStock')}</Badge>
+          )}
+          {isLowStock && (
+            <Badge variant="outline" className="border-destructive text-destructive">
+              {t('storefront.stockLow', { count: product.stock_quantity })}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Price */}
+      <div className="flex items-baseline gap-3">
+        <span className="text-2xl font-bold text-primary">
+          {formatCurrency(product.price, shop.currency)}
+        </span>
+        {hasPromo && (
+          <span className="text-muted-foreground line-through text-base">
+            {formatCurrency(product.compare_at_price!, shop.currency)}
+          </span>
+        )}
+      </div>
+
+      {/* Tabs: Details / Shipping / Reviews */}
+      <Tabs defaultValue="details">
+        <TabsList className="w-full">
+          <TabsTrigger value="details" className="flex-1">{t('storefront.tabs.details')}</TabsTrigger>
+          <TabsTrigger value="shipping" className="flex-1">{t('storefront.tabs.shipping')}</TabsTrigger>
+          <TabsTrigger value="reviews" className="flex-1">{t('storefront.tabs.reviews')}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="details" className="mt-3">
+          {product.description ? (
+            <p className="text-muted-foreground text-sm leading-relaxed">{product.description}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm italic">{t('storefront.noProducts')}</p>
+          )}
+          {product.category && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{product.category}</span>
+          </div>
+          )}
+        </TabsContent>
+        <TabsContent value="shipping" className="mt-3">
+          <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+            <Truck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="text-sm space-y-1">
+              <p className="font-medium">{t('storefront.shipping.info')}</p>
+              <p className="text-muted-foreground">{t('storefront.shipping.contact')}</p>
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="reviews" className="mt-3">
+          <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+            <Star className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">Aucun avis pour le moment.</p>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Qty + CTA */}
+      {!compact && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">{t('storefront.quantity')}</span>
+            <QuantitySelector quantity={quantity} onDecrease={onDecrease} onIncrease={onIncrease} />
+          </div>
+          <Button
+            onClick={onAddToCart}
+            className="w-full gap-2 h-11"
+            disabled={isOutOfStock}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {t('storefront.addToCart')}
+          </Button>
+          {showBuyNow && (
+            <Button
+              onClick={onBuyNow}
+              variant="outline"
+              className="w-full gap-2 h-11"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {t('storefront.buyNow')}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ProductDetailSheet({ product, shop, open, onOpenChange }: ProductDetailSheetProps) {
+  const { t } = useTranslation();
+  const { addToCart } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const isMobile = useIsMobile();
+
+  if (!product) return null;
+
+  const isOutOfStock = product.track_stock && product.stock_quantity === 0;
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
@@ -52,81 +234,122 @@ export default function ProductDetailSheet({ product, shop, open, onOpenChange }
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
-        <div className="overflow-y-auto">
+  const commonProps = {
+    product,
+    shop,
+    quantity,
+    onDecrease: () => setQuantity(q => Math.max(1, q - 1)),
+    onIncrease: () => setQuantity(q => q + 1),
+    onAddToCart: handleAddToCart,
+    onBuyNow: handleBuyNow,
+    showBuyNow: !!(shop.whatsapp),
+  };
+
+  // ─── Mobile / Tablet: bottom Drawer ────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[95vh] flex flex-col">
           {/* Image */}
-          <div className="aspect-square bg-muted relative">
-            {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ShoppingBag className="h-16 w-16 text-muted-foreground" />
+          <div className="aspect-[4/3] relative shrink-0">
+            <ProductImages product={product} />
+            <DrawerClose className="absolute top-3 right-3 z-10 bg-background/80 backdrop-blur-sm rounded-full p-1.5 shadow">
+              <X className="h-4 w-4" />
+            </DrawerClose>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
+            <DrawerHeader className="px-0 pt-2">
+              <DrawerTitle className="text-xl font-bold text-left">{product.name}</DrawerTitle>
+              <DrawerDescription className="sr-only">{product.name}</DrawerDescription>
+            </DrawerHeader>
+            <ProductInfo {...commonProps} compact />
+          </div>
+
+          {/* Sticky bottom bar */}
+          <DrawerFooter className="border-t bg-card pt-3 pb-safe">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t('storefront.quantity')}</p>
+                <QuantitySelector
+                  quantity={quantity}
+                  onDecrease={() => setQuantity(q => Math.max(1, q - 1))}
+                  onIncrease={() => setQuantity(q => q + 1)}
+                />
               </div>
-            )}
-            {hasPromo && (
-              <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground">
-                {t('storefront.discount', { percent: discountPercent })}
-              </Badge>
-            )}
+              <div className="flex-1 space-y-2">
+                <Button
+                  onClick={handleAddToCart}
+                  className="w-full gap-2"
+                  disabled={isOutOfStock}
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {formatCurrency(product.price * quantity, shop.currency)}
+                </Button>
+                {shop.whatsapp && (
+                  <Button onClick={handleBuyNow} variant="outline" className="w-full gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    {t('storefront.buyNow')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // ─── Desktop: right Sheet, 2 columns ───────────────────────────────────────
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-3xl p-0 overflow-y-auto"
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>{product.name}</SheetTitle>
+          <SheetDescription>{product.name}</SheetDescription>
+        </SheetHeader>
+        <div className="grid grid-cols-2 h-full min-h-screen">
+          {/* Left: image gallery */}
+          <div className="sticky top-0 h-screen overflow-hidden">
+            <ProductImages product={product} />
           </div>
 
-          <DrawerHeader className="text-left">
-            <DrawerTitle className="text-xl">{product.name}</DrawerTitle>
-            <DrawerDescription className="sr-only">{product.name}</DrawerDescription>
-            <div className="flex items-center gap-2 mt-1">
-              {hasPromo && (
-                <span className="text-muted-foreground line-through text-sm">
-                  {formatCurrency(product.compare_at_price!, shop.currency)}
-                </span>
+          {/* Right: product info */}
+          <div className="p-6 flex flex-col gap-6 overflow-y-auto">
+            <ProductInfo {...commonProps} />
+
+            {/* Desktop qty + CTA at bottom */}
+            <div className="mt-auto pt-4 border-t space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{t('storefront.quantity')}</span>
+                <QuantitySelector
+                  quantity={quantity}
+                  onDecrease={() => setQuantity(q => Math.max(1, q - 1))}
+                  onIncrease={() => setQuantity(q => q + 1)}
+                />
+              </div>
+              <Button
+                onClick={handleAddToCart}
+                className="w-full gap-2 h-11"
+                disabled={isOutOfStock}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {t('storefront.addToCart')} — {formatCurrency(product.price * quantity, shop.currency)}
+              </Button>
+              {shop.whatsapp && (
+                <Button onClick={handleBuyNow} variant="outline" className="w-full gap-2 h-11">
+                  <MessageCircle className="h-4 w-4" />
+                  {t('storefront.buyNow')}
+                </Button>
               )}
-              <span className="text-xl font-bold text-primary">
-                {formatCurrency(product.price, shop.currency)}
-              </span>
-            </div>
-            {product.description && (
-              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{product.description}</p>
-            )}
-          </DrawerHeader>
-        </div>
-
-        <DrawerFooter>
-          {/* Quantity selector */}
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <span className="text-sm text-muted-foreground">{t('storefront.quantity')}</span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
-                <Minus className="h-3 w-3" />
-              </Button>
-              <span className="w-8 text-center font-medium">{quantity}</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(q => q + 1)}>
-                <Plus className="h-3 w-3" />
-              </Button>
             </div>
           </div>
-
-          <Button onClick={handleAddToCart} className="w-full gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            {t('storefront.addToCart')}
-          </Button>
-
-          {shop.whatsapp && (
-            <Button
-              onClick={handleBuyNow}
-              variant="outline"
-              className="w-full gap-2"
-            >
-              <MessageCircle className="h-4 w-4" />
-              {t('storefront.buyNow')}
-            </Button>
-          )}
-
-          <DrawerClose asChild>
-            <Button variant="ghost" className="w-full">{t('common.close')}</Button>
-          </DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
