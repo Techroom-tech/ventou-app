@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Minus, Plus, ShoppingBag, ShoppingCart, MessageCircle, X,
-  ChevronLeft, ChevronRight, Truck, Star,
+  Truck, Star,
 } from 'lucide-react';
 import { Product, Shop } from '@/types/shop';
 import { formatCurrency } from '@/integrations/supabase/client';
@@ -27,6 +27,44 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+/** Recursively extract plain text from a TipTap/ProseMirror JSON node */
+function extractTextFromTipTap(node: Record<string, unknown>): string {
+  if (!node || typeof node !== 'object') return '';
+  if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
+  if (!node.content || !Array.isArray(node.content)) return '';
+  return (node.content as Record<string, unknown>[])
+    .map(extractTextFromTipTap)
+    .filter(Boolean)
+    .join(' ');
+}
+
+/** Safely resolve description to a displayable string */
+function resolveDescription(product: Product): string | null {
+  // Priority 1: description_json (TipTap JSON object)
+  if (product.description_json && typeof product.description_json === 'object') {
+    try {
+      const text = extractTextFromTipTap(product.description_json).trim();
+      if (text) return text;
+    } catch {
+      // fall through
+    }
+  }
+  // Priority 2: description as plain string
+  if (typeof product.description === 'string' && product.description.trim()) {
+    return product.description.trim();
+  }
+  // Priority 3: description as TipTap object (jsonb returned as object)
+  if (product.description && typeof product.description === 'object') {
+    try {
+      const text = extractTextFromTipTap(product.description as Record<string, unknown>).trim();
+      if (text) return text;
+    } catch {
+      // fall through
+    }
+  }
+  return null;
+}
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -148,15 +186,18 @@ function ProductInfo({
           <TabsTrigger value="reviews" className="flex-1">{t('storefront.tabs.reviews')}</TabsTrigger>
         </TabsList>
         <TabsContent value="details" className="mt-3">
-          {product.description ? (
-            <p className="text-muted-foreground text-sm leading-relaxed">{product.description}</p>
-          ) : (
-            <p className="text-muted-foreground text-sm italic">{t('storefront.noProducts')}</p>
-          )}
+          {(() => {
+            const desc = resolveDescription(product);
+            return desc ? (
+              <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
+            ) : (
+              <p className="text-muted-foreground text-sm italic">{t('storefront.noDescription')}</p>
+            );
+          })()}
           {product.category && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{product.category}</span>
-          </div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">{product.category}</span>
+            </div>
           )}
         </TabsContent>
         <TabsContent value="shipping" className="mt-3">
