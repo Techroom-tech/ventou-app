@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import {
@@ -23,6 +23,7 @@ import { RichTextEditor } from '@/components/addproduct/RichTextEditor';
 import { ImageUploader } from '@/components/addproduct/ImageUploader';
 import { VariantsManager, type VariantInput } from '@/components/addproduct/VariantsManager';
 import { TagsInput } from '@/components/addproduct/TagsInput';
+import { CategoryPicker, type Category } from '@/components/addproduct/CategoryPicker';
 import { cn } from '@/lib/utils';
 import type { ProductStatus, ProductType } from '@/types/shop';
 
@@ -46,6 +47,40 @@ function generateSlug(name: string): string {
     .slice(0, 100);
 }
 
+// Stable SectionCard — memoized to prevent re-renders from parent state changes
+const SectionCard = memo(function SectionCard({ id, title, icon: Icon, isOpen, onToggle, children }: {
+  id: string;
+  title: string;
+  icon: React.ElementType;
+  isOpen: boolean;
+  onToggle: (id: string) => void;
+  children: React.ReactNode;
+}) {
+  const handleToggle = useCallback(() => onToggle(id), [id, onToggle]);
+  return (
+    <Collapsible open={isOpen} onOpenChange={handleToggle}>
+      <Card className="animate-in fade-in-50 duration-300">
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">{title}</CardTitle>
+              </div>
+              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0 space-y-4">
+            {children}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+});
+
 export default function AddProduct() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -56,13 +91,15 @@ export default function AddProduct() {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
-  const [descriptionJson, setDescriptionJson] = useState<Record<string, unknown> | null>(null);
+  // Use a ref for descriptionJson to avoid triggering re-renders that kill the editor
+  const descriptionJsonRef = useRef<Record<string, unknown> | null>(null);
   const [price, setPrice] = useState('');
   const [compareAtPrice, setCompareAtPrice] = useState('');
   const [stockQuantity, setStockQuantity] = useState('0');
   const [trackStock, setTrackStock] = useState(true);
   const [status, setStatus] = useState<ProductStatus>('draft');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [productType, setProductType] = useState<ProductType>('physical');
   const [metaTitle, setMetaTitle] = useState('');
@@ -78,6 +115,23 @@ export default function AddProduct() {
   const lastSavedRef = useRef<string>('');
   const productIdRef = useRef<string | null>(null);
 
+  // Load categories from Supabase
+  useEffect(() => {
+    if (!shop) return;
+    supabase
+      .from('categories')
+      .select('id, name, slug')
+      .eq('shop_id', shop.id)
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[AddProduct] Failed to load categories:', error);
+          return;
+        }
+        if (data) setCategories(data as Category[]);
+      });
+  }, [shop]);
+
   // Auto-generate slug from name
   useEffect(() => {
     if (!slugEdited && name) {
@@ -86,7 +140,7 @@ export default function AddProduct() {
   }, [name, slugEdited]);
 
   // Section toggle with max 5 open
-  const toggleSection = (id: string) => {
+  const toggleSection = useCallback((id: string) => {
     setOpenSections((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -100,7 +154,7 @@ export default function AddProduct() {
       }
       return next;
     });
-  };
+  }, []);
 
   // Discount badge
   const discountPercent = (() => {
@@ -144,15 +198,16 @@ export default function AddProduct() {
       shop_id: shop.id,
       name: name.trim(),
       slug: slug || generateSlug(name),
-      description: descriptionJson ? JSON.stringify(descriptionJson) : null,
-      description_json: descriptionJson,
+      // Store description as JSON string in the text 'description' column
+      description: descriptionJsonRef.current ? JSON.stringify(descriptionJsonRef.current) : null,
       price: Number(price) || 0,
       compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
       stock_quantity: Number(stockQuantity) || 0,
       track_stock: trackStock,
       status: finalStatus,
       is_active: finalStatus === 'published',
-      category: category || null,
+      category: categories.find((c) => c.id === categoryId)?.name || null,
+      category_id: categoryId || null,
       tags,
       product_type: productType,
       meta_title: metaTitle || null,
@@ -165,14 +220,12 @@ export default function AddProduct() {
       let productId = productIdRef.current;
 
       if (productId) {
-        // Update existing
         const { error } = await supabase
           .from('products')
           .update(productData)
           .eq('id', productId);
         if (error) throw error;
       } else {
-        // Insert new
         const { data, error } = await supabase
           .from('products')
           .insert(productData)
@@ -185,7 +238,6 @@ export default function AddProduct() {
 
       // Save images
       if (productId && images.length > 0) {
-        // Delete existing images and re-insert
         await supabase.from('product_images').delete().eq('product_id', productId);
         const imgRows = images.map((img, i) => ({
           product_id: productId!,
@@ -213,37 +265,33 @@ export default function AddProduct() {
         }
       }
 
-      lastSavedRef.current = JSON.stringify(productData);
+      lastSavedRef.current = JSON.stringify({ name, slug, price, compareAtPrice, stockQuantity });
       return productId;
     } catch (err: any) {
-      console.error('Save error:', err);
+      console.error('[AddProduct] Save error:', err);
       throw err;
     } finally {
       setSaving(false);
     }
-  }, [shop, name, slug, descriptionJson, price, compareAtPrice, stockQuantity, trackStock, status, category, tags, productType, metaTitle, metaDescription, images, variants]);
+  }, [shop, name, slug, price, compareAtPrice, stockQuantity, trackStock, status, categoryId, categories, tags, productType, metaTitle, metaDescription, images, variants, toast]);
 
   // Auto-save every 10 seconds
   useEffect(() => {
     autoSaveTimer.current = setInterval(async () => {
       if (!name.trim() || !shop || saving) return;
-      const currentState = JSON.stringify({ name, slug, descriptionJson, price, compareAtPrice, stockQuantity });
+      const currentState = JSON.stringify({ name, slug, price, compareAtPrice, stockQuantity });
       if (currentState === lastSavedRef.current) return;
-
       try {
         await saveProduct();
-        lastSavedRef.current = currentState;
       } catch {
         // Silent fail for auto-save
       }
     }, 10000);
-
     return () => {
       if (autoSaveTimer.current) clearInterval(autoSaveTimer.current);
     };
-  }, [saveProduct, name, shop, saving]);
+  }, [saveProduct, name, shop, saving, slug, price, compareAtPrice, stockQuantity]);
 
-  // Handlers
   const handleSaveDraft = async () => {
     if (!name.trim()) {
       setErrors({ name: 'Le nom est obligatoire' });
@@ -271,6 +319,16 @@ export default function AddProduct() {
     }
   };
 
+  // KEY FIX: stable onChange for RichTextEditor — uses a ref so it never causes editor re-creation
+  const handleDescriptionChange = useCallback((json: Record<string, unknown>) => {
+    descriptionJsonRef.current = json;
+    // No setState here → parent does NOT re-render → editor keeps focus
+  }, []);
+
+  const handleCategoryCreated = useCallback((cat: Category) => {
+    setCategories((prev) => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)));
+  }, []);
+
   if (shopLoading) {
     return (
       <DashboardLayout>
@@ -290,31 +348,6 @@ export default function AddProduct() {
       </DashboardLayout>
     );
   }
-
-  const SectionCard = ({ id, title, icon: Icon, children }: {
-    id: string; title: string; icon: React.ElementType; children: React.ReactNode;
-  }) => (
-    <Collapsible open={openSections.has(id)} onOpenChange={() => toggleSection(id)}>
-      <Card className="animate-in fade-in-50 duration-300">
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-base">{title}</CardTitle>
-              </div>
-              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', openSections.has(id) && 'rotate-180')} />
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0 space-y-4">
-            {children}
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
-  );
 
   return (
     <DashboardLayout>
@@ -336,7 +369,7 @@ export default function AddProduct() {
           {/* LEFT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
             {/* Section 1: Main Info */}
-            <SectionCard id="info" title="Informations principales" icon={FileText}>
+            <SectionCard id="info" title="Informations principales" icon={FileText} isOpen={openSections.has('info')} onToggle={toggleSection}>
               <div className="space-y-2">
                 <Label htmlFor="product-name">Nom du produit *</Label>
                 <Input
@@ -365,12 +398,17 @@ export default function AddProduct() {
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <RichTextEditor content={descriptionJson} onChange={setDescriptionJson} />
+                {/* shopId passed so editor can upload images directly to Supabase */}
+                <RichTextEditor
+                  content={descriptionJsonRef.current}
+                  onChange={handleDescriptionChange}
+                  shopId={shop?.id}
+                />
               </div>
             </SectionCard>
 
             {/* Section 2: Images */}
-            <SectionCard id="images" title="Images produit" icon={Eye}>
+            <SectionCard id="images" title="Images produit" icon={Eye} isOpen={openSections.has('images')} onToggle={toggleSection}>
               {shop ? (
                 <ImageUploader images={images} onChange={setImages} shopId={shop.id} />
               ) : (
@@ -379,7 +417,7 @@ export default function AddProduct() {
             </SectionCard>
 
             {/* Section 3: Pricing & Stock */}
-            <SectionCard id="pricing" title="Prix & Stock" icon={Package}>
+            <SectionCard id="pricing" title="Prix & Stock" icon={Package} isOpen={openSections.has('pricing')} onToggle={toggleSection}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Prix de vente (FCFA) *</Label>
@@ -443,7 +481,7 @@ export default function AddProduct() {
             </SectionCard>
 
             {/* Section 4: Variants */}
-            <SectionCard id="variants" title="Variantes" icon={Package}>
+            <SectionCard id="variants" title="Variantes" icon={Package} isOpen={openSections.has('variants')} onToggle={toggleSection}>
               <p className="text-sm text-muted-foreground">Ajoutez des variantes comme la taille, la couleur, etc.</p>
               <VariantsManager variants={variants} onChange={setVariants} />
             </SectionCard>
@@ -485,11 +523,17 @@ export default function AddProduct() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Catégorie</Label>
-                  <Input
-                    placeholder="Ex: Vêtements"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
+                  {shop ? (
+                    <CategoryPicker
+                      shopId={shop.id}
+                      value={categoryId}
+                      categories={categories}
+                      onSelect={setCategoryId}
+                      onCategoryCreated={handleCategoryCreated}
+                    />
+                  ) : (
+                    <Skeleton className="h-10" />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Tags</Label>
