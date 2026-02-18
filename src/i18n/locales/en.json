@@ -523,6 +523,7 @@
     },
     "stockLow": "Only {{count}} left in stock!",
     "outOfStock": "Out of stock",
+    "noDescription": "No description available.",
     "selectPayment": "Choose your payment method",
     "orderConfirmed": "Order confirmed!",
     "submitting": "Submitting..."

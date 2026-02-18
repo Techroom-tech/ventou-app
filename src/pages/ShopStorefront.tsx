@@ -14,6 +14,7 @@ import CartButton from '@/components/storefront/CartButton';
 import CartDrawer from '@/components/storefront/CartDrawer';
 import CheckoutDrawer from '@/components/storefront/CheckoutDrawer';
 import ProductDetailSheet from '@/components/storefront/ProductDetailSheet';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface ShopStorefrontProps {
   slug: string;
@@ -426,12 +427,14 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         shop={shop}
       />
 
-      <ProductDetailSheet
-        product={selectedProduct}
-        shop={shop}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-      />
+      <ErrorBoundary fallbackMessage="Impossible d'afficher ce produit">
+        <ProductDetailSheet
+          product={selectedProduct}
+          shop={shop}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
+      </ErrorBoundary>
     </div>
   );
 }

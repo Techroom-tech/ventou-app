@@ -523,6 +523,7 @@
     },
     "stockLow": "Plus que {{count}} en stock !",
     "outOfStock": "Rupture de stock",
+    "noDescription": "Aucune description disponible.",
     "selectPayment": "Choisissez votre mode de paiement",
     "orderConfirmed": "Commande confirmée !",
     "submitting": "Envoi en cours..."

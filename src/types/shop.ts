@@ -50,7 +50,7 @@ export interface Product {
   shop_id: string;
   name: string;
   slug: string | null;
-  description: string | null;
+  description: Record<string, unknown> | string | null;
   description_json: Record<string, unknown> | null;
   price: number;
   stock_quantity: number;
