@@ -1,121 +1,68 @@
 
-# Audit complet et corrections ciblées
+# Correction du schéma : `stock` → `stock_quantity` + `updated_at`
 
-## Problèmes identifiés
+## Diagnostic précis
 
-### 1. Route `/boutique/:slug` manquante (cause principale du 404)
+Le schéma retourné par Supabase révèle :
 
-Dans `App.tsx`, seule la route `/shop/:slug` est declaree. Or, quand quelqu'un visite `test.ventou.shop`, le serveur redirige vers `ventou.shop/boutique/test` — une route qui n'existe pas dans le router React. Resultat : 404.
+| Colonne en base | Ce que le frontend envoie | Statut |
+|---|---|---|
+| `stock` | `stock_quantity` | MISMATCH - cause de l'echec |
+| `stock_quantity` | `stock_quantity` | Colonne vide ajoutee par migration (doublon) |
+| *(absente)* | `updated_at` | Manquante - cause d'erreur sur UPDATE |
 
-La correction : ajouter `<Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />` dans `App.tsx`.
+Le frontend (`AddProduct.tsx` ligne 205) envoie toujours `stock_quantity: Number(stockQuantity)`, mais la vraie colonne qui stocke la quantite s'appelle `stock` en base.
 
-### 2. Lien "Voir ma boutique" incohérent dans ShopCreatedSuccess
+La migration precedente a ajoute une *nouvelle* colonne `stock_quantity` (toujours a 0) au lieu de renommer la colonne `stock` existante.
 
-`src/pages/ShopCreatedSuccess.tsx` ligne 160 fait `navigate('/shop/${slug}')` en interne. Apres la correction du routing, les deux routes `/shop/:slug` et `/boutique/:slug` fonctionneront, donc pas de changement necessaire ici — mais le lien devra pointer vers `/boutique/${slug}` pour etre coherent avec l'URL affichee aux utilisateurs.
-
-### 3. Erreurs de publication silencieuses
-
-Dans `AddProduct.tsx`, le `catch` dans `handleSaveDraft` et `handlePublish` affiche un message generique sans mentionner l'erreur Supabase reelle. Le log `console.error('[AddProduct] Save error:', err)` est present dans `saveProduct`, mais le toast ne montre pas `err.message`.
-
-Correction : afficher `err.message` dans le toast d'erreur pour que le marchand comprenne exactement ce qui echoue.
-
-### 4. Colonne `stock_quantity` — verification
-
-D'apres les logs de console fournis :
-```
-"Could not find the 'stock_quantity' column of 'products' in the schema cache"
-```
-Cette erreur apparait dans les anciens logs. La migration SQL executee a ajoute les colonnes manquantes. Cependant, `stock_quantity` devrait deja exister (c'etait une colonne originale). Il est possible que la migration ait ete partielle ou que le cache Supabase ne se soit pas rafraichi. Aucune modification de code n'est requise pour cette partie — la colonne existe maintenant.
-
-### 5. RLS products — politique INSERT
-
-La politique RLS sur `products` doit verifier que `shop_id` appartient a `auth.uid()`. Il faut s'assurer qu'elle existe et est correcte. Une politique SQL additionnelle doit etre verifiee (ou creee si absente).
-
----
-
-## Plan de corrections
-
-### Fichier 1 : `src/App.tsx`
-
-Ajouter la route `/boutique/:slug` juste avant ou apres `/shop/:slug` :
-
-```tsx
-<Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
-<Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
-```
-
-Cela resout le 404 pour `ventou.shop/boutique/test` et pour les sous-domaines qui redirigent vers cette URL.
-
-### Fichier 2 : `src/pages/ShopCreatedSuccess.tsx`
-
-Changer `navigate('/shop/${slug}')` (ligne 160) en `navigate('/boutique/${slug}')` pour etre coherent avec l'URL reelle utilisee par le sous-domaine redirect.
-
-### Fichier 3 : `src/pages/AddProduct.tsx`
-
-Dans `handleSaveDraft` et `handlePublish`, remplacer le message d'erreur generique par `err?.message || 'Erreur inconnue'` dans le toast pour que l'erreur Supabase reelle soit visible.
-
-Avant :
-```ts
-} catch {
-  toast({ title: 'Erreur', description: 'Impossible de publier le produit.', variant: 'destructive' });
-}
-```
-
-Apres :
-```ts
-} catch (err: any) {
-  toast({ title: 'Erreur', description: err?.message || 'Impossible de publier le produit.', variant: 'destructive' });
-}
-```
-
-### SQL additionnel (a executer dans Supabase)
-
-Pour s'assurer que la RLS `products` autorise l'INSERT quand `shop_id` appartient a l'utilisateur :
+## SQL a executer dans Supabase (1 minute)
 
 ```sql
--- Verifier et creer la politique RLS INSERT sur products
-DROP POLICY IF EXISTS "owner_insert_products" ON public.products;
-CREATE POLICY "owner_insert_products"
-  ON public.products FOR INSERT
-  WITH CHECK (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-  );
+-- 1. Supprimer la colonne vide ajoutee par erreur
+ALTER TABLE public.products DROP COLUMN IF EXISTS stock_quantity;
 
-DROP POLICY IF EXISTS "owner_update_products" ON public.products;
-CREATE POLICY "owner_update_products"
-  ON public.products FOR UPDATE
-  USING (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-  );
+-- 2. Renommer stock → stock_quantity pour correspondre au frontend
+ALTER TABLE public.products RENAME COLUMN stock TO stock_quantity;
 
-DROP POLICY IF EXISTS "owner_delete_products" ON public.products;
-CREATE POLICY "owner_delete_products"
-  ON public.products FOR DELETE
-  USING (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-  );
+-- 3. Ajouter updated_at manquant
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS updated_at 
+  timestamp without time zone DEFAULT now();
 
-DROP POLICY IF EXISTS "public_read_active_products" ON public.products;
-CREATE POLICY "public_read_active_products"
-  ON public.products FOR SELECT
-  USING (true);
+-- 4. Verification finale
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'products' 
+ORDER BY ordinal_position;
 ```
 
----
+## Corrections code (3 fichiers)
 
-## Ce qui ne change pas
+### 1. `src/pages/AddProduct.tsx`
 
-- `ShopStorefront.tsx` — deja correct, la requete shops n'a plus le filtre `is_active`
-- `ProductContext.tsx` — deja connecte a Supabase correctement
-- `CategoryPicker.tsx` — fonctionne correctement
-- `RichTextEditor.tsx` — inchange
-- Architecture, pages, structure — inchangees
+La ligne 202 envoie `description` comme string JSON alors que la DB attend `jsonb`. Il faut envoyer l'objet directement (pas de `JSON.stringify`) :
 
-## Resume des modifications
+```ts
+// Avant (ligne 202)
+description: descriptionJsonRef.current ? JSON.stringify(descriptionJsonRef.current) : null,
 
-| Fichier | Changement |
-|---|---|
-| `src/App.tsx` | Ajouter `<Route path="/boutique/:slug" .../>` |
-| `src/pages/ShopCreatedSuccess.tsx` | `navigate('/boutique/${slug}')` au lieu de `/shop/${slug}` |
-| `src/pages/AddProduct.tsx` | Toast d'erreur affiche `err.message` reel |
-| SQL Supabase (manuel) | RLS INSERT/UPDATE/DELETE sur `products` |
+// Apres
+description: descriptionJsonRef.current || null,
+description_json: descriptionJsonRef.current || null,
+```
+
+### 2. `src/contexts/ProductContext.tsx`
+
+La fonction `updateProduct` envoie `updated_at: new Date().toISOString()` — une fois la colonne `updated_at` ajoutee en base, cela fonctionnera. Aucun changement necessaire si le SQL est execute.
+
+### 3. `src/types/shop.ts`
+
+Le type `Product` est deja correct avec `stock_quantity: number`. Aucun changement necessaire.
+
+## Resume
+
+| Action | Qui | Duree |
+|---|---|---|
+| Executer le SQL ci-dessus | Vous dans Supabase | 1 minute |
+| Corriger `description` (string → jsonb) dans AddProduct | Moi | Automatique |
+
+Une fois le SQL execute et la correction `description` appliquee, la publication de produits fonctionnera completement.
