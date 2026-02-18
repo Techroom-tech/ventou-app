@@ -157,7 +157,7 @@ export default function ShopCreatedSuccess() {
           {slug && (
             <Button
               variant="outline"
-              onClick={() => navigate(`/shop/${slug}`)}
+              onClick={() => navigate(`/boutique/${slug}`)}
               className="w-full h-12 text-base font-semibold gap-2 rounded-xl"
               size="lg"
             >
