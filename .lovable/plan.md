@@ -1,77 +1,121 @@
 
-# Correction complète : store_id → shop_id + Vitrine + Produits réels
+# Audit complet et corrections ciblées
 
 ## Problèmes identifiés
 
-### 1. Colonne `store_id` vs `shop_id` dans la table `products`
-L'erreur SQL `column "shop_id" does not exist — HINT: Perhaps you meant to reference the column "products.store_id"` confirme que la table `products` en base utilise **`store_id`** mais TOUT le code frontend envoie **`shop_id`**. C'est la cause de l'erreur "Impossible de publier le produit".
+### 1. Route `/boutique/:slug` manquante (cause principale du 404)
 
-Deux options :
-- **Option A (recommandée)** : Renommer la colonne en base (`ALTER TABLE products RENAME COLUMN store_id TO shop_id;`) — une seule ligne SQL, aucun changement de code.
-- **Option B** : Adapter le code pour utiliser `store_id` partout — des dizaines de fichiers à modifier.
+Dans `App.tsx`, seule la route `/shop/:slug` est declaree. Or, quand quelqu'un visite `test.ventou.shop`, le serveur redirige vers `ventou.shop/boutique/test` — une route qui n'existe pas dans le router React. Resultat : 404.
 
-**On choisit l'Option A** : une migration SQL simple.
+La correction : ajouter `<Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />` dans `App.tsx`.
 
-### 2. Vitrine sous-domaine → 404
-Le problème vient de deux causes cumulées :
-- Les produits ne s'affichent pas (requête `shop_id` échoue car la colonne s'appelle `store_id`)
-- La vitrine requête `.eq('is_active', true)` sur `shops` mais si la boutique a `is_active = false` par défaut, elle n'est pas trouvée → page 404
+### 2. Lien "Voir ma boutique" incohérent dans ShopCreatedSuccess
 
-### 3. Page `/dashboard/products` utilise mockData
-Le `ProductContext` charge les `mockProducts` hardcodés en mémoire. La page affiche donc des produits fictifs, pas ceux de Supabase. Il faut connecter le contexte à Supabase avec le vrai `shop_id`.
+`src/pages/ShopCreatedSuccess.tsx` ligne 160 fait `navigate('/shop/${slug}')` en interne. Apres la correction du routing, les deux routes `/shop/:slug` et `/boutique/:slug` fonctionneront, donc pas de changement necessaire ici — mais le lien devra pointer vers `/boutique/${slug}` pour etre coherent avec l'URL affichee aux utilisateurs.
+
+### 3. Erreurs de publication silencieuses
+
+Dans `AddProduct.tsx`, le `catch` dans `handleSaveDraft` et `handlePublish` affiche un message generique sans mentionner l'erreur Supabase reelle. Le log `console.error('[AddProduct] Save error:', err)` est present dans `saveProduct`, mais le toast ne montre pas `err.message`.
+
+Correction : afficher `err.message` dans le toast d'erreur pour que le marchand comprenne exactement ce qui echoue.
+
+### 4. Colonne `stock_quantity` — verification
+
+D'apres les logs de console fournis :
+```
+"Could not find the 'stock_quantity' column of 'products' in the schema cache"
+```
+Cette erreur apparait dans les anciens logs. La migration SQL executee a ajoute les colonnes manquantes. Cependant, `stock_quantity` devrait deja exister (c'etait une colonne originale). Il est possible que la migration ait ete partielle ou que le cache Supabase ne se soit pas rafraichi. Aucune modification de code n'est requise pour cette partie — la colonne existe maintenant.
+
+### 5. RLS products — politique INSERT
+
+La politique RLS sur `products` doit verifier que `shop_id` appartient a `auth.uid()`. Il faut s'assurer qu'elle existe et est correcte. Une politique SQL additionnelle doit etre verifiee (ou creee si absente).
 
 ---
 
-## Plan d'implémentation
+## Plan de corrections
 
-### Etape 1 — SQL à exécuter dans Supabase (vous le faites, 30 secondes)
+### Fichier 1 : `src/App.tsx`
 
-```sql
--- Renommer store_id → shop_id dans products
-ALTER TABLE public.products RENAME COLUMN store_id TO shop_id;
+Ajouter la route `/boutique/:slug` juste avant ou apres `/shop/:slug` :
 
--- S'assurer que les boutiques créées sont actives
-UPDATE public.shops SET is_active = true WHERE is_active IS NULL OR is_active = false;
+```tsx
+<Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
+<Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
 ```
 
-Voilà, après ça la publication fonctionne sans aucune autre modification.
+Cela resout le 404 pour `ventou.shop/boutique/test` et pour les sous-domaines qui redirigent vers cette URL.
 
-### Etape 2 — Connecter ProductContext à Supabase (code)
+### Fichier 2 : `src/pages/ShopCreatedSuccess.tsx`
 
-Réécrire `src/contexts/ProductContext.tsx` pour :
-- Charger les produits via `useQuery` Supabase (`.eq('shop_id', shop.id)`)
-- `deleteProduct` → `supabase.from('products').delete()`
-- `duplicateProduct` → `supabase.from('products').insert()`
-- `toggleVisibility` → `supabase.from('products').update({ is_active })`
-- Supprimer la dépendance aux `mockProducts`
+Changer `navigate('/shop/${slug}')` (ligne 160) en `navigate('/boutique/${slug}')` pour etre coherent avec l'URL reelle utilisee par le sous-domaine redirect.
 
-### Etape 3 — Vérifier la vitrine (code)
+### Fichier 3 : `src/pages/AddProduct.tsx`
 
-Dans `ShopStorefront.tsx`, la requête produits utilise déjà `shop_id` correctement. Une fois la colonne renommée en base (Etape 1), ça fonctionnera.
+Dans `handleSaveDraft` et `handlePublish`, remplacer le message d'erreur generique par `err?.message || 'Erreur inconnue'` dans le toast pour que l'erreur Supabase reelle soit visible.
 
-Ajouter une vérification de secours : si `is_active` est faux pour la boutique, l'afficher quand même si on accède via le sous-domaine direct (la boutique existe mais n'est pas "active" → on l'affiche en mode preview plutôt que 404).
+Avant :
+```ts
+} catch {
+  toast({ title: 'Erreur', description: 'Impossible de publier le produit.', variant: 'destructive' });
+}
+```
+
+Apres :
+```ts
+} catch (err: any) {
+  toast({ title: 'Erreur', description: err?.message || 'Impossible de publier le produit.', variant: 'destructive' });
+}
+```
+
+### SQL additionnel (a executer dans Supabase)
+
+Pour s'assurer que la RLS `products` autorise l'INSERT quand `shop_id` appartient a l'utilisateur :
+
+```sql
+-- Verifier et creer la politique RLS INSERT sur products
+DROP POLICY IF EXISTS "owner_insert_products" ON public.products;
+CREATE POLICY "owner_insert_products"
+  ON public.products FOR INSERT
+  WITH CHECK (
+    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "owner_update_products" ON public.products;
+CREATE POLICY "owner_update_products"
+  ON public.products FOR UPDATE
+  USING (
+    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "owner_delete_products" ON public.products;
+CREATE POLICY "owner_delete_products"
+  ON public.products FOR DELETE
+  USING (
+    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "public_read_active_products" ON public.products;
+CREATE POLICY "public_read_active_products"
+  ON public.products FOR SELECT
+  USING (true);
+```
 
 ---
-
-## Fichiers à modifier
-
-| Fichier | Action |
-|---|---|
-| SQL Supabase | `RENAME COLUMN store_id TO shop_id` + `UPDATE shops SET is_active = true` |
-| `src/contexts/ProductContext.tsx` | Connecter à Supabase, supprimer mockData |
-| `src/pages/ShopStorefront.tsx` | Retirer le filtre `is_active` bloquant sur shops |
 
 ## Ce qui ne change pas
 
-- `AddProduct.tsx` — déjà correct, envoie bien `shop_id`
-- `ImageUploader.tsx` — déjà correct
-- `RichTextEditor.tsx` — déjà correct
-- Routing et authentification — inchangés
+- `ShopStorefront.tsx` — deja correct, la requete shops n'a plus le filtre `is_active`
+- `ProductContext.tsx` — deja connecte a Supabase correctement
+- `CategoryPicker.tsx` — fonctionne correctement
+- `RichTextEditor.tsx` — inchange
+- Architecture, pages, structure — inchangees
 
-## Séquence d'actions
+## Resume des modifications
 
-```text
-1. Vous : Exécutez les 2 lignes SQL dans Supabase
-2. Moi : Je modifie ProductContext + ShopStorefront
-3. Résultat : Publication produit OK + Vitrine accessible + Dashboard réel
-```
+| Fichier | Changement |
+|---|---|
+| `src/App.tsx` | Ajouter `<Route path="/boutique/:slug" .../>` |
+| `src/pages/ShopCreatedSuccess.tsx` | `navigate('/boutique/${slug}')` au lieu de `/shop/${slug}` |
+| `src/pages/AddProduct.tsx` | Toast d'erreur affiche `err.message` reel |
+| SQL Supabase (manuel) | RLS INSERT/UPDATE/DELETE sur `products` |
