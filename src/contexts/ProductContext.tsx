@@ -1,9 +1,13 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Product } from '@/types/shop';
-import { mockProducts } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { useShop } from '@/hooks/useShop';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductContextType {
   products: Product[];
+  isLoading: boolean;
   addProduct: (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => void;
   updateProduct: (id: string, updates: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -14,51 +18,93 @@ interface ProductContextType {
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export function ProductProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const { shop } = useShop();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const addProduct = (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
-    const now = new Date().toISOString();
-    const newProduct: Product = {
-      ...product,
-      id: `prod-${Date.now()}`,
-      created_at: now,
-      updated_at: now,
-    };
-    setProducts((prev) => [newProduct, ...prev]);
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['products', shop?.id],
+    queryFn: async () => {
+      if (!shop?.id) return [];
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('shop_id', shop.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Product[];
+    },
+    enabled: !!shop?.id,
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products', shop?.id] });
+
+  const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!shop?.id) return;
+    const { error } = await supabase.from('products').insert({ ...product, shop_id: shop.id });
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible d\'ajouter le produit.', variant: 'destructive' });
+    } else {
+      invalidate();
+    }
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p))
-    );
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+    const { error } = await supabase
+      .from('products')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible de modifier le produit.', variant: 'destructive' });
+    } else {
+      invalidate();
+    }
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const deleteProduct = async (id: string) => {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible de supprimer le produit.', variant: 'destructive' });
+    } else {
+      invalidate();
+    }
   };
 
-  const duplicateProduct = (id: string) => {
+  const duplicateProduct = async (id: string) => {
     const original = products.find((p) => p.id === id);
-    if (!original) return;
-    const now = new Date().toISOString();
-    const copy: Product = {
-      ...original,
-      id: `prod-${Date.now()}`,
+    if (!original || !shop?.id) return;
+    const { id: _id, created_at: _ca, updated_at: _ua, ...rest } = original;
+    const { error } = await supabase.from('products').insert({
+      ...rest,
+      shop_id: shop.id,
       name: `${original.name} (copie)`,
-      created_at: now,
-      updated_at: now,
-    };
-    setProducts((prev) => [copy, ...prev]);
+      slug: `${original.slug}-copie-${Date.now()}`,
+      is_active: false,
+      status: 'draft',
+    });
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible de dupliquer le produit.', variant: 'destructive' });
+    } else {
+      invalidate();
+    }
   };
 
-  const toggleVisibility = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, is_active: !p.is_active, updated_at: new Date().toISOString() } : p))
-    );
+  const toggleVisibility = async (id: string) => {
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+    const { error } = await supabase
+      .from('products')
+      .update({ is_active: !product.is_active, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible de modifier la visibilité.', variant: 'destructive' });
+    } else {
+      invalidate();
+    }
   };
 
   return (
-    <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, duplicateProduct, toggleVisibility }}>
+    <ProductContext.Provider value={{ products, isLoading, addProduct, updateProduct, deleteProduct, duplicateProduct, toggleVisibility }}>
       {children}
     </ProductContext.Provider>
   );
