@@ -269,7 +269,13 @@ export default function AddProduct() {
       return productId;
     } catch (err: any) {
       console.error('[AddProduct] Save error:', err);
-      throw err;
+      // Build a human-readable message from the Supabase error object
+      const supaMsg = err?.message || '';
+      const supaHint = err?.hint ? ` (${err.hint})` : '';
+      const supaCode = err?.code ? ` [${err.code}]` : '';
+      const humanMsg = `${supaMsg}${supaHint}${supaCode}`.trim() || 'Erreur inconnue';
+      throw Object.assign(new Error(humanMsg), { originalError: err });
+
     } finally {
       setSaving(false);
     }
