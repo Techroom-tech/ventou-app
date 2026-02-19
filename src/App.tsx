@@ -23,6 +23,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Products = lazy(() => import("./pages/Products"));
 const AddProduct = lazy(() => import("./pages/AddProduct"));
+const Orders = lazy(() => import("./pages/Orders"));
 const CreateShop = lazy(() => import("./pages/CreateShop"));
 const About = lazy(() => import("./pages/About"));
 const Support = lazy(() => import("./pages/Support"));
@@ -102,6 +103,14 @@ const App = () => {
               element={
                 <ProtectedRoute><DashboardGuard>
                   <AddProduct />
+                </DashboardGuard></ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/orders"
+              element={
+                <ProtectedRoute><DashboardGuard>
+                  <Orders />
                 </DashboardGuard></ProtectedRoute>
               }
             />

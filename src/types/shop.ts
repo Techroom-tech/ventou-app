@@ -89,21 +89,44 @@ export interface ProductVariant {
   updated_at: string;
 }
 
-export type OrderStatus = 'PAID' | 'PENDING' | 'CANCELLED';
-export type PaymentMethod = 'MoMo' | 'Wave' | 'Orange' | 'Cash';
+export type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'preparing'
+  | 'shipping'
+  | 'delivered'
+  | 'cancelled';
+
+// Valid forward transitions (no backward allowed)
+export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  pending:   ['confirmed', 'cancelled'],
+  confirmed: ['preparing', 'cancelled'],
+  preparing: ['shipping'],
+  shipping:  ['delivered'],
+  delivered: [],
+  cancelled: [],
+};
+
+export type PaymentMethod = 'MoMo' | 'Wave' | 'Orange' | 'Cash' | 'cod' | 'whatsapp';
 
 export interface Order {
   id: string;
   shop_id: string;
-  order_number: string;
+  order_number?: string;
   customer_name: string;
-  customer_phone: string | null;
-  total_amount: number;
+  customer_phone?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  quartier?: string | null;
+  notes?: string | null;
+  location_url?: string | null;
+  total_amount?: number;
+  total?: number;
   status: OrderStatus;
-  payment_method: PaymentMethod | null;
+  payment_method: string | null;
   created_at: string;
-  updated_at: string;
-  items?: OrderItem[];
+  updated_at?: string;
+  items?: OrderItem[] | Record<string, unknown>[];
 }
 
 export interface OrderItem {

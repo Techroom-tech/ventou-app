@@ -534,5 +534,41 @@
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
     "contact": "Contact"
+  },
+  "orders": {
+    "title": "Orders",
+    "search": "Search by name or phone...",
+    "noOrders": "No orders found",
+    "noOrdersHint": "Your shop orders will appear here.",
+    "viewDetail": "View",
+    "status": {
+      "all": "All",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "shipping": "Shipping",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "detail": {
+      "title": "Order detail",
+      "customer": "Customer",
+      "phone": "Phone",
+      "address": "Address",
+      "items": "Ordered items",
+      "payment": "Payment",
+      "total": "Total",
+      "paymentMethod": "Payment method",
+      "updateStatus": "Update status",
+      "actions": {
+        "confirm": "Confirm order",
+        "prepare": "Start preparing",
+        "ship": "Mark as shipped",
+        "deliver": "Mark as delivered",
+        "cancel": "Cancel order"
+      },
+      "whatsappContact": "Contact on WhatsApp",
+      "viewMap": "View on Maps"
+    }
   }
 }
