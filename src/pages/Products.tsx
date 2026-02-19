@@ -126,7 +126,7 @@ export default function Products() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/dashboard/products/new`)}>
+                      <DropdownMenuItem onClick={() => navigate(`/dashboard/products/${product.id}/edit`)}>
                         <Pencil className="h-4 w-4 mr-2" />
                         {t('common.edit')}
                       </DropdownMenuItem>

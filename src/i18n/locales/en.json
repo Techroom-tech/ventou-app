@@ -508,6 +508,8 @@
     "locationUrl": "Location link (e.g. Google Maps)",
     "paymentMethod": "Payment method",
     "cod": "Cash on delivery",
+    "subtotal": "Subtotal",
+    "deliveryFee": "Delivery fee",
     "orderSummary": "Order summary",
     "confirmOrder": "Confirm order",
     "orderSuccess": "Order placed!",
