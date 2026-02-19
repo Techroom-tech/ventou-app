@@ -5,10 +5,11 @@
  * XOF zone: BF, CI, SN, ML, TG, BJ, NE
  * XAF zone: CM, GA
  *
- * Detection order:
- * 1. localStorage (user explicit choice)
- * 2. navigator.language (e.g. fr-CI → CI)
- * 3. Default: CI
+ * Detection order (non-blocking):
+ * 1. localStorage "user_country" (never overridden once set by user)
+ * 2. X-User-Country custom header (async HEAD fetch to origin, no external API)
+ * 3. navigator.language (e.g. fr-BF → BF)
+ * 4. Default: BF
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -23,9 +24,9 @@ export interface CountryConfig {
 }
 
 export const COUNTRY_CONFIGS: CountryConfig[] = [
-  { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮', currency: 'XOF', phonePrefix: '+225' },
-  { code: 'SN', name: 'Sénégal',        flag: '🇸🇳', currency: 'XOF', phonePrefix: '+221' },
   { code: 'BF', name: 'Burkina Faso',   flag: '🇧🇫', currency: 'XOF', phonePrefix: '+226' },
+  { code: 'CI', name: "Côte d'Ivoire",  flag: '🇨🇮', currency: 'XOF', phonePrefix: '+225' },
+  { code: 'SN', name: 'Sénégal',        flag: '🇸🇳', currency: 'XOF', phonePrefix: '+221' },
   { code: 'ML', name: 'Mali',           flag: '🇲🇱', currency: 'XOF', phonePrefix: '+223' },
   { code: 'TG', name: 'Togo',           flag: '🇹🇬', currency: 'XOF', phonePrefix: '+228' },
   { code: 'BJ', name: 'Bénin',          flag: '🇧🇯', currency: 'XOF', phonePrefix: '+229' },
@@ -34,45 +35,81 @@ export const COUNTRY_CONFIGS: CountryConfig[] = [
   { code: 'GA', name: 'Gabon',          flag: '🇬🇦', currency: 'XAF', phonePrefix: '+241' },
 ];
 
-const STORAGE_KEY = 'ventou-country';
-const DEFAULT_COUNTRY_CODE = 'CI';
+const STORAGE_KEY = 'user_country';
+const DEFAULT_COUNTRY_CODE = 'BF';
 
-/** Detect country from navigator.language (e.g. "fr-CI" → "CI") */
-function detectFromBrowser(): string | null {
+/** Find a CountryConfig by code (case-insensitive). Returns undefined if not found. */
+function findCountry(code: string | null | undefined): CountryConfig | undefined {
+  if (!code) return undefined;
+  return COUNTRY_CONFIGS.find(c => c.code === code.toUpperCase());
+}
+
+/** Detect country from navigator.language (e.g. "fr-BF" → "BF") */
+function detectFromBrowser(): CountryConfig | undefined {
   try {
-    const lang = navigator.language || '';
+    const lang = navigator.language ?? '';
     const parts = lang.split('-');
     if (parts.length >= 2) {
-      const regionCode = parts[parts.length - 1].toUpperCase();
-      if (COUNTRY_CONFIGS.find(c => c.code === regionCode)) return regionCode;
+      return findCountry(parts[parts.length - 1]);
     }
   } catch {
     // silent
   }
-  return null;
+  return undefined;
 }
 
-function resolveInitialCountry(): CountryConfig {
-  // 1. localStorage
+/**
+ * Read localStorage "user_country".
+ * Returns the CountryConfig if valid, null if key exists but unknown,
+ * or undefined if the key was never set (so we know we can auto-detect).
+ */
+function readStorage(): { config: CountryConfig; found: true } | { config: null; found: false } | undefined {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const found = COUNTRY_CONFIGS.find(c => c.code === stored);
-      if (found) return found;
-    }
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return undefined;           // key never set → auto-detect allowed
+    const config = findCountry(raw);
+    return config ? { config, found: true } : { config: null, found: false };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Persist country code to localStorage */
+function saveStorage(code: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, code);
   } catch {
     // storage may be blocked
   }
+}
 
-  // 2. navigator.language
-  const detected = detectFromBrowser();
-  if (detected) {
-    const found = COUNTRY_CONFIGS.find(c => c.code === detected);
-    if (found) return found;
+/**
+ * Resolve initial country synchronously (for useState initialiser).
+ * Uses localStorage or navigator.language or default — no async here.
+ * Header detection is done in a useEffect after mount.
+ */
+function resolveInitialCountry(): CountryConfig {
+  const stored = readStorage();
+  if (stored?.found) return stored.config;              // explicit user choice
+  return detectFromBrowser() ?? findCountry(DEFAULT_COUNTRY_CODE)!;
+}
+
+/**
+ * Attempt to read the X-User-Country header from a lightweight HEAD
+ * request to the same origin. No external API, no CORS issues.
+ * Resolves to a country code string or null.
+ */
+async function detectFromHeader(): Promise<string | null> {
+  try {
+    const res = await fetch(window.location.origin, {
+      method: 'HEAD',
+      cache: 'no-store',
+    });
+    const code = res.headers.get('X-User-Country');
+    return code ? code.toUpperCase() : null;
+  } catch {
+    return null;
   }
-
-  // 3. default
-  return COUNTRY_CONFIGS.find(c => c.code === DEFAULT_COUNTRY_CODE)!;
 }
 
 interface CountryContextValue {
@@ -86,22 +123,42 @@ const CountryContext = createContext<CountryContextValue | null>(null);
 export function CountryProvider({ children }: { children: React.ReactNode }) {
   const [country, setCountryState] = useState<CountryConfig>(resolveInitialCountry);
 
+  /** Explicit user selection — always persists and overrides auto-detect */
   const setCountry = useCallback((code: string) => {
-    const found = COUNTRY_CONFIGS.find(c => c.code === code);
+    const found = findCountry(code);
     if (!found) return;
     setCountryState(found);
-    try {
-      localStorage.setItem(STORAGE_KEY, code);
-    } catch {
-      // storage may be blocked
-    }
+    saveStorage(code);
   }, []);
 
-  // Re-sync on external storage changes (multi-tab)
+  /**
+   * On mount: if localStorage was never set, try X-User-Country header
+   * asynchronously. This never blocks the initial render.
+   */
+  useEffect(() => {
+    const stored = readStorage();
+    if (stored !== undefined) return; // localStorage already has a value → skip
+
+    detectFromHeader().then(headerCode => {
+      const fromHeader = findCountry(headerCode);
+      if (fromHeader) {
+        // Only apply if user hasn't manually chosen since mount
+        setCountryState(prev => {
+          // If prev is still the auto-detected value (not a user click), apply header result
+          const storedNow = readStorage();
+          if (storedNow !== undefined) return prev; // user already picked something
+          saveStorage(fromHeader.code);
+          return fromHeader;
+        });
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-sync on external storage changes (multi-tab support)
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && e.newValue) {
-        const found = COUNTRY_CONFIGS.find(c => c.code === e.newValue);
+        const found = findCountry(e.newValue);
         if (found) setCountryState(found);
       }
     };
@@ -121,3 +178,4 @@ export function useCountry(): CountryContextValue {
   if (!ctx) throw new Error('useCountry must be used inside <CountryProvider>');
   return ctx;
 }
+
