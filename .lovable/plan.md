@@ -1,175 +1,129 @@
 
-# Orders V6 — Dedicated Page + Stitch Premium UI
+# Ajouter "Créer une Commande" sur la page Commandes
 
-## Current State
+## Contexte
 
-The order detail is rendered as a `Sheet` (slide-over panel) on the right side of the `Orders.tsx` page. The user wants it replaced with:
-- A **dedicated full-page route** `/dashboard/commandes/:orderId`
-- The **exact Stitch HTML layout** converted to React — mobile-first, no overlays, no sheets
+La page `/dashboard/orders` permet actuellement de lister, filtrer, exporter et naviguer vers les commandes existantes. Il n'existe aucune fonctionnalité permettant au vendeur de saisir manuellement une commande (ex: commande prise par téléphone, en présentiel, via WhatsApp hors-boutique, etc.).
 
-All existing logic (status update, timeline, notes, CSV export, real-time, pagination) is preserved. Only the detail **presentation layer** changes.
+## Ce qui sera ajouté
 
----
-
-## What Changes
-
-| Item | Current | New |
-|---|---|---|
-| Order detail UI | `<Sheet>` slide-over | Dedicated page `/dashboard/commandes/:orderId` |
-| Route | Only `/dashboard/orders` exists | Add `/dashboard/commandes/:orderId` |
-| Navigation | `setSelectedOrder(order)` state | `navigate('/dashboard/commandes/' + order.id)` |
-| Detail panel file | `OrderDetailPanel.tsx` (Sheet-based) | New `OrderDetailPage.tsx` full-page component |
-| Orders list | Opens sheet on row click | Navigates to detail page |
-| Header | Inside sheet | Sticky breadcrumb + order number + badge + print + 3-dots |
-| Timeline | Horizontal bubble row | Stitch-style: numbered circles, connector lines, EN ATTENTE at step 1 |
-| CTA Buttons | Mixed inside card | Large primary CTA "Confirmer la commande" + WhatsApp + Appeler below timeline |
-| Articles | Table inside sheet | Card with product list (icon, name, variant, qty, total) |
-| Notes | Notes list + add input | Yellow sticky-note style cards + input at bottom |
-| Financials | Basic list | Sous-total / Livraison (badge) / Remise / Total bold / Marge estimée |
-| Customer card | Small card | Avatar initials + Verified badge + Client Fidèle + stats grid + contact items |
-| History | Vertical timeline | Compact action list "Note ajoutée", "Commande créée" with times |
+Un bouton **"+ Nouvelle commande"** dans le header de la page `Orders.tsx`, ouvrant un **Dialog** (modal) avec un formulaire complet de création de commande. Pas de nouvelle page, pas de nouvelle route — tout reste dans `Orders.tsx` + un nouveau composant modal.
 
 ---
 
-## SQL Required (run before or it already exists)
+## Structure du formulaire (modal)
 
-The `order_status_logs` and `seller_note` column were already created in the previous migration. No new SQL is needed for this phase.
+Le formulaire reproduit exactement les champs utilisés par le `CheckoutDrawer` (même colonnes DB) :
+
+**Section Client**
+- Nom du client (requis)
+- Téléphone (requis)
+- Ville (requis)
+- Quartier (optionnel)
+- Notes / instructions de livraison (optionnel)
+
+**Section Articles**
+- Ligne dynamique : Nom du produit (texte libre) + Quantité + Prix unitaire
+- Bouton "Ajouter un article"
+- Calcul automatique : Sous-total affiché en temps réel
+
+**Section Paiement & Livraison**
+- Frais de livraison (pré-rempli depuis `useDeliverySettings`)
+- Mode de paiement : COD (Livraison) | WhatsApp
+- Total final calculé automatiquement
+
+**Validation** via `zod` + `react-hook-form` (cohérent avec le reste du codebase).
 
 ---
 
-## Files to Create / Modify
+## Fichiers modifiés / créés
 
-### New File: `src/pages/OrderDetail.tsx`
+| Fichier | Action |
+|---|---|
+| `src/components/dashboard/CreateOrderModal.tsx` | **Nouveau** — formulaire complet |
+| `src/pages/Orders.tsx` | Ajout du bouton + import du modal |
+| `src/hooks/useOrders.ts` | Ajout `useCreateOrder` mutation |
 
-Full-page order detail in the Stitch premium style. Built with:
-- `useParams` to get `orderId`
-- Data fetched from Supabase: order by id, `useOrderTimeline`, `useRepeatCustomers`
-- All real actions: status transitions, notes, WhatsApp, print
+### Aucun autre fichier touché
+- Storefront inchangé
+- `OrderDetail.tsx`, `App.tsx`, types — inchangés
+- Aucune migration SQL requise (même colonnes existantes)
 
-**Layout structure:**
-```text
-<DashboardLayout>
-  ├── Sticky Header (breadcrumb + order# + badge + print + 3-dots)
-  ├── Horizontal Timeline (EN_ATTENTE → CONFIRMÉE → PRÉPARATION → LIVRAISON → LIVRÉE)
-  ├── Action Buttons Row (primary CTA + WhatsApp + Appeler + Maps)
-  ├── Articles Card (table: product icon, name/variant, qty, total)
-  ├── Notes Internes Card (yellow notes list + add input)
-  ├── Détails Financiers Card (subtotal, delivery, discount, total bold, marge)
-  ├── Customer Card (avatar, badges, stats grid 2col, phone/email/address)
-  └── Historique Card (vertical event list)
+---
+
+## Détails techniques
+
+### `useCreateOrder` (dans `useOrders.ts`)
+
+Nouvelle mutation qui insère une ligne dans `orders` :
+
+```ts
+supabase.from('orders').insert({
+  shop_id,
+  customer_name,
+  customer_phone: phone,
+  phone,
+  city,
+  quartier,
+  notes,
+  items: [{ name, quantity, unit_price }],  // items JSON
+  subtotal,
+  delivery_fee,
+  total: subtotal + delivery_fee,
+  status: 'pending',
+  payment_method,
+})
 ```
 
-**Mobile:** All sections stack vertically, CTA is sticky at bottom on mobile.
+Après succès :
+- `invalidateQueries` sur `['orders', shopId]` et `['order-counts', shopId]`
+- Toast succès
+- Modal fermé automatiquement
+- La nouvelle commande apparaît en tête de liste (déjà trié par `created_at DESC`)
 
-**Desktop:** All sections in a single column with generous padding (max-w-3xl centered).
+### `CreateOrderModal.tsx`
 
-### Modified: `src/App.tsx`
+- Composant `Dialog` (déjà installé via Radix)
+- Gestion articles avec `useFieldArray` de `react-hook-form`
+- Calcul temps réel du sous-total et total
+- Validation `zod` identique au `CheckoutDrawer`
+- Mode de paiement : boutons radio COD / WhatsApp
+- Design cohérent avec le dashboard existant (cards, input, label, badge)
+- Responsive : modal centrée desktop, plein écran mobile
 
-Add new route:
-```tsx
-<Route
-  path="/dashboard/commandes/:orderId"
-  element={
-    <ProtectedRoute><DashboardGuard>
-      <OrderDetail />
-    </DashboardGuard></ProtectedRoute>
-  }
-/>
-```
+### Bouton dans `Orders.tsx`
 
-### Modified: `src/pages/Orders.tsx`
-
-- Import `useNavigate` from `react-router-dom`
-- Replace `setSelectedOrder(order)` calls with `navigate('/dashboard/commandes/' + order.id)`
-- Remove `selectedOrder` state, `<OrderDetailPanel>` render at the bottom
-- Keep everything else untouched (tabs, search, pagination, CSV, bulk WA, real-time, context menu)
-
-### Keep Untouched
-
-- `src/components/dashboard/OrderDetailPanel.tsx` — kept but no longer rendered from Orders.tsx. Can be removed later if desired, but not touched now.
-- All hooks: `useOrders`, `useOrderTimeline`, `useUpdateOrderStatus`, `useUpdateSellerNote`, `useRepeatCustomers`
-- All types in `src/types/shop.ts`
-- Storefront, product system, auth — zero changes
-
----
-
-## Component Details: `OrderDetail.tsx`
-
-### Data Loading
+Ajouté dans le header, à côté des boutons "Actualiser", "Export CSV", "WhatsApp" :
 
 ```tsx
-const { orderId } = useParams();
-// fetch order from supabase by id (with shop_id guard matching user's shop)
-// fetch timeline via useOrderTimeline(orderId)
-// fetch repeat customer status via useRepeatCustomers(shopId)
-// loading skeleton while fetching
-// error state if order not found or not authorized
+<Button
+  size="sm"
+  className="h-8 gap-1.5 text-xs bg-primary text-white"
+  onClick={() => setCreateOpen(true)}
+>
+  <Plus className="h-3.5 w-3.5" />
+  Nouvelle commande
+</Button>
 ```
 
-### Status Timeline (Stitch style)
+---
 
-- Steps: `EN_ATTENTE (1)` → `CONFIRMÉE (2)` → `PRÉPARATION (3)` → `LIVRAISON (4)` → `LIVRÉE (5)`
-- Active step: orange filled circle + orange label + timestamp below
-- Past steps: green with checkmark icon
-- Future steps: gray numbered circle
-- Connecting lines between dots
-- If `cancelled`: show red alternative bar
-- Each step is a `<button>` — clicking the **next valid step** triggers status update
+## Expérience utilisateur
 
-### Primary CTA Button
-
-Dynamically rendered based on `ORDER_TRANSITIONS[order.status]`:
-- `pending` → "✓ Confirmer la commande" (orange fill)
-- `confirmed` → "📦 Mettre en préparation" (orange fill)
-- `preparing` → "🚚 Marquer en livraison" (orange fill)
-- `shipping` → "✓ Marquer livrée" (orange fill)
-- `delivered` / `archived` → no primary CTA
-- Always show "Annuler" as secondary if allowed by transitions
-
-### Notes System
-
-Each note stored in `seller_note` via the `[ISO_DATE] text\n---\n` format already implemented. UI shows:
-- Yellow card per note: text in quotes, "Par [shop name] · Date HH:mm"
-- Input row at bottom with orange send icon
-
-### Financial Card
-
-- Sous-total: computed from items
-- Livraison: `LIVRAISON` badge + fee (or "—" if unknown)
-- Remise: `-0 CFA` (placeholder until discount system exists)
-- **TOTAL À PAYER** in large bold
-- Marge estimée (eye-off icon, seller-only): `+ XX,XXX CFA` in green
-
-### Customer Card
-
-- Large initials avatar (orange bg)
-- Name + verified checkmark
-- `CLIENT FIDÈLE` badge (green) or `NOUVEAU CLIENT` badge
-- Stats grid: `Commandes: N` | `Dépensé: X.XM`
-- Contact rows: Phone (with `>` arrow), Email, Address + notes in italic
-- Google Maps embed placeholder + "Voir la carte" button if `location_url` exists
-
-### History Section
-
-- "Commande créée — Via Boutique en ligne — HH:mm"
-- Each `order_status_logs` entry: "Statut mis à jour → [new status] — HH:mm"
-- Each note event (if stored separately in future)
-- "Voir tout l'historique" expander
+1. Vendeur clique **"+ Nouvelle commande"**
+2. Modal s'ouvre avec formulaire vide
+3. Il remplit : nom client, téléphone, ville, ajoute les articles avec prix
+4. Les frais de livraison sont pré-chargés depuis les paramètres boutique
+5. Il choisit COD ou WhatsApp
+6. Clique **"Créer la commande"**
+7. Toast de succès, modal se ferme, la commande apparaît dans la liste en statut **EN ATTENTE**
+8. Il peut cliquer dessus pour ouvrir la page détail et la confirmer
 
 ---
 
-## Implementation Order
+## Ce qui n'est PAS changé
 
-1. Create `src/pages/OrderDetail.tsx` — full Stitch-style page
-2. Modify `src/App.tsx` — add the `/dashboard/commandes/:orderId` route
-3. Modify `src/pages/Orders.tsx` — replace panel with `navigate()` calls
-
----
-
-## What is NOT Changed
-
-- Storefront checkout, product management, auth — zero changes
-- `useOrders`, `useOrderTimeline`, `useUpdateOrderStatus`, `useUpdateSellerNote` hooks — untouched
-- `OrderStatusBadge`, `OrderContextMenu`, CSV export, bulk WhatsApp — untouched
-- Pagination, search, real-time subscription — untouched
-- `OrderDetailPanel.tsx` — not deleted (can coexist), just not rendered
+- Storefront, checkout client — inchangés
+- `OrderDetail.tsx`, transitions de statut — inchangés
+- Aucune migration SQL (les colonnes `items`, `subtotal`, `delivery_fee` existent déjà)
+- Pagination, filtres, real-time, CSV export — inchangés
