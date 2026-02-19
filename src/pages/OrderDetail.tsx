@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -282,6 +282,7 @@ export default function OrderDetail() {
 
   // ── Status CTA ───────────────────────────────────────────────────────────
   const updateStatus = useUpdateOrderStatus();
+  const queryClient = useQueryClient();
 
   const handleCTA = async (next: OrderStatus) => {
     if (!order || !shopId) return;
@@ -291,9 +292,11 @@ export default function OrderDetail() {
         currentStatus: order.status, newStatus: next,
       });
       toast.success(`Statut mis à jour → ${STATUS_LABELS[next]}`);
-      refetch();
+      // Force invalidate + refetch the order detail
+      await queryClient.invalidateQueries({ queryKey: ['order-detail'] });
+      await refetch();
     } catch (e: unknown) {
-      toast.error((e as Error).message ?? 'Erreur');
+      toast.error((e as Error).message ?? 'Erreur lors de la mise à jour');
     }
   };
 

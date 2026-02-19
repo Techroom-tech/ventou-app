@@ -98,21 +98,30 @@ export function useUpdateOrderStatus() {
         throw new Error(`Transition invalide: ${currentStatus} → ${newStatus}`);
       }
 
-      // Update the order status
-      const { error: updateError } = await supabase
+      // Update the order status — use .select() so we can detect 0-row updates
+      const { data: updatedRows, error: updateError } = await supabase
         .from('orders')
         .update({
           status: newStatus,
-          // If archiving, also set is_archived flag
           ...(newStatus === 'archived' ? { is_archived: true } : {}),
         })
         .eq('id', orderId)
-        .eq('shop_id', shopId); // security: never touch other shops
+        .eq('shop_id', shopId)
+        .select('id, status');
 
       if (updateError) {
         console.error('[useUpdateOrderStatus] update error:', updateError);
         throw updateError;
       }
+
+      // Guard: if 0 rows were updated the RLS blocked the write
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error(
+          'Mise à jour impossible. Vérifiez vos permissions dans Supabase (politique RLS owner_update_orders).'
+        );
+      }
+
+      console.log('[useUpdateOrderStatus] success:', updatedRows[0]);
 
       // Insert status log (best-effort, don't block on failure)
       try {
@@ -126,10 +135,15 @@ export function useUpdateOrderStatus() {
       } catch (logErr) {
         console.warn('[useUpdateOrderStatus] log insert failed (non-blocking):', logErr);
       }
+
+      return updatedRows[0];
     },
-    onSuccess: (_data, { shopId }) => {
+    onSuccess: (_data, { shopId, orderId }) => {
+      // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
       queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['order-detail', orderId] });
+      queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] });
     },
     onError: (error) => {
       console.error('[useUpdateOrderStatus] mutation error:', error);
