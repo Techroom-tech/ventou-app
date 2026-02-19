@@ -1,203 +1,175 @@
 
-# Orders System V6 Upgrade — Plan
+# Orders V6 — Dedicated Page + Stitch Premium UI
 
-## Current State Analysis
+## Current State
 
-After reading all relevant files, here is what already exists and what needs to change:
+The order detail is rendered as a `Sheet` (slide-over panel) on the right side of the `Orders.tsx` page. The user wants it replaced with:
+- A **dedicated full-page route** `/dashboard/commandes/:orderId`
+- The **exact Stitch HTML layout** converted to React — mobile-first, no overlays, no sheets
 
-**Already working (keep untouched):**
-- Pagination (page 20, prev/next buttons) — `Orders.tsx` lines 469–494
-- Status filter tabs — `Orders.tsx` lines 344–369
-- Real-time INSERT subscription — `Orders.tsx` lines 262–282
-- CSV export + bulk WhatsApp — `Orders.tsx` lines 37–87
-- Context menu (right-click/long press) quick status change — `Orders.tsx` lines 90–130
-- `OrderDetailPanel` with WhatsApp, phone, Maps, print receipt — fully implemented
-- `useUpdateOrderStatus` with `shop_id` security guard — `useOrders.ts` lines 94–99
-- Repeat customer badge — `OrderCard` and desktop table
-
-**What needs to be built:**
-
-1. **New order status enum** — add `archived` to `OrderStatus` type + `ORDER_TRANSITIONS`
-2. **Soft delete / archive** — add `is_archived` column to `orders` table (SQL migration), hide from default list, add "Archive" action
-3. **Order status log table** — `order_status_logs` table (SQL migration) + auto-insert on every status change
-4. **"New" badge** — orders < 10 minutes old get a pulsing badge in the list
-5. **Seller internal note** — save note to DB via a `seller_note` column on `orders`
-6. **Order timeline** — fetch and display `order_status_logs` in `OrderDetailPanel`
-7. **Full dropdown workflow** — replace the 2-button system in `OrderDetailPanel` with a proper dropdown that shows all valid next states per status
-8. **Updated status colors** — `preparing` → purple (currently orange), `shipping` → brown/amber (currently purple)
-9. **WhatsApp icon in list** — show WhatsApp icon for `payment_method = 'whatsapp'` orders
+All existing logic (status update, timeline, notes, CSV export, real-time, pagination) is preserved. Only the detail **presentation layer** changes.
 
 ---
 
-## SQL to Run First (Supabase SQL Editor)
+## What Changes
 
-```sql
--- 1. Add archived status to the orders status check (if it exists as a check constraint)
--- Add is_archived soft-delete column
-ALTER TABLE public.orders
-  ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS seller_note text;
-
--- 2. Create order_status_logs table
-CREATE TABLE IF NOT EXISTS public.order_status_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-  old_status text NOT NULL,
-  new_status text NOT NULL,
-  changed_at timestamptz NOT NULL DEFAULT now(),
-  changed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL
-);
-
-ALTER TABLE public.order_status_logs ENABLE ROW LEVEL SECURITY;
-
--- Vendors can read logs for their shop's orders
-CREATE POLICY "owner_read_order_logs" ON public.order_status_logs
-  FOR SELECT USING (
-    order_id IN (
-      SELECT id FROM public.orders
-      WHERE shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-    )
-  );
-
--- Vendors can insert logs (triggered on status change from client)
-CREATE POLICY "owner_insert_order_logs" ON public.order_status_logs
-  FOR INSERT WITH CHECK (
-    order_id IN (
-      SELECT id FROM public.orders
-      WHERE shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-    )
-  );
-
--- Index for performance
-CREATE INDEX IF NOT EXISTS idx_order_status_logs_order_id
-  ON public.order_status_logs(order_id);
-CREATE INDEX IF NOT EXISTS idx_orders_is_archived
-  ON public.orders(is_archived);
-```
+| Item | Current | New |
+|---|---|---|
+| Order detail UI | `<Sheet>` slide-over | Dedicated page `/dashboard/commandes/:orderId` |
+| Route | Only `/dashboard/orders` exists | Add `/dashboard/commandes/:orderId` |
+| Navigation | `setSelectedOrder(order)` state | `navigate('/dashboard/commandes/' + order.id)` |
+| Detail panel file | `OrderDetailPanel.tsx` (Sheet-based) | New `OrderDetailPage.tsx` full-page component |
+| Orders list | Opens sheet on row click | Navigates to detail page |
+| Header | Inside sheet | Sticky breadcrumb + order number + badge + print + 3-dots |
+| Timeline | Horizontal bubble row | Stitch-style: numbered circles, connector lines, EN ATTENTE at step 1 |
+| CTA Buttons | Mixed inside card | Large primary CTA "Confirmer la commande" + WhatsApp + Appeler below timeline |
+| Articles | Table inside sheet | Card with product list (icon, name, variant, qty, total) |
+| Notes | Notes list + add input | Yellow sticky-note style cards + input at bottom |
+| Financials | Basic list | Sous-total / Livraison (badge) / Remise / Total bold / Marge estimée |
+| Customer card | Small card | Avatar initials + Verified badge + Client Fidèle + stats grid + contact items |
+| History | Vertical timeline | Compact action list "Note ajoutée", "Commande créée" with times |
 
 ---
 
-## Files to Modify
+## SQL Required (run before or it already exists)
 
-| File | Changes |
-|---|---|
-| `src/types/shop.ts` | Add `archived` to `OrderStatus`, update `ORDER_TRANSITIONS` |
-| `src/components/dashboard/OrderStatusBadge.tsx` | Add `archived` style, fix `preparing` color (purple), fix `shipping` color (brown) |
-| `src/hooks/useOrders.ts` | Filter out archived by default, add `useOrderStatusLog` mutation (inserts log row), add `useOrderTimeline` query, add `useUpdateSellerNote` mutation |
-| `src/components/dashboard/OrderDetailPanel.tsx` | Replace 2-button system with dropdown, add timeline section, add seller note field, add "New" badge logic |
-| `src/pages/Orders.tsx` | Add "New" badge (< 10 min), add WhatsApp icon for whatsapp orders, add `is_archived` filter, add `archived` tab |
-| `src/i18n/locales/fr.json` | Add `archived` status key, `sellerNote`, `timeline` keys |
-| `src/i18n/locales/en.json` | Same in English |
+The `order_status_logs` and `seller_note` column were already created in the previous migration. No new SQL is needed for this phase.
 
 ---
 
-## Detailed Changes
+## Files to Create / Modify
 
-### 1. `src/types/shop.ts`
+### New File: `src/pages/OrderDetail.tsx`
 
-Add `'archived'` to `OrderStatus`:
-```ts
-export type OrderStatus =
-  | 'pending' | 'confirmed' | 'preparing'
-  | 'shipping' | 'delivered' | 'cancelled' | 'archived';
+Full-page order detail in the Stitch premium style. Built with:
+- `useParams` to get `orderId`
+- Data fetched from Supabase: order by id, `useOrderTimeline`, `useRepeatCustomers`
+- All real actions: status transitions, notes, WhatsApp, print
 
-export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending:   ['confirmed', 'cancelled'],
-  confirmed: ['preparing', 'cancelled'],
-  preparing: ['shipping'],
-  shipping:  ['delivered'],
-  delivered: ['archived'],
-  cancelled: ['archived'],
-  archived:  [],
-};
+**Layout structure:**
+```text
+<DashboardLayout>
+  ├── Sticky Header (breadcrumb + order# + badge + print + 3-dots)
+  ├── Horizontal Timeline (EN_ATTENTE → CONFIRMÉE → PRÉPARATION → LIVRAISON → LIVRÉE)
+  ├── Action Buttons Row (primary CTA + WhatsApp + Appeler + Maps)
+  ├── Articles Card (table: product icon, name/variant, qty, total)
+  ├── Notes Internes Card (yellow notes list + add input)
+  ├── Détails Financiers Card (subtotal, delivery, discount, total bold, marge)
+  ├── Customer Card (avatar, badges, stats grid 2col, phone/email/address)
+  └── Historique Card (vertical event list)
 ```
 
-### 2. `src/components/dashboard/OrderStatusBadge.tsx`
+**Mobile:** All sections stack vertically, CTA is sticky at bottom on mobile.
 
-Corrected color system:
-- `pending` → orange (keep)
-- `confirmed` → blue (keep)
-- `preparing` → **purple** (was orange/red)
-- `shipping` → **brown/amber** (was purple)
-- `delivered` → green (keep)
-- `cancelled` → red (keep)
-- `archived` → **gray** (new)
+**Desktop:** All sections in a single column with generous padding (max-w-3xl centered).
 
-### 3. `src/hooks/useOrders.ts`
+### Modified: `src/App.tsx`
 
-- `useOrders` query: add `.eq('is_archived', false)` by default (unless `includeArchived` flag passed)
-- `useOrderCounts`: same filter
-- `useUpdateOrderStatus` mutation: after status update, insert a row into `order_status_logs` in the same mutation fn
-- New `useOrderTimeline(orderId)`: fetches `order_status_logs` for a given order, ordered by `changed_at`
-- New `useUpdateSellerNote()`: mutation to update `seller_note` on an order
-
-### 4. `src/components/dashboard/OrderDetailPanel.tsx`
-
-**Replace** the existing 2-button "Mettre à jour le statut" section with a proper action **dropdown**:
-
-```
-[ ▼ Actions ] → dropdown showing all valid next statuses
-               + "Annuler" if applicable
-               + "Archiver" if applicable
+Add new route:
+```tsx
+<Route
+  path="/dashboard/commandes/:orderId"
+  element={
+    <ProtectedRoute><DashboardGuard>
+      <OrderDetail />
+    </DashboardGuard></ProtectedRoute>
+  }
+/>
 ```
 
-Each item in the dropdown matches the transitions defined in `ORDER_TRANSITIONS`.
+### Modified: `src/pages/Orders.tsx`
 
-**Add** below the payment section:
-- **Seller Note** field: `<Textarea>` pre-filled with `order.seller_note`, saves on blur via `useUpdateSellerNote`
-- **Timeline** section: fetches `order_status_logs`, displays a vertical timeline with status name, date/time, and "changed by"
+- Import `useNavigate` from `react-router-dom`
+- Replace `setSelectedOrder(order)` calls with `navigate('/dashboard/commandes/' + order.id)`
+- Remove `selectedOrder` state, `<OrderDetailPanel>` render at the bottom
+- Keep everything else untouched (tabs, search, pagination, CSV, bulk WA, real-time, context menu)
 
-**"New" badge** in the panel header if order is < 10 minutes old.
+### Keep Untouched
 
-### 5. `src/pages/Orders.tsx`
+- `src/components/dashboard/OrderDetailPanel.tsx` — kept but no longer rendered from Orders.tsx. Can be removed later if desired, but not touched now.
+- All hooks: `useOrders`, `useOrderTimeline`, `useUpdateOrderStatus`, `useUpdateSellerNote`, `useRepeatCustomers`
+- All types in `src/types/shop.ts`
+- Storefront, product system, auth — zero changes
 
-- Add `archived` to `STATUS_TABS` array
-- In `OrderCard` and desktop table: add a pulsing `NEW` badge if `Date.now() - new Date(order.created_at) < 10 * 60 * 1000`
-- In `OrderCard`: add `<MessageCircle className="h-3 w-3 text-green-600" />` icon next to payment badge when `order.payment_method === 'whatsapp'`
-- The query already excludes archived by default (from hook change above)
+---
 
-### 6. i18n
+## Component Details: `OrderDetail.tsx`
 
-Add to `orders.status`:
-```json
-"archived": "Archivée"
+### Data Loading
+
+```tsx
+const { orderId } = useParams();
+// fetch order from supabase by id (with shop_id guard matching user's shop)
+// fetch timeline via useOrderTimeline(orderId)
+// fetch repeat customer status via useRepeatCustomers(shopId)
+// loading skeleton while fetching
+// error state if order not found or not authorized
 ```
-Add to `orders.detail`:
-```json
-"sellerNote": "Note interne",
-"sellerNotePlaceholder": "Visible seulement par vous...",
-"timeline": "Historique",
-"newBadge": "NOUVEAU",
-"archive": "Archiver"
-```
+
+### Status Timeline (Stitch style)
+
+- Steps: `EN_ATTENTE (1)` → `CONFIRMÉE (2)` → `PRÉPARATION (3)` → `LIVRAISON (4)` → `LIVRÉE (5)`
+- Active step: orange filled circle + orange label + timestamp below
+- Past steps: green with checkmark icon
+- Future steps: gray numbered circle
+- Connecting lines between dots
+- If `cancelled`: show red alternative bar
+- Each step is a `<button>` — clicking the **next valid step** triggers status update
+
+### Primary CTA Button
+
+Dynamically rendered based on `ORDER_TRANSITIONS[order.status]`:
+- `pending` → "✓ Confirmer la commande" (orange fill)
+- `confirmed` → "📦 Mettre en préparation" (orange fill)
+- `preparing` → "🚚 Marquer en livraison" (orange fill)
+- `shipping` → "✓ Marquer livrée" (orange fill)
+- `delivered` / `archived` → no primary CTA
+- Always show "Annuler" as secondary if allowed by transitions
+
+### Notes System
+
+Each note stored in `seller_note` via the `[ISO_DATE] text\n---\n` format already implemented. UI shows:
+- Yellow card per note: text in quotes, "Par [shop name] · Date HH:mm"
+- Input row at bottom with orange send icon
+
+### Financial Card
+
+- Sous-total: computed from items
+- Livraison: `LIVRAISON` badge + fee (or "—" if unknown)
+- Remise: `-0 CFA` (placeholder until discount system exists)
+- **TOTAL À PAYER** in large bold
+- Marge estimée (eye-off icon, seller-only): `+ XX,XXX CFA` in green
+
+### Customer Card
+
+- Large initials avatar (orange bg)
+- Name + verified checkmark
+- `CLIENT FIDÈLE` badge (green) or `NOUVEAU CLIENT` badge
+- Stats grid: `Commandes: N` | `Dépensé: X.XM`
+- Contact rows: Phone (with `>` arrow), Email, Address + notes in italic
+- Google Maps embed placeholder + "Voir la carte" button if `location_url` exists
+
+### History Section
+
+- "Commande créée — Via Boutique en ligne — HH:mm"
+- Each `order_status_logs` entry: "Statut mis à jour → [new status] — HH:mm"
+- Each note event (if stored separately in future)
+- "Voir tout l'historique" expander
 
 ---
 
 ## Implementation Order
 
-```
-Step 1: Update src/types/shop.ts — add archived status + transitions
-Step 2: Update src/components/dashboard/OrderStatusBadge.tsx — add archived, fix colors
-Step 3: Update src/hooks/useOrders.ts — archive filter, log mutation, timeline query, note mutation
-Step 4: Update src/components/dashboard/OrderDetailPanel.tsx — dropdown, timeline, seller note
-Step 5: Update src/pages/Orders.tsx — NEW badge, WhatsApp icon, archived tab
-Step 6: Update i18n fr.json + en.json — new keys
-```
+1. Create `src/pages/OrderDetail.tsx` — full Stitch-style page
+2. Modify `src/App.tsx` — add the `/dashboard/commandes/:orderId` route
+3. Modify `src/pages/Orders.tsx` — replace panel with `navigate()` calls
 
 ---
 
-## What Is NOT Changed
+## What is NOT Changed
 
-- All existing routes — untouched
-- Storefront, checkout, product system — untouched
-- Real-time subscription logic — untouched (already works)
-- CSV export, bulk WhatsApp — untouched
-- Pagination system — untouched
-- `useShop`, `AuthContext`, `DashboardGuard` — untouched
-- Print receipt — untouched
-
----
-
-## SQL Required Before Implementation
-
-Please run the SQL above in Supabase (SQL Editor > New Query) to add `is_archived`, `seller_note`, and create `order_status_logs` before clicking Approve. Once confirmed, implementation begins immediately.
+- Storefront checkout, product management, auth — zero changes
+- `useOrders`, `useOrderTimeline`, `useUpdateOrderStatus`, `useUpdateSellerNote` hooks — untouched
+- `OrderStatusBadge`, `OrderContextMenu`, CSV export, bulk WhatsApp — untouched
+- Pagination, search, real-time subscription — untouched
+- `OrderDetailPanel.tsx` — not deleted (can coexist), just not rendered
