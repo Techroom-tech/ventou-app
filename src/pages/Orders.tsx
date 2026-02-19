@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -8,7 +9,6 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
-import { OrderDetailPanel } from '@/components/dashboard/OrderDetailPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -232,6 +232,7 @@ function OrderSkeletons() {
 export default function Orders() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'fr' ? fr : undefined;
+  const navigate = useNavigate();
   const { shop } = useShop();
   const shopId = shop?.id;
   const currencyCode = shop?.currency ?? 'XOF';
@@ -240,7 +241,6 @@ export default function Orders() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(0);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -398,7 +398,7 @@ export default function Orders() {
                 <OrderCard
                   key={order.id}
                   order={order}
-                  onView={() => setSelectedOrder(order)}
+                  onView={() => navigate(`/dashboard/commandes/${order.id}`)}
                   isRepeat={isRepeat(order)}
                   shopId={shopId ?? ''}
                 />
@@ -433,7 +433,7 @@ export default function Orders() {
                               'hover:bg-secondary/30 transition-colors',
                               idx % 2 === 0 ? '' : 'bg-secondary/10'
                             )}
-                            onClick={() => setSelectedOrder(order)}
+                            onClick={() => navigate(`/dashboard/commandes/${order.id}`)}
                           >
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1.5">
@@ -441,7 +441,7 @@ export default function Orders() {
                                 {(() => {
                                   const isNew = Date.now() - new Date(order.created_at).getTime() < 10 * 60 * 1000;
                                   return isNew ? (
-                                    <Badge className="animate-pulse bg-[hsl(38,92%,50%)] text-white border-0 text-[9px] px-1 py-0">
+                                    <Badge className="animate-pulse bg-primary text-primary-foreground border-0 text-[9px] px-1 py-0">
                                       NEW
                                     </Badge>
                                   ) : null;
@@ -464,7 +464,7 @@ export default function Orders() {
                                   {order.payment_method === 'cod' ? '💵 Livraison' : order.payment_method ?? 'N/A'}
                                 </Badge>
                                 {order.payment_method === 'whatsapp' && (
-                                  <MessageCircle className="h-3.5 w-3.5 text-[hsl(142,76%,36%)]" />
+                                  <MessageCircle className="h-3.5 w-3.5 text-green-600" />
                                 )}
                               </div>
                             </td>
@@ -478,7 +478,7 @@ export default function Orders() {
                               <Button
                                 variant="ghost" size="sm"
                                 className="h-7 text-xs text-primary hover:bg-primary/5"
-                                onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
+                                onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/commandes/${order.id}`); }}
                               >
                                 Voir →
                               </Button>
@@ -522,15 +522,6 @@ export default function Orders() {
         )}
       </div>
 
-      {/* Order detail panel */}
-      <OrderDetailPanel
-        order={selectedOrder}
-        shopId={shopId ?? ''}
-        currencyCode={currencyCode}
-        isOpen={!!selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-        isRepeatCustomer={selectedOrder ? isRepeat(selectedOrder) : false}
-      />
     </DashboardLayout>
   );
 }
