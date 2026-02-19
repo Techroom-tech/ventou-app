@@ -528,7 +528,9 @@
     "noDescription": "No description available.",
     "selectPayment": "Choose your payment method",
     "orderConfirmed": "Order confirmed!",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "countrySelector": "Choose your country",
+    "phonePrefix": "Country code"
   },
   "footer": {
     "copyright": "© 2024 VENTOU. All rights reserved.",
