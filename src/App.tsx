@@ -23,10 +23,12 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Products = lazy(() => import("./pages/Products"));
 const AddProduct = lazy(() => import("./pages/AddProduct"));
+const EditProduct = lazy(() => import("./pages/EditProduct"));
 const Orders = lazy(() => import("./pages/Orders"));
 const CreateShop = lazy(() => import("./pages/CreateShop"));
 const About = lazy(() => import("./pages/About"));
 const Support = lazy(() => import("./pages/Support"));
+const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
 const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
@@ -127,6 +129,22 @@ const App = () => {
               element={
                 <ProtectedRoute><DashboardGuard>
                   <ShopCreatedSuccess />
+                </DashboardGuard></ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/products/:id/edit"
+              element={
+                <ProtectedRoute><DashboardGuard>
+                  <EditProduct />
+                </DashboardGuard></ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/settings"
+              element={
+                <ProtectedRoute><DashboardGuard>
+                  <Settings />
                 </DashboardGuard></ProtectedRoute>
               }
             />

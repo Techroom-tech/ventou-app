@@ -508,6 +508,8 @@
     "locationUrl": "Lien de localisation (ex: Google Maps)",
     "paymentMethod": "Mode de paiement",
     "cod": "Paiement à la livraison",
+    "subtotal": "Sous-total",
+    "deliveryFee": "Frais de livraison",
     "orderSummary": "Résumé de commande",
     "confirmOrder": "Confirmer la commande",
     "orderSuccess": "Commande envoyée !",
