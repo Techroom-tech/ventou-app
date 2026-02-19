@@ -9,11 +9,12 @@ interface UseOrdersOptions {
   status?: OrderStatus | 'all';
   search?: string;
   page?: number;
+  includeArchived?: boolean;
 }
 
-export function useOrders({ shopId, status, search, page = 0 }: UseOrdersOptions) {
+export function useOrders({ shopId, status, search, page = 0, includeArchived = false }: UseOrdersOptions) {
   return useQuery({
-    queryKey: ['orders', shopId, status, search, page],
+    queryKey: ['orders', shopId, status, search, page, includeArchived],
     queryFn: async () => {
       if (!shopId) return { orders: [], total: 0 };
 
@@ -23,6 +24,11 @@ export function useOrders({ shopId, status, search, page = 0 }: UseOrdersOptions
         .eq('shop_id', shopId)
         .order('created_at', { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+
+      // Hide archived orders by default unless explicitly requested
+      if (!includeArchived) {
+        query = query.eq('is_archived', false);
+      }
 
       if (status && status !== 'all') {
         query = query.eq('status', status);
@@ -55,8 +61,9 @@ export function useOrderCounts(shopId: string | undefined) {
 
       const { data, error } = await supabase
         .from('orders')
-        .select('status')
-        .eq('shop_id', shopId);
+        .select('status, is_archived')
+        .eq('shop_id', shopId)
+        .eq('is_archived', false);
 
       if (error) throw error;
 
@@ -91,17 +98,96 @@ export function useUpdateOrderStatus() {
         throw new Error(`Transition invalide: ${currentStatus} → ${newStatus}`);
       }
 
-      const { error } = await supabase
+      // Update the order status
+      const { error: updateError } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({
+          status: newStatus,
+          // If archiving, also set is_archived flag
+          ...(newStatus === 'archived' ? { is_archived: true } : {}),
+        })
         .eq('id', orderId)
         .eq('shop_id', shopId); // security: never touch other shops
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('[useUpdateOrderStatus] update error:', updateError);
+        throw updateError;
+      }
+
+      // Insert status log (best-effort, don't block on failure)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('order_status_logs').insert({
+          order_id: orderId,
+          old_status: currentStatus,
+          new_status: newStatus,
+          changed_by: user?.id ?? null,
+        });
+      } catch (logErr) {
+        console.warn('[useUpdateOrderStatus] log insert failed (non-blocking):', logErr);
+      }
     },
     onSuccess: (_data, { shopId }) => {
       queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
       queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+    },
+    onError: (error) => {
+      console.error('[useUpdateOrderStatus] mutation error:', error);
+    },
+  });
+}
+
+// Fetch status change timeline for a specific order
+export function useOrderTimeline(orderId: string | undefined) {
+  return useQuery({
+    queryKey: ['order-timeline', orderId],
+    queryFn: async () => {
+      if (!orderId) return [];
+
+      const { data, error } = await supabase
+        .from('order_status_logs')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('changed_at', { ascending: true });
+
+      if (error) {
+        console.error('[useOrderTimeline] error:', error);
+        throw error;
+      }
+      return data ?? [];
+    },
+    enabled: !!orderId,
+    staleTime: 10_000,
+  });
+}
+
+// Update seller internal note on an order
+export function useUpdateSellerNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      shopId,
+      note,
+    }: {
+      orderId: string;
+      shopId: string;
+      note: string;
+    }) => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ seller_note: note })
+        .eq('id', orderId)
+        .eq('shop_id', shopId);
+
+      if (error) {
+        console.error('[useUpdateSellerNote] error:', error);
+        throw error;
+      }
+    },
+    onSuccess: (_data, { shopId }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
     },
   });
 }

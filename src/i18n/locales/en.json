@@ -552,7 +552,8 @@
       "preparing": "Preparing",
       "shipping": "Shipping",
       "delivered": "Delivered",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "archived": "Archived"
     },
     "detail": {
       "title": "Order detail",
@@ -564,6 +565,11 @@
       "total": "Total",
       "paymentMethod": "Payment method",
       "updateStatus": "Update status",
+      "sellerNote": "Internal note",
+      "sellerNotePlaceholder": "Visible only to you...",
+      "timeline": "History",
+      "newBadge": "NEW",
+      "archive": "Archive",
       "actions": {
         "confirm": "Confirm order",
         "prepare": "Start preparing",
