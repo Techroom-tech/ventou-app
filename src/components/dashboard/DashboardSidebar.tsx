@@ -19,7 +19,7 @@ const fullNavItems = [
   { key: 'orders', icon: ShoppingCart, path: '/dashboard/orders' },
   { key: 'customers', icon: Users, path: '/dashboard/customers' },
   { key: 'marketing', icon: Megaphone, path: '/dashboard/marketing' },
-  { key: 'settings', icon: Settings, path: '/dashboard/settings' },
+  { key: 'settings', icon: Settings, path: '/dashboard/parametres' },
 ];
 
 const onboardingNavItems = [
@@ -49,8 +49,8 @@ export function DashboardSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path || 
-            (item.path === '/dashboard' && location.pathname === '/dashboard');
+          const isActive = location.pathname === item.path ||
+            (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
           return (
             <Link
               key={item.key}

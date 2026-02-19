@@ -29,6 +29,21 @@ const CreateShop = lazy(() => import("./pages/CreateShop"));
 const About = lazy(() => import("./pages/About"));
 const Support = lazy(() => import("./pages/Support"));
 const Settings = lazy(() => import("./pages/Settings"));
+const SettingsHub = lazy(() => import("./pages/settings/SettingsHub"));
+const SettingsIdentite = lazy(() => import("./pages/settings/SettingsIdentite"));
+const SettingsDomaine = lazy(() => import("./pages/settings/SettingsDomaine"));
+const SettingsApparence = lazy(() => import("./pages/settings/SettingsApparence"));
+const SettingsLivraison = lazy(() => import("./pages/settings/SettingsLivraison"));
+const SettingsPaiement = lazy(() => import("./pages/settings/SettingsPaiement"));
+const SettingsCodesPromo = lazy(() => import("./pages/settings/SettingsCodesPromo"));
+const SettingsSeo = lazy(() => import("./pages/settings/SettingsSeo"));
+const SettingsPixels = lazy(() => import("./pages/settings/SettingsPixels"));
+const SettingsNotifications = lazy(() => import("./pages/settings/SettingsNotifications"));
+const SettingsSupport = lazy(() => import("./pages/settings/SettingsSupport"));
+const SettingsProfil = lazy(() => import("./pages/settings/SettingsProfil"));
+const SettingsEquipe = lazy(() => import("./pages/settings/SettingsEquipe"));
+const SettingsFacturation = lazy(() => import("./pages/settings/SettingsFacturation"));
+const SettingsApi = lazy(() => import("./pages/settings/SettingsApi"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
 const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
@@ -149,6 +164,22 @@ const App = () => {
                 </DashboardGuard></ProtectedRoute>
               }
             />
+            {/* Settings V6 routes */}
+            <Route path="/dashboard/parametres" element={<ProtectedRoute><DashboardGuard><SettingsHub /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/identite" element={<ProtectedRoute><DashboardGuard><SettingsIdentite /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/domaine" element={<ProtectedRoute><DashboardGuard><SettingsDomaine /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/apparence" element={<ProtectedRoute><DashboardGuard><SettingsApparence /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/livraison" element={<ProtectedRoute><DashboardGuard><SettingsLivraison /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/paiement" element={<ProtectedRoute><DashboardGuard><SettingsPaiement /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/codes-promo" element={<ProtectedRoute><DashboardGuard><SettingsCodesPromo /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/seo" element={<ProtectedRoute><DashboardGuard><SettingsSeo /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/pixels" element={<ProtectedRoute><DashboardGuard><SettingsPixels /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/notifications" element={<ProtectedRoute><DashboardGuard><SettingsNotifications /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/support" element={<ProtectedRoute><DashboardGuard><SettingsSupport /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/profil" element={<ProtectedRoute><DashboardGuard><SettingsProfil /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/equipe" element={<ProtectedRoute><DashboardGuard><SettingsEquipe /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/facturation" element={<ProtectedRoute><DashboardGuard><SettingsFacturation /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/parametres/api" element={<ProtectedRoute><DashboardGuard><SettingsApi /></DashboardGuard></ProtectedRoute>} />
             <Route
               path="/dashboard/commandes/:orderId"
               element={
