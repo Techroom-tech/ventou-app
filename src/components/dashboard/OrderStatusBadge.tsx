@@ -6,10 +6,11 @@ import type { OrderStatus } from '@/types/shop';
 const statusStyles: Record<OrderStatus, string> = {
   pending:   'bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,40%)] border-[hsl(38,92%,50%)]/30',
   confirmed: 'bg-[hsl(212,52%,24%)]/10 text-[hsl(212,52%,30%)] border-[hsl(212,52%,24%)]/30',
-  preparing: 'bg-[hsl(17,100%,60%)]/10 text-[hsl(17,100%,45%)] border-[hsl(17,100%,60%)]/30',
-  shipping:  'bg-[hsl(260,60%,55%)]/10 text-[hsl(260,60%,45%)] border-[hsl(260,60%,55%)]/30',
+  preparing: 'bg-[hsl(260,60%,55%)]/10 text-[hsl(260,60%,45%)] border-[hsl(260,60%,55%)]/30',
+  shipping:  'bg-[hsl(30,60%,40%)]/10 text-[hsl(30,60%,32%)] border-[hsl(30,60%,40%)]/30',
   delivered: 'bg-[hsl(142,76%,36%)]/10 text-[hsl(142,76%,30%)] border-[hsl(142,76%,36%)]/30',
   cancelled: 'bg-destructive/10 text-destructive border-destructive/30',
+  archived:  'bg-muted text-muted-foreground border-border',
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

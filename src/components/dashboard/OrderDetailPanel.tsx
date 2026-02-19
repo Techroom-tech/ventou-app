@@ -1,17 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow, addDays, differenceInHours } from 'date-fns';
+import { formatDistanceToNow, format, addDays, differenceInHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   Phone, MapPin, ExternalLink, MessageCircle, Printer,
-  Package, Clock, ChevronRight, Timer,
+  Package, Clock, Timer, ChevronDown, FileText, History,
+  CheckCircle2, XCircle, Archive,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { OrderStatusBadge } from './OrderStatusBadge';
-import { useUpdateOrderStatus } from '@/hooks/useOrders';
+import { useUpdateOrderStatus, useOrderTimeline, useUpdateSellerNote } from '@/hooks/useOrders';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { Order, OrderStatus, ORDER_TRANSITIONS } from '@/types/shop';
 import { toast } from 'sonner';
@@ -98,23 +107,21 @@ function printReceipt(order: Order, currencyCode: string) {
   }
 }
 
-// --- Action button label map ---
-const ACTION_LABELS: Record<OrderStatus, string> = {
-  pending:   'Confirmer la commande',
-  confirmed: 'Passer en préparation',
-  preparing: 'Marquer expédiée',
-  shipping:  'Marquer livrée',
-  delivered: '',
-  cancelled: '',
+// Labels for each forward transition
+const TRANSITION_LABELS: Record<OrderStatus, string> = {
+  pending:   'En attente',
+  confirmed: 'Confirmer la commande',
+  preparing: 'Passer en préparation',
+  shipping:  'Marquer expédiée',
+  delivered: 'Marquer livrée',
+  cancelled: 'Annuler la commande',
+  archived:  'Archiver',
 };
 
-const ACTION_NEXT: Record<OrderStatus, OrderStatus | null> = {
-  pending:   'confirmed',
-  confirmed: 'preparing',
-  preparing: 'shipping',
-  shipping:  'delivered',
-  delivered: null,
-  cancelled: null,
+const TRANSITION_ICONS: Partial<Record<OrderStatus, React.ReactNode>> = {
+  cancelled: <XCircle className="h-3.5 w-3.5 text-destructive" />,
+  archived:  <Archive className="h-3.5 w-3.5 text-muted-foreground" />,
+  delivered: <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(142,76%,36%)]" />,
 };
 
 interface OrderDetailPanelProps {
@@ -132,18 +139,31 @@ export function OrderDetailPanel({
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'fr' ? fr : undefined;
   const updateStatus = useUpdateOrderStatus();
+  const updateNote = useUpdateSellerNote();
   const [estimatedDays, setEstimatedDays] = useState(2);
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  const [noteValue, setNoteValue] = useState('');
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync note value when order changes
+  useEffect(() => {
+    if (order) {
+      setNoteValue((order as Order & { seller_note?: string }).seller_note ?? '');
+    }
+  }, [order?.id]);
+
+  const { data: timeline = [] } = useOrderTimeline(order?.id);
 
   if (!order) return null;
 
   const phone = order.phone ?? order.customer_phone ?? '';
   const total = order.total_amount ?? order.total ?? 0;
   const items = (Array.isArray(order.items) ? order.items : []) as Record<string, unknown>[];
-  const nextStatus = ACTION_NEXT[order.status];
-  const canCancel = ORDER_TRANSITIONS[order.status].includes('cancelled');
+  const nextStatuses = ORDER_TRANSITIONS[order.status] ?? [];
   const orderNum = order.order_number ?? `#${order.id.slice(0, 8).toUpperCase()}`;
   const estimatedDate = addDays(new Date(order.created_at), estimatedDays);
+
+  // NEW badge: order < 10 minutes old
+  const isNew = Date.now() - new Date(order.created_at).getTime() < 10 * 60 * 1000;
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     try {
@@ -156,6 +176,16 @@ export function OrderDetailPanel({
       toast.success(`Statut mis à jour → ${t(`orders.status.${newStatus}`, newStatus)}`);
     } catch (e: unknown) {
       toast.error((e as Error).message ?? 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleNoteSave = async () => {
+    if (!order) return;
+    try {
+      await updateNote.mutateAsync({ orderId: order.id, shopId, note: noteValue });
+      toast.success('Note enregistrée');
+    } catch {
+      toast.error('Erreur lors de la sauvegarde de la note');
     }
   };
 
@@ -177,9 +207,16 @@ export function OrderDetailPanel({
         {/* Header */}
         <SheetHeader className="px-4 pt-4 pb-3 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-base font-bold">
-              Commande {orderNum}
-            </SheetTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <SheetTitle className="text-base font-bold">
+                Commande {orderNum}
+              </SheetTitle>
+              {isNew && (
+                <Badge className="animate-pulse bg-[hsl(38,92%,50%)] text-white border-0 text-[9px] px-1.5 py-0">
+                  NOUVEAU
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <OrderStatusBadge status={order.status} />
               <Button
@@ -213,7 +250,7 @@ export function OrderDetailPanel({
                 )}
               </div>
               {phone && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <a href={`tel:${phone}`} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
                     <Phone className="h-3.5 w-3.5" /> {phone}
                   </a>
@@ -319,7 +356,7 @@ export function OrderDetailPanel({
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" /> Livraison estimée
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <DeliveryCountdown estimatedDate={estimatedDate} />
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>Délai :</span>
@@ -340,38 +377,122 @@ export function OrderDetailPanel({
 
           <Separator />
 
-          {/* Status Actions */}
+          {/* Status Actions — Dynamic Dropdown */}
           <div className="px-4 py-4 space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Mettre à jour le statut
             </h3>
-            <div className="flex flex-col gap-2">
-              {nextStatus && (
-                <Button
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10"
-                  onClick={() => handleStatusUpdate(nextStatus)}
-                  disabled={updateStatus.isPending}
-                >
-                  <ChevronRight className="h-4 w-4 mr-2" />
-                  {ACTION_LABELS[order.status]}
-                </Button>
-              )}
-              {canCancel && (
-                <Button
-                  variant="outline"
-                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/5 h-10"
-                  onClick={() => handleStatusUpdate('cancelled')}
-                  disabled={updateStatus.isPending}
-                >
-                  Annuler la commande
-                </Button>
-              )}
-              {!nextStatus && !canCancel && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  {order.status === 'delivered' ? '✅ Commande livrée — statut final' : '❌ Commande annulée'}
-                </p>
-              )}
-            </div>
+            {nextStatuses.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="w-full h-10"
+                    disabled={updateStatus.isPending}
+                  >
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Actions disponibles
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="start">
+                  {nextStatuses
+                    .filter(s => s !== 'cancelled' && s !== 'archived')
+                    .map(s => (
+                      <DropdownMenuItem
+                        key={s}
+                        onClick={() => handleStatusUpdate(s)}
+                        className="gap-2 cursor-pointer"
+                      >
+                        {TRANSITION_ICONS[s]}
+                        {TRANSITION_LABELS[s]}
+                      </DropdownMenuItem>
+                    ))
+                  }
+                  {(nextStatuses.includes('cancelled') || nextStatuses.includes('archived')) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {nextStatuses.includes('cancelled') && (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate('cancelled')}
+                          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          Annuler la commande
+                        </DropdownMenuItem>
+                      )}
+                      {nextStatuses.includes('archived') && (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate('archived')}
+                          className="gap-2 cursor-pointer text-muted-foreground"
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                          Archiver
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                {order.status === 'delivered' && '✅ Commande livrée'}
+                {order.status === 'cancelled' && '❌ Commande annulée'}
+                {order.status === 'archived' && '📦 Commande archivée'}
+              </p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Seller Internal Note */}
+          <div className="px-4 py-4 space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> Note interne
+            </h3>
+            <Textarea
+              ref={noteRef}
+              value={noteValue}
+              onChange={e => setNoteValue(e.target.value)}
+              onBlur={handleNoteSave}
+              placeholder="Visible seulement par vous..."
+              className="text-sm resize-none min-h-[72px] bg-secondary/40 border-border/60"
+            />
+            <p className="text-[10px] text-muted-foreground">Sauvegardé automatiquement quand vous quittez le champ.</p>
+          </div>
+
+          <Separator />
+
+          {/* Order Timeline */}
+          <div className="px-4 py-4 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <History className="h-3.5 w-3.5" /> Historique
+            </h3>
+            {timeline.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Aucun historique disponible.</p>
+            ) : (
+              <div className="relative pl-4 space-y-3">
+                {/* vertical line */}
+                <div className="absolute left-1.5 top-1 bottom-1 w-px bg-border" />
+                {timeline.map((log, idx) => {
+                  const logAny = log as Record<string, unknown>;
+                  return (
+                    <div key={idx} className="relative flex gap-3 items-start">
+                      {/* dot */}
+                      <div className="absolute -left-[11px] mt-1 h-3 w-3 rounded-full border-2 border-primary bg-background" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <OrderStatusBadge status={logAny.old_status as OrderStatus} />
+                          <span className="text-muted-foreground text-[10px]">→</span>
+                          <OrderStatusBadge status={logAny.new_status as OrderStatus} />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {format(new Date(logAny.changed_at as string), 'dd/MM/yyyy HH:mm', { locale })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </SheetContent>

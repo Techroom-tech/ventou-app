@@ -95,7 +95,8 @@ export type OrderStatus =
   | 'preparing'
   | 'shipping'
   | 'delivered'
-  | 'cancelled';
+  | 'cancelled'
+  | 'archived';
 
 // Valid forward transitions (no backward allowed)
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -103,8 +104,9 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   confirmed: ['preparing', 'cancelled'],
   preparing: ['shipping'],
   shipping:  ['delivered'],
-  delivered: [],
-  cancelled: [],
+  delivered: ['archived'],
+  cancelled: ['archived'],
+  archived:  [],
 };
 
 export type PaymentMethod = 'MoMo' | 'Wave' | 'Orange' | 'Cash' | 'cod' | 'whatsapp';

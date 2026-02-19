@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const STATUS_TABS: Array<OrderStatus | 'all'> = [
-  'all', 'pending', 'confirmed', 'preparing', 'shipping', 'delivered', 'cancelled',
+  'all', 'pending', 'confirmed', 'preparing', 'shipping', 'delivered', 'cancelled', 'archived',
 ];
 
 const PAGE_SIZE = 20;
@@ -157,8 +157,8 @@ function OrderCard({
   const locale = i18n.language === 'fr' ? fr : undefined;
   const phone = order.phone ?? order.customer_phone ?? '';
   const total = order.total_amount ?? order.total ?? 0;
-  const [showQuickMenu, setShowQuickMenu] = useState(false);
-  const longPress = useLongPress(() => setShowQuickMenu(true));
+  const longPress = useLongPress(() => {});
+  const isNew = Date.now() - new Date(order.created_at).getTime() < 10 * 60 * 1000;
 
   return (
     <OrderContextMenu order={order} shopId={shopId}>
@@ -179,6 +179,11 @@ function OrderCard({
               {isRepeat && (
                 <span title="Client fidèle" className="text-xs">🔄</span>
               )}
+              {isNew && (
+                <Badge className="animate-pulse bg-[hsl(38,92%,50%)] text-white border-0 text-[9px] px-1.5 py-0">
+                  NOUVEAU
+                </Badge>
+              )}
             </div>
             {phone && (
               <p className="text-xs text-muted-foreground mt-0.5">{phone}</p>
@@ -197,9 +202,14 @@ function OrderCard({
         </div>
 
         {order.payment_method && (
-          <Badge variant="outline" className="mt-2 text-[10px] bg-primary/5 border-primary/20 text-primary">
-            {order.payment_method === 'cod' ? '💵 Livraison' : order.payment_method}
-          </Badge>
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/20 text-primary">
+              {order.payment_method === 'cod' ? '💵 Livraison' : order.payment_method}
+            </Badge>
+            {order.payment_method === 'whatsapp' && (
+              <span title="Commande WhatsApp"><MessageCircle className="h-3.5 w-3.5 text-[hsl(142,76%,36%)]" /></span>
+            )}
+          </div>
         )}
         <p className="text-[10px] text-muted-foreground/60 mt-2">Clic droit ou appui long pour changer le statut</p>
       </div>
@@ -243,6 +253,7 @@ export default function Orders() {
     status: activeStatus,
     search: debouncedSearch,
     page,
+    includeArchived: activeStatus === 'archived',
   });
 
   const { data: counts } = useOrderCounts(shopId);
@@ -425,7 +436,17 @@ export default function Orders() {
                             onClick={() => setSelectedOrder(order)}
                           >
                             <td className="px-4 py-3">
-                              <span className="font-mono text-xs text-muted-foreground">{orderNum}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-xs text-muted-foreground">{orderNum}</span>
+                                {(() => {
+                                  const isNew = Date.now() - new Date(order.created_at).getTime() < 10 * 60 * 1000;
+                                  return isNew ? (
+                                    <Badge className="animate-pulse bg-[hsl(38,92%,50%)] text-white border-0 text-[9px] px-1 py-0">
+                                      NEW
+                                    </Badge>
+                                  ) : null;
+                                })()}
+                              </div>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1.5">
@@ -438,9 +459,14 @@ export default function Orders() {
                               {formatCurrency(total, currencyCode as 'XOF')}
                             </td>
                             <td className="px-4 py-3">
-                              <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/20 text-primary">
-                                {order.payment_method === 'cod' ? '💵 Livraison' : order.payment_method ?? 'N/A'}
-                              </Badge>
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/20 text-primary">
+                                  {order.payment_method === 'cod' ? '💵 Livraison' : order.payment_method ?? 'N/A'}
+                                </Badge>
+                                {order.payment_method === 'whatsapp' && (
+                                  <MessageCircle className="h-3.5 w-3.5 text-[hsl(142,76%,36%)]" />
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3">
                               <OrderStatusBadge status={order.status} />
