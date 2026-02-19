@@ -1,230 +1,203 @@
 
-# Ventou — Architecture Upgrade Plan
+# Orders System V6 Upgrade — Plan
 
-## Current State Assessment
+## Current State Analysis
 
-After reviewing all relevant files, here is what already exists vs what needs to be built:
+After reading all relevant files, here is what already exists and what needs to change:
 
-**Already implemented (keep as-is):**
-- Orders list page (`/dashboard/orders`) with status filters, search, CSV export, WhatsApp bulk, real-time subscriptions, repeat customer badge, context menu for quick status updates
-- `OrderDetailPanel` with print receipt, delivery countdown, WhatsApp contact, Google Maps link, status actions
-- `OrderStatusBadge` with all 6 statuses
-- `CheckoutDrawer` with COD/WhatsApp payment selection, zod validation
-- `ProductDetailSheet` with mobile drawer + desktop 2-col layout, sticky bottom bar, description extraction utility
+**Already working (keep untouched):**
+- Pagination (page 20, prev/next buttons) — `Orders.tsx` lines 469–494
+- Status filter tabs — `Orders.tsx` lines 344–369
+- Real-time INSERT subscription — `Orders.tsx` lines 262–282
+- CSV export + bulk WhatsApp — `Orders.tsx` lines 37–87
+- Context menu (right-click/long press) quick status change — `Orders.tsx` lines 90–130
+- `OrderDetailPanel` with WhatsApp, phone, Maps, print receipt — fully implemented
+- `useUpdateOrderStatus` with `shop_id` security guard — `useOrders.ts` lines 94–99
+- Repeat customer badge — `OrderCard` and desktop table
 
-**What genuinely needs to be built:**
-1. Product Edit route (`/dashboard/products/:id/edit`) — currently "Edit" button always navigates to `/dashboard/products/new` (bug in `Products.tsx`)
-2. Order schema alignment — `orders` table currently stores items as jsonb blob; needs `order_items` separate table + `delivery_fee`, `subtotal` columns
-3. `delivery_settings` table per shop for granular fee control
-4. Checkout upgrade — add `delivery_fee` calculation, `navigator.geolocation` button, pull from `delivery_settings`
-5. Null guards in `Products.tsx` and `AddProduct.tsx` for `description_json`
+**What needs to be built:**
+
+1. **New order status enum** — add `archived` to `OrderStatus` type + `ORDER_TRANSITIONS`
+2. **Soft delete / archive** — add `is_archived` column to `orders` table (SQL migration), hide from default list, add "Archive" action
+3. **Order status log table** — `order_status_logs` table (SQL migration) + auto-insert on every status change
+4. **"New" badge** — orders < 10 minutes old get a pulsing badge in the list
+5. **Seller internal note** — save note to DB via a `seller_note` column on `orders`
+6. **Order timeline** — fetch and display `order_status_logs` in `OrderDetailPanel`
+7. **Full dropdown workflow** — replace the 2-button system in `OrderDetailPanel` with a proper dropdown that shows all valid next states per status
+8. **Updated status colors** — `preparing` → purple (currently orange), `shipping` → brown/amber (currently purple)
+9. **WhatsApp icon in list** — show WhatsApp icon for `payment_method = 'whatsapp'` orders
 
 ---
 
-## Files To Create
+## SQL to Run First (Supabase SQL Editor)
 
-| File | Purpose |
+```sql
+-- 1. Add archived status to the orders status check (if it exists as a check constraint)
+-- Add is_archived soft-delete column
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS seller_note text;
+
+-- 2. Create order_status_logs table
+CREATE TABLE IF NOT EXISTS public.order_status_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  old_status text NOT NULL,
+  new_status text NOT NULL,
+  changed_at timestamptz NOT NULL DEFAULT now(),
+  changed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
+ALTER TABLE public.order_status_logs ENABLE ROW LEVEL SECURITY;
+
+-- Vendors can read logs for their shop's orders
+CREATE POLICY "owner_read_order_logs" ON public.order_status_logs
+  FOR SELECT USING (
+    order_id IN (
+      SELECT id FROM public.orders
+      WHERE shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
+    )
+  );
+
+-- Vendors can insert logs (triggered on status change from client)
+CREATE POLICY "owner_insert_order_logs" ON public.order_status_logs
+  FOR INSERT WITH CHECK (
+    order_id IN (
+      SELECT id FROM public.orders
+      WHERE shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
+    )
+  );
+
+-- Index for performance
+CREATE INDEX IF NOT EXISTS idx_order_status_logs_order_id
+  ON public.order_status_logs(order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_is_archived
+  ON public.orders(is_archived);
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
 |---|---|
-| `src/pages/EditProduct.tsx` | Product edit page loading existing product by ID |
-| `src/hooks/useDeliverySettings.ts` | React Query hook to fetch/update `delivery_settings` |
-| `src/pages/Settings.tsx` | Delivery settings UI (placeholder route) |
-
-## Files To Modify
-
-| File | Change |
-|---|---|
-| `src/App.tsx` | Add `/dashboard/products/:id/edit` route + `/dashboard/settings` route |
-| `src/pages/Products.tsx` | Fix Edit button to navigate to `/dashboard/products/:id/edit` + add null guards |
-| `src/components/storefront/CheckoutDrawer.tsx` | Add delivery fee display, geolocation button, read from `delivery_settings` |
-| `src/i18n/locales/fr.json` | Add settings + delivery keys |
+| `src/types/shop.ts` | Add `archived` to `OrderStatus`, update `ORDER_TRANSITIONS` |
+| `src/components/dashboard/OrderStatusBadge.tsx` | Add `archived` style, fix `preparing` color (purple), fix `shipping` color (brown) |
+| `src/hooks/useOrders.ts` | Filter out archived by default, add `useOrderStatusLog` mutation (inserts log row), add `useOrderTimeline` query, add `useUpdateSellerNote` mutation |
+| `src/components/dashboard/OrderDetailPanel.tsx` | Replace 2-button system with dropdown, add timeline section, add seller note field, add "New" badge logic |
+| `src/pages/Orders.tsx` | Add "New" badge (< 10 min), add WhatsApp icon for whatsapp orders, add `is_archived` filter, add `archived` tab |
+| `src/i18n/locales/fr.json` | Add `archived` status key, `sellerNote`, `timeline` keys |
 | `src/i18n/locales/en.json` | Same in English |
 
 ---
 
-## SQL to Run in Supabase BEFORE Approving
+## Detailed Changes
 
-Run this in Supabase SQL Editor (Dashboard > SQL Editor > New Query):
+### 1. `src/types/shop.ts`
 
-```sql
--- 1. Add missing columns to orders table
-ALTER TABLE public.orders
-  ADD COLUMN IF NOT EXISTS subtotal numeric(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS delivery_fee numeric(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS customer_phone text;
-
--- 2. Create delivery_settings table
-CREATE TABLE IF NOT EXISTS public.delivery_settings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  shop_id uuid NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
-  allow_cod boolean NOT NULL DEFAULT true,
-  allow_whatsapp boolean NOT NULL DEFAULT false,
-  has_delivery_fee boolean NOT NULL DEFAULT false,
-  delivery_fee numeric(12,2) NOT NULL DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(shop_id)
-);
-
--- 3. RLS for delivery_settings
-ALTER TABLE public.delivery_settings ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "owner_read_delivery_settings" ON public.delivery_settings;
-DROP POLICY IF EXISTS "owner_write_delivery_settings" ON public.delivery_settings;
-DROP POLICY IF EXISTS "public_read_delivery_settings" ON public.delivery_settings;
-
-CREATE POLICY "owner_read_delivery_settings" ON public.delivery_settings
-  FOR SELECT USING (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-  );
-
-CREATE POLICY "owner_write_delivery_settings" ON public.delivery_settings
-  FOR ALL USING (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-  ) WITH CHECK (
-    shop_id IN (SELECT id FROM public.shops WHERE owner_id = auth.uid())
-  );
-
--- Storefront needs to READ delivery_settings to show correct payment options
-CREATE POLICY "public_read_delivery_settings" ON public.delivery_settings
-  FOR SELECT USING (true);
-
--- 4. Performance index
-CREATE INDEX IF NOT EXISTS idx_delivery_settings_shop_id
-  ON public.delivery_settings(shop_id);
-```
-
----
-
-## Phase 1 — Core Fixes
-
-### Fix 1: Product Edit Route (Critical Bug)
-
-**Problem:** In `src/pages/Products.tsx` line ~130, the Edit dropdown item navigates to `/dashboard/products/new` instead of the edit route:
-```tsx
-// WRONG (current):
-onClick={() => navigate(`/dashboard/products/new`)}
-
-// CORRECT (after fix):
-onClick={() => navigate(`/dashboard/products/${product.id}/edit`)}
-```
-
-**New file: `src/pages/EditProduct.tsx`**
-
-This page:
-- Reads `:id` from `useParams()`
-- Fetches the product from Supabase with `shop_id` guard (never load products from other shops)
-- Pre-populates all form fields identical to `AddProduct`
-- On save: calls `UPDATE` not `INSERT`
-- Shows a "Produit introuvable" fallback if ID doesn't match shop
-- Same autosave, validation, and zod schema as `AddProduct`
-- Reuses the same `SectionCard`, `RichTextEditor`, `ImageUploader`, `VariantsManager`, `TagsInput`, `CategoryPicker` sub-components
-
-The page header will say "Modifier le produit" instead of "Ajouter un produit".
-
-### Fix 2: Null Guards in Products.tsx
-
-Add null safety for `description_json`:
-- `product.description_json` could be null/undefined — already handled in `ProductDetailSheet` via `resolveDescription()`, but `Products.tsx` product cards only show name/price/stock so no change needed there
-- The edit form must wrap TipTap JSON in try/catch when passing initial content
-
-### Fix 3: Route Registration
-
-Add to `src/App.tsx`:
-```tsx
-const EditProduct = lazy(() => import('./pages/EditProduct'));
-
-// In Routes:
-<Route
-  path="/dashboard/products/:id/edit"
-  element={
-    <ProtectedRoute><DashboardGuard>
-      <EditProduct />
-    </DashboardGuard></ProtectedRoute>
-  }
-/>
-<Route
-  path="/dashboard/settings"
-  element={
-    <ProtectedRoute><DashboardGuard>
-      <Settings />
-    </DashboardGuard></ProtectedRoute>
-  }
-/>
-```
-
----
-
-## Phase 2 — Delivery Settings
-
-### New Hook: `src/hooks/useDeliverySettings.ts`
-
+Add `'archived'` to `OrderStatus`:
 ```ts
-// Fetch delivery settings for a shop (public — storefront can read)
-export function useDeliverySettings(shopId: string | undefined)
+export type OrderStatus =
+  | 'pending' | 'confirmed' | 'preparing'
+  | 'shipping' | 'delivered' | 'cancelled' | 'archived';
 
-// Upsert delivery settings (vendor only)
-export function useUpdateDeliverySettings()
+export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  pending:   ['confirmed', 'cancelled'],
+  confirmed: ['preparing', 'cancelled'],
+  preparing: ['shipping'],
+  shipping:  ['delivered'],
+  delivered: ['archived'],
+  cancelled: ['archived'],
+  archived:  [],
+};
 ```
 
-Uses `upsert` with `onConflict: 'shop_id'` to insert-or-update in one call.
+### 2. `src/components/dashboard/OrderStatusBadge.tsx`
 
-### New Page: `src/pages/Settings.tsx`
+Corrected color system:
+- `pending` → orange (keep)
+- `confirmed` → blue (keep)
+- `preparing` → **purple** (was orange/red)
+- `shipping` → **brown/amber** (was purple)
+- `delivered` → green (keep)
+- `cancelled` → red (keep)
+- `archived` → **gray** (new)
 
-A clean settings page under `DashboardLayout` with sections:
+### 3. `src/hooks/useOrders.ts`
 
-**Section: Livraison & Paiement**
-- Toggle: "Accepter le paiement à la livraison (COD)"
-- Toggle: "Accepter les commandes WhatsApp"
-- Toggle: "Activer les frais de livraison"
-- Input (conditionally shown): "Montant des frais de livraison (FCFA)"
+- `useOrders` query: add `.eq('is_archived', false)` by default (unless `includeArchived` flag passed)
+- `useOrderCounts`: same filter
+- `useUpdateOrderStatus` mutation: after status update, insert a row into `order_status_logs` in the same mutation fn
+- New `useOrderTimeline(orderId)`: fetches `order_status_logs` for a given order, ordered by `changed_at`
+- New `useUpdateSellerNote()`: mutation to update `seller_note` on an order
 
-This replaces the need to manually set `enable_cod` / `enable_whatsapp_order` on the `shops` table. Both the old `shops` flags AND the new `delivery_settings` table will be respected (OR logic) for backward compatibility.
+### 4. `src/components/dashboard/OrderDetailPanel.tsx`
 
-### Checkout Upgrade: `src/components/storefront/CheckoutDrawer.tsx`
+**Replace** the existing 2-button "Mettre à jour le statut" section with a proper action **dropdown**:
 
-Changes:
-1. Fetch `delivery_settings` for the current shop via `useQuery`
-2. Show `delivery_fee` line in order summary if `has_delivery_fee = true`
-3. Recalculate total = `subtotal + delivery_fee`
-4. Add geolocation button next to the location URL field:
-   ```tsx
-   <Button onClick={handleGetLocation} variant="outline" size="sm">
-     📍 Ma position
-   </Button>
-   ```
-   Uses `navigator.geolocation.getCurrentPosition()` to build a Google Maps URL
-5. Include `subtotal` and `delivery_fee` in the order insert payload
+```
+[ ▼ Actions ] → dropdown showing all valid next statuses
+               + "Annuler" if applicable
+               + "Archiver" if applicable
+```
 
----
+Each item in the dropdown matches the transitions defined in `ORDER_TRANSITIONS`.
 
-## Implementation Sequence
+**Add** below the payment section:
+- **Seller Note** field: `<Textarea>` pre-filled with `order.seller_note`, saves on blur via `useUpdateSellerNote`
+- **Timeline** section: fetches `order_status_logs`, displays a vertical timeline with status name, date/time, and "changed by"
 
-```text
-Step 1: Modify Products.tsx → fix Edit button navigation (2 lines)
-Step 2: Create EditProduct.tsx → full product edit page
-Step 3: Modify App.tsx → register new routes
-Step 4: Create useDeliverySettings.ts hook
-Step 5: Create Settings.tsx page
-Step 6: Modify CheckoutDrawer.tsx → delivery fee + geolocation
-Step 7: Modify fr.json + en.json → add new i18n keys
+**"New" badge** in the panel header if order is < 10 minutes old.
+
+### 5. `src/pages/Orders.tsx`
+
+- Add `archived` to `STATUS_TABS` array
+- In `OrderCard` and desktop table: add a pulsing `NEW` badge if `Date.now() - new Date(order.created_at) < 10 * 60 * 1000`
+- In `OrderCard`: add `<MessageCircle className="h-3 w-3 text-green-600" />` icon next to payment badge when `order.payment_method === 'whatsapp'`
+- The query already excludes archived by default (from hook change above)
+
+### 6. i18n
+
+Add to `orders.status`:
+```json
+"archived": "Archivée"
+```
+Add to `orders.detail`:
+```json
+"sellerNote": "Note interne",
+"sellerNotePlaceholder": "Visible seulement par vous...",
+"timeline": "Historique",
+"newBadge": "NOUVEAU",
+"archive": "Archiver"
 ```
 
 ---
 
-## Security Guarantees
+## Implementation Order
 
-- `EditProduct` always filters by `shop_id = shop.id` from `useShop()` — URL param `:id` alone is never trusted for the DB query
-- `delivery_settings` RLS: vendors can only read/write their own shop's settings; storefront (anon) can only read
-- `orders` update still filtered by `shop_id` in `useUpdateOrderStatus`
-- No changes to existing RLS on `products`, `orders`, or `shops`
+```
+Step 1: Update src/types/shop.ts — add archived status + transitions
+Step 2: Update src/components/dashboard/OrderStatusBadge.tsx — add archived, fix colors
+Step 3: Update src/hooks/useOrders.ts — archive filter, log mutation, timeline query, note mutation
+Step 4: Update src/components/dashboard/OrderDetailPanel.tsx — dropdown, timeline, seller note
+Step 5: Update src/pages/Orders.tsx — NEW badge, WhatsApp icon, archived tab
+Step 6: Update i18n fr.json + en.json — new keys
+```
 
 ---
 
-## What Is NOT Changed (Stability)
+## What Is NOT Changed
 
-- All existing routes remain functional
-- `OrderDetailPanel`, `OrderStatusBadge`, `useOrders`, `useRevenueChart` — untouched
-- `ProductDetailSheet` storefront component — untouched
-- `ShopStorefront` — only `CheckoutDrawer` changes (backward compatible)
-- `AuthContext`, `DashboardGuard`, `ProtectedRoute` — untouched
-- i18n structure — only additive (new keys, no removal)
+- All existing routes — untouched
+- Storefront, checkout, product system — untouched
+- Real-time subscription logic — untouched (already works)
+- CSV export, bulk WhatsApp — untouched
+- Pagination system — untouched
+- `useShop`, `AuthContext`, `DashboardGuard` — untouched
+- Print receipt — untouched
+
+---
+
+## SQL Required Before Implementation
+
+Please run the SQL above in Supabase (SQL Editor > New Query) to add `is_archived`, `seller_note`, and create `order_status_logs` before clicking Approve. Once confirmed, implementation begins immediately.
