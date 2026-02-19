@@ -33,6 +33,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
 const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
 const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
+const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 
 const queryClient = new QueryClient();
 
@@ -145,6 +146,14 @@ const App = () => {
               element={
                 <ProtectedRoute><DashboardGuard>
                   <Settings />
+                </DashboardGuard></ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/commandes/:orderId"
+              element={
+                <ProtectedRoute><DashboardGuard>
+                  <OrderDetail />
                 </DashboardGuard></ProtectedRoute>
               }
             />
