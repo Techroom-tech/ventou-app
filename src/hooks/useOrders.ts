@@ -93,7 +93,7 @@ export function useUpdateOrderStatus() {
 
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update({ status: newStatus })
         .eq('id', orderId)
         .eq('shop_id', shopId); // security: never touch other shops
 
