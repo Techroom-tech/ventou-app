@@ -15,6 +15,8 @@ import CartDrawer from '@/components/storefront/CartDrawer';
 import CheckoutDrawer from '@/components/storefront/CheckoutDrawer';
 import ProductDetailSheet from '@/components/storefront/ProductDetailSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { CountryProvider, useCountry } from '@/contexts/CountryContext';
+import CountrySelector from '@/components/storefront/CountrySelector';
 
 interface ShopStorefrontProps {
   slug: string;
@@ -48,6 +50,7 @@ function ShopAvatar({ name, color, size = 'md' }: { name: string; color: string;
 function StorefrontContent({ slug }: ShopStorefrontProps) {
   const { t } = useTranslation();
   const { addToCart } = useCart();
+  const { country } = useCountry();
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -160,6 +163,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <CountrySelector />
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
               <ShoppingCart className="h-5 w-5" />
@@ -354,11 +358,11 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                           <div className="flex items-center gap-2">
                             {hasPromo && (
                               <span className="text-xs text-muted-foreground line-through">
-                                {formatCurrency(product.compare_at_price!, shop.currency)}
+                                {formatCurrency(product.compare_at_price!, shop.currency ?? country.currency)}
                               </span>
                             )}
                             <span className="font-bold" style={{ color: primaryColor }}>
-                              {formatCurrency(product.price, shop.currency)}
+                              {formatCurrency(product.price, shop.currency ?? country.currency)}
                             </span>
                           </div>
                           <Button
@@ -441,8 +445,10 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
 
 export default function ShopStorefront({ slug }: ShopStorefrontProps) {
   return (
-    <CartProvider shopId={slug}>
-      <StorefrontContent slug={slug} />
-    </CartProvider>
+    <CountryProvider>
+      <CartProvider shopId={slug}>
+        <StorefrontContent slug={slug} />
+      </CartProvider>
+    </CountryProvider>
   );
 }
