@@ -20,6 +20,24 @@ export const mockShop: Shop = {
   enable_cod: true,
   created_at: '2024-06-15T10:00:00Z',
   updated_at: '2025-02-01T10:00:00Z',
+  // Appearance V2
+  secondary_color: null,
+  button_color: null,
+  button_text_color: null,
+  badge_color: null,
+  heading_font: 'Inter',
+  body_font: 'Inter',
+  title_size: 'Normal',
+  spacing_density: 'Comfortable',
+  button_animation: 'None',
+  button_radius: 'Medium',
+  button_width: 'Full width',
+  cta_label: 'Acheter maintenant',
+  dark_mode_enabled: false,
+  product_card_style: 'Soft shadow',
+  global_radius: 'Medium',
+  banner_size: 'Medium',
+  favicon_url: null,
 };
 
 const defaultProductFields = {

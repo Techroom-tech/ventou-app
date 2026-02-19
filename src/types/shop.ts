@@ -20,6 +20,24 @@ export interface Shop {
   enable_cod: boolean;
   created_at: string;
   updated_at: string;
+  // Appearance V2 fields
+  secondary_color: string | null;
+  button_color: string | null;
+  button_text_color: string | null;
+  badge_color: string | null;
+  heading_font: string | null;
+  body_font: string | null;
+  title_size: string | null;
+  spacing_density: string | null;
+  button_animation: string | null;
+  button_radius: string | null;
+  button_width: string | null;
+  cta_label: string | null;
+  dark_mode_enabled: boolean | null;
+  product_card_style: string | null;
+  global_radius: string | null;
+  banner_size: string | null;
+  favicon_url: string | null;
 }
 
 export interface StorefrontOrder {
