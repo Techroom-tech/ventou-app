@@ -5,10 +5,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   Search, Download, MessageCircle, ChevronLeft, ChevronRight,
-  RefreshCw,
+  RefreshCw, Plus,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
+import { CreateOrderModal } from '@/components/dashboard/CreateOrderModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -241,6 +242,7 @@ export default function Orders() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [createOpen, setCreateOpen] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -308,7 +310,15 @@ export default function Orders() {
               {total > 0 ? `${total} commande${total > 1 ? 's' : ''} au total` : 'Gérez vos commandes clients'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nouvelle commande
+            </Button>
             <Button
               variant="outline" size="sm"
               onClick={() => refetch()}
@@ -522,6 +532,7 @@ export default function Orders() {
         )}
       </div>
 
+      <CreateOrderModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </DashboardLayout>
   );
 }

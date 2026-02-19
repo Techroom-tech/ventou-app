@@ -206,6 +206,73 @@ export function useUpdateSellerNote() {
   });
 }
 
+// Create a manual order (vendor-side)
+export function useCreateOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      shopId,
+      customer_name,
+      phone,
+      city,
+      quartier,
+      notes,
+      items,
+      subtotal,
+      delivery_fee,
+      total,
+      payment_method,
+    }: {
+      shopId: string;
+      customer_name: string;
+      phone: string;
+      city: string;
+      quartier?: string;
+      notes?: string;
+      items: { name: string; quantity: number; unit_price: number }[];
+      subtotal: number;
+      delivery_fee: number;
+      total: number;
+      payment_method: 'cod' | 'whatsapp';
+    }) => {
+      const { data, error } = await supabase
+        .from('orders')
+        .insert({
+          shop_id: shopId,
+          customer_name,
+          customer_phone: phone,
+          phone,
+          city,
+          quartier: quartier ?? null,
+          notes: notes ?? null,
+          items,
+          subtotal,
+          delivery_fee,
+          total,
+          payment_method,
+          status: 'pending',
+          is_archived: false,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('[useCreateOrder] insert error:', error);
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: (_data, { shopId }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+    },
+    onError: (error) => {
+      console.error('[useCreateOrder] error:', error);
+    },
+  });
+}
+
 // Count repeat customers (placed >1 order in this shop)
 export function useRepeatCustomers(shopId: string | undefined) {
   return useQuery({
