@@ -188,13 +188,53 @@
       "totalSales": "Total Sales",
       "ordersToday": "Orders Today"
     },
+    "summary": {
+      "todayRevenue": "Today your store generated {{amount}} from {{count}} order(s)",
+      "noActivity": "No activity today. Share your store to start receiving orders.",
+      "vsYesterday": "vs. yesterday"
+    },
+    "kpis": {
+      "revenueToday": "Today's revenue",
+      "ordersToday": "Orders today",
+      "productsSold": "Products sold",
+      "avgOrder": "Avg. order value"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "pendingOld": "{{count}} order(s) pending for over 2h",
+      "outOfStock": "{{count}} product(s) out of stock",
+      "viewOrders": "View orders",
+      "viewProducts": "Manage stock"
+    },
     "actions": {
-      "addProduct": "Add New Product",
+      "addProduct": "Add Product",
       "addProductSubtitle": "Expand your catalog instantly",
+      "addProductSub": "Expand your catalog",
       "shareShop": "Share Shop",
       "shareShopSubtitle": "Get link",
+      "shareSub": "Copy link",
+      "shareCopied": "Link copied!",
+      "viewAnalytics": "View Analytics",
+      "analyticsSub": "Revenue & trends",
+      "createPromo": "Create Promo",
+      "promoSub": "Discount codes",
       "withdraw": "Withdraw",
       "withdrawSubtitle": "Via MoMo"
+    },
+    "chart": {
+      "title": "Revenue",
+      "revenue": "Revenue",
+      "order": "order",
+      "orders": "orders",
+      "days7": "7d",
+      "days30": "30d",
+      "days90": "90d",
+      "noData": "No data for this period"
+    },
+    "topProducts": {
+      "title": "Top Products",
+      "units": "units",
+      "noData": "Insufficient data"
     },
     "orders": {
       "recent": "Recent Orders",
