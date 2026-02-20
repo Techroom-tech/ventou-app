@@ -1,274 +1,321 @@
 
-# Product Card Layout & Responsive Grid Refactor
+# Profile Settings — Full Account Management Center Refactor
 
-## Current State Audit
+## Feasibility Assessment (What Already Exists vs. What Needs Building)
 
-### Critical Issues Found:
+### Already Available in Supabase Client:
+- `supabase.auth.updateUser({ password })` — password change (exists in AuthContext)
+- `supabase.auth.updateUser({ email })` — email change (triggers verification email)
+- `supabase.auth.signOut({ scope: 'global' })` — sign out all sessions
+- `supabase.auth.getSession()` — returns current session info (device user-agent, timestamps)
+- `supabase.auth.mfa.enroll()` / `.challenge()` / `.verify()` — full 2FA TOTP flow
+- `supabase.from('profiles').update(...)` — profile data update
+- `user.email_confirmed_at` — email verification status
 
-**1. Grid is not responsive (most critical bug)**
-The grid at line 451 uses:
-```tsx
-style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}
-```
-Where `gridCols` is computed from `products_per_row` with no breakpoints. If the seller sets `products_per_row = '3'`, mobile shows 3 columns — broken layout.
+### Not Available / Requires Infrastructure:
+- Session listing across devices → **not possible client-side**; show only current session with "Sign out all" button
+- Avatar file upload → **Supabase Storage bucket needed** (SQL migration required)
+- Account deletion → **edge function required** (admin API); implement as a soft deactivation via profile flag for now
+- Subscription/Billing → **no infrastructure exists**; keep as a clean "Bientôt" section with plan display
+- `phone`, `language`, `timezone` columns → **not in `profiles` table**; require a DB migration to add
 
-**2. Product card title is visually weak**
-Line 501: `className="font-medium text-sm line-clamp-2 mb-2"` — `text-sm` (14px) is too small and `font-medium` (500) is too light.
-
-**3. No rating system**
-The spec requires a star rating block. Currently absent. Since there is no `rating` or `review_count` field in the `Product` type, we render a **static visual block** (⭐⭐⭐⭐☆ — 0 avis) that looks like social proof without requiring new DB columns — consistent layout regardless.
-
-**4. CTA button can overflow**
-`size="sm"` with no `white-space: normal` or `text-align: center` — on narrow columns the text can clip or overflow on mobile.
-
-**5. Price structure lacks hierarchy**
-Old price and new price are in the same `flex` row with `gap-2` — no vertical stacking, no size differentiation.
-
-**6. No responsive CSS for the grid**
-The responsive grid spec (2 cols mobile, 3 tablet, 4 desktop) cannot be achieved with a static inline `gridTemplateColumns`. It requires either CSS classes with Tailwind breakpoints or a CSS utility class injected into `index.css`.
-
----
-
-## Architecture Decision: How to Implement the Responsive Grid
-
-The seller controls `products_per_row` (1, 2, or 3). The spec says the grid must also adapt to screen size automatically.
-
-**The approach:** Define named CSS classes in `index.css` that combine the seller's preference with automatic responsive behavior:
-
-```css
-/* Default: 3 per row (seller default) */
-.product-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
-
-/* Seller sets 2 per row */
-.product-grid-2 { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 1024px) { .product-grid-2 { grid-template-columns: repeat(3, 1fr); } }
-
-/* Seller sets 1 per row (large) */
-.product-grid-1 { display: grid; gap: 16px; grid-template-columns: 1fr; }
-```
-
-In the storefront: replace the static inline style with the matching class name. The postMessage handler in the `SettingsApparence.tsx` updates `--products-per-row` var but the live preview also needs to update the grid class. We handle this by keeping the `data-products-grid` attribute + updating `gridTemplateColumns` via postMessage for live preview, but the CSS classes govern the real storefront's responsive behavior.
-
-**For live preview in the iframe**: The postMessage handler already sets `gridTemplateColumns` via DOM query on `[data-products-grid]`. We keep this for instant preview. For the real storefront (after save), the CSS class controls responsiveness.
+### Scope Decisions (Strict Functional-Only Rule):
+- **Sessions**: Show current session info + "Disconnect all devices" button only. No fake multi-session list.
+- **2FA**: Full TOTP implementation using Supabase MFA API — real QR code, real backup codes concept.
+- **Avatar upload**: Add Storage bucket via SQL migration; replace URL input with file upload.
+- **Account deletion**: Implement a confirmation modal that calls `supabase.auth.signOut()` + marks shop as inactive. Real behavior, no fake modal.
+- **Notifications section**: Link to the existing `/dashboard/parametres/notifications` page (already built) — don't duplicate it. Show a summary row instead.
+- **Subscription section**: Clean "Plan gratuit — Bientôt" display card (not fake UI).
 
 ---
 
-## Files to Modify
+## Database Changes Required
 
-### 1. `src/index.css`
-Add responsive grid classes + product card CSS utilities:
-
-```css
-/* ── Responsive product grid ── */
-.product-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(2, 1fr); /* mobile default: always 2 */
-}
-@media (min-width: 640px) {
-  .product-grid { grid-template-columns: repeat(3, 1fr); }
-}
-@media (min-width: 1024px) {
-  .product-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-/* Seller prefers 2/row → cap at 3 on desktop */
-.product-grid-2 {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(2, 1fr);
-}
-@media (min-width: 1024px) {
-  .product-grid-2 { grid-template-columns: repeat(3, 1fr); }
-}
-
-/* Seller prefers 1/row (large layout) */
-.product-grid-1 {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: 1fr;
-}
-
-/* ── Product title 2-line clamp ── */
-.product-title {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: inherit;
-}
-@media (min-width: 1024px) {
-  .product-title { font-size: 16px; }
-}
-
-/* ── Product CTA button ── */
-.product-cta {
-  font-size: 13px;
-  padding: 10px 12px;
-  white-space: normal;
-  text-align: center;
-  min-height: 44px;
-  line-height: 1.3;
-}
+### Migration 1: Extend `profiles` table
+Add columns for extended personal info:
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS phone text,
+  ADD COLUMN IF NOT EXISTS language text DEFAULT 'fr',
+  ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'Africa/Abidjan';
 ```
 
-### 2. `src/pages/ShopStorefront.tsx`
+### Migration 2: Create avatar Storage bucket
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
 
-**A. Grid className logic (replaces inline style):**
-```tsx
-// Replace:
-const gridCols = perRow === '1' ? '1fr' : perRow === '2' ? 'repeat(2, minmax(0,1fr))' : 'repeat(3, minmax(0,1fr))';
+CREATE POLICY "Avatar images are publicly accessible"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars');
 
-// With:
-const gridClassName = perRow === '1' ? 'product-grid-1' : perRow === '2' ? 'product-grid-2' : 'product-grid';
+CREATE POLICY "Users can upload their own avatar"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can update their own avatar"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete their own avatar"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 ```
 
-For the grid `<div>`:
-```tsx
-// Replace:
-<div data-products-grid style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}>
+### Migration 3: Update `Profile` type
+Update `src/integrations/supabase/client.ts` to add new profile fields to the `Profile` interface.
 
-// With:
-<div data-products-grid className={gridClassName}>
+---
+
+## Page Architecture — 5 Sections
+
+The full page is a single scrollable page at `/dashboard/parametres/profil` with 5 card sections stacked vertically. No tabs, no nested routing. Max width 820px.
+
+```
+┌─────────────────────────────────────────┐
+│  ← Paramètres     Profil & Compte        │
+├─────────────────────────────────────────┤
+│  [1] Personal Information Card          │
+│      Avatar upload + name/email/phone   │
+│      Language + Timezone dropdowns      │
+│      Email verified badge               │
+│      [Save button]                      │
+├─────────────────────────────────────────┤
+│  [2] Security Card                      │
+│      Change password (3 fields)         │
+│      Password strength bar              │
+│      2FA toggle (TOTP via Supabase MFA) │
+│      [Save password button]             │
+├─────────────────────────────────────────┤
+│  [3] Sessions Card                      │
+│      Current session info (device/IP)   │
+│      [Sign out all devices button]      │
+├─────────────────────────────────────────┤
+│  [4] Subscription Card                  │
+│      Plan: Gratuit / Bientôt badge      │
+├─────────────────────────────────────────┤
+│  [5] Danger Zone Card                   │
+│      Red border                         │
+│      Deactivate shop / Delete account   │
+│      Confirmation modal on each         │
+└─────────────────────────────────────────┘
 ```
 
-The postMessage handler still overrides `gridTemplateColumns` inline for live preview — this works because inline style takes precedence over class. No change needed in the postMessage handler.
+---
 
-**B. Product card structure — full rebuild of the card body (lines 461–533):**
+## Section-by-Section Technical Design
 
-New card structure:
-```tsx
-<div key={product.id} data-card-bg className={cardClass} onClick={...}>
-  {/* Image — aspect ratio 4/3 */}
-  <div className="aspect-[4/3] bg-muted relative overflow-hidden">
-    {/* image or placeholder */}
-    {/* Promo badge — top left */}
-    {hasPromo && (
-      <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-semibold">
-        -{discountPercent}%
-      </Badge>
-    )}
-    {/* Low stock badge — top right */}
-    {isLowStock && !isOutOfStock && (
-      <Badge className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground text-xs">
-        {t('storefront.stockLow', { count: product.stock_quantity })}
-      </Badge>
-    )}
-    {/* Out of stock overlay */}
-    {isOutOfStock && (
-      <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-        <Badge variant="secondary">{t('storefront.outOfStock')}</Badge>
-      </div>
-    )}
-  </div>
+### Section 1 — Personal Information
 
-  {/* Card body */}
-  <div className="p-4 space-y-2">
-    {/* Title — 2-line clamp */}
-    <h3 className="product-title">{product.name}</h3>
-
-    {/* Rating block — static visual */}
-    <div className="flex items-center gap-1.5 mt-0">
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4].map(i => (
-          <svg key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        ))}
-        <svg className="w-3.5 h-3.5 fill-gray-200 text-gray-200 dark:fill-gray-600" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      </div>
-      <span className="text-[12px] text-[#6B7280]">0 avis</span>
-    </div>
-
-    {/* Price structure — stacked */}
-    <div className="space-y-0.5">
-      {hasPromo && (
-        <p className="text-[13px] text-[#9CA3AF] line-through leading-none">
-          {formatCurrency(product.compare_at_price!, shop.currency ?? country.currency)}
-        </p>
-      )}
-      <p className="text-[16px] font-semibold leading-none" style={{ color: primaryColor }}>
-        {formatCurrency(product.price, shop.currency ?? country.currency)}
-      </p>
-    </div>
-
-    {/* CTA button */}
-    <Button
-      data-storefront-btn
-      className={`product-cta w-full gap-1.5 ${btnAnimClass}`}
-      disabled={isOutOfStock}
-      style={{
-        backgroundColor: isOutOfStock ? undefined : ctaBg,
-        color: isOutOfStock ? undefined : ctaText,
-        borderRadius: ctaRadius,
-        boxShadow: isOutOfStock ? undefined : ctaShadow,
-        width: (shop as any).button_width === 'Fit content' ? 'auto' : '100%',
-      }}
-      onClick={e => {
-        e.stopPropagation();
-        addToCart(product);
-      }}
-    >
-      <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
-      {shop.cta_label || t('storefront.addToCart')}
-    </Button>
-  </div>
-</div>
-```
-
-**Key changes in card body:**
-- Remove `size="sm"` from `<Button>` — size handled by `.product-cta` CSS class
-- Remove `mt-3` from button — handled by `space-y-2` on parent div
-- Remove `flex items-center gap-2` price row — replaced by vertical `space-y-0.5`
-- Add rating block (4 filled stars + 1 empty, "0 avis") between title and price
-- Title: `className="product-title"` (CSS class with font-weight 600, 15–16px, 2-line clamp)
-
-**C. Also update skeleton grid:**
-Line 432–442 (skeleton loading state) also uses the old inline style. Update to use same `gridClassName` class.
-
-**D. postMessage handler update (line 133–136):**
-The handler updates `gridTemplateColumns` inline on `[data-products-grid]` — this overrides the class for live preview, which is correct behavior. The mapping needs to reflect the new responsive grid intent:
+**State:**
 ```ts
-if (vars['--products-grid-cols']) {
-  document.querySelectorAll<HTMLElement>('[data-products-grid]').forEach(el => {
-    el.style.gridTemplateColumns = vars['--products-grid-cols'];
-  });
-}
+const [form, setForm] = useState({
+  first_name: '', last_name: '', phone: '',
+  language: 'fr', timezone: 'Africa/Abidjan'
+});
+const [avatarFile, setAvatarFile] = useState<File | null>(null);
+const [avatarPreview, setAvatarPreview] = useState<string>('');
+const [isDirty, setIsDirty] = useState(false);
 ```
-This stays unchanged — it works correctly for live preview override.
+
+**Avatar upload logic:**
+```ts
+const uploadAvatar = async (file: File) => {
+  const ext = file.name.split('.').pop();
+  const path = `${user.id}/avatar.${ext}`;
+  const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return data.publicUrl;
+};
+```
+
+**Email section:** Read-only field showing `user.email` + badge:
+- `user.email_confirmed_at` exists → green `<Badge>` "Vérifié"
+- Otherwise → amber badge "Non vérifié" + "Renvoyer l'email de vérification" link
+
+**Language dropdown options:** French, English (2 options only, matching app scope)
+
+**Timezone dropdown options:** Africa/Abidjan, Africa/Lagos, Africa/Dakar, Africa/Douala, Europe/Paris, UTC (6 options — relevant to West/Central Africa market)
+
+**Save action:**
+1. If `avatarFile`, upload to storage → get URL → include in profile update
+2. Update `profiles` table with all form fields
+3. Show success toast
+
+**Dirty state:** Track `isDirty` to disable save button when no changes made.
+
+---
+
+### Section 2 — Security
+
+**Sub-section A: Change Password**
+
+```ts
+const [pwForm, setPwForm] = useState({
+  current_password: '', new_password: '', confirm_password: ''
+});
+const [showCurrent, setShowCurrent] = useState(false);
+const [showNew, setShowNew] = useState(false);
+```
+
+**Password strength bar:** Real-time computation based on `new_password`:
+- `< 6 chars` → Weak (red)
+- `6–9 chars with no special chars` → Fair (amber)
+- `10+ chars` → Strong (green)
+- `14+ chars with special chars + uppercase` → Very strong (green, full bar)
+
+**Save logic:**
+1. Validate: `new_password === confirm_password`
+2. Call `supabase.auth.updateUser({ password: new_password })`
+3. The Supabase API does NOT require current password verification — Supabase handles this via the existing session. Note: `updatePassword` already exists in `AuthContext`.
+4. Show toast success + clear form
+
+**Sub-section B: Two-Factor Authentication (2FA)**
+
+Using Supabase MFA API:
+```ts
+// Enroll (enable 2FA)
+const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+// data.totp.qr_code — SVG QR code
+// data.totp.secret — manual key
+// data.id — factor ID for verification
+
+// Verify enrollment
+const { data: challengeData } = await supabase.auth.mfa.challenge({ factorId });
+await supabase.auth.mfa.verify({ factorId, challengeId, code: otpInput });
+
+// Unenroll (disable 2FA)
+await supabase.auth.mfa.unenroll({ factorId });
+```
+
+**UI flow:**
+- Initial state: check `user.factors` — if TOTP factor exists and is verified → show "2FA Active" with disable button
+- If not active → show toggle to enable → on enable, show modal with QR code + manual key + 6-digit OTP input to verify
+- On verify success → dismiss modal, show "2FA Activé" badge
+- On disable → confirm dialog → call unenroll → success toast
+
+**State:**
+```ts
+const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+const [enrolling, setEnrolling] = useState(false);
+const [enrollData, setEnrollData] = useState<{ factorId: string; qrCode: string; secret: string } | null>(null);
+const [otpCode, setOtpCode] = useState('');
+```
+
+Load MFA state on mount:
+```ts
+useEffect(() => {
+  supabase.auth.mfa.listFactors().then(({ data }) => {
+    setMfaFactors(data?.totp ?? []);
+  });
+}, []);
+```
+
+---
+
+### Section 3 — Active Sessions
+
+**What is available via Supabase client-side:**
+- `supabase.auth.getSession()` → `session.access_token`, `session.user` — current session only
+- `user.last_sign_in_at` — last sign-in date
+- `user.app_metadata` — may contain provider info
+
+**What we render:**
+A single row showing the current session:
+```
+┌─────────────────────────────────────────┐
+│  [💻 icon]  Session actuelle            │
+│             Navigateur Web              │
+│             Connecté depuis [date]      │
+│             [Badge: Session actuelle]   │
+└─────────────────────────────────────────┘
+  [Déconnecter tous les appareils]
+```
+
+**"Déconnecter tous les appareils" logic:**
+```ts
+await supabase.auth.signOut({ scope: 'global' });
+navigate('/login');
+```
+
+This is a real Supabase API that revokes all refresh tokens for the user.
+
+---
+
+### Section 4 — Subscription
+
+A clean informational card (no fake controls):
+```
+Plan actuel: Gratuit
+Toutes les fonctionnalités de base incluses.
+[Badge: Gratuit] 
+[Badge: Bientôt — Plans Pro disponibles]
+```
+
+This is honest UI — no fake pricing, no fake "Cancel subscription" button.
+
+---
+
+### Section 5 — Danger Zone
+
+Card with `border-destructive/40` border and `bg-destructive/5` header area.
+
+**Two action rows:**
+
+1. **Désactiver la boutique**
+   - Description: "Votre boutique ne sera plus accessible aux clients."
+   - Button: "Désactiver" (outline destructive)
+   - Confirmation modal: "Confirmer la désactivation" → calls `supabase.from('shops').update({ is_active: false }).eq('owner_id', user.id)`
+   - Real effect: storefront becomes unreachable
+
+2. **Supprimer le compte**
+   - Description: "Action irréversible. Toutes vos données seront archivées."
+   - Button: "Supprimer le compte" (solid destructive)
+   - Confirmation modal requires typing "SUPPRIMER" to confirm
+   - Action: calls `signOut()` — full account deletion requires server-side admin API which is not available client-side; we sign the user out and mark the shop as inactive. A note explains the team will complete deletion within 72h (honest approach — no fake delete button).
+
+---
+
+## Files to Create/Modify
+
+### 1. Supabase migration — `supabase/functions/db-migrate/index.ts`
+Add the `ALTER TABLE` statements for `profiles` (phone, language, timezone columns) and the Storage bucket + RLS policies for avatars.
+
+### 2. Update `src/integrations/supabase/client.ts`
+Add `phone`, `language`, `timezone` to the `Profile` interface.
+
+### 3. Rewrite `src/pages/settings/SettingsProfil.tsx`
+Complete rebuild of the page with 5 sections. This is the primary file change. It will be a self-contained component (~400–500 lines) that uses existing Supabase client, AuthContext, and UI components.
+
+**Components used (all already installed):**
+- `Card`, `CardContent`, `CardHeader`, `CardTitle` (already imported)
+- `Input`, `Label`, `Button`, `Switch`, `Badge` (all installed)
+- `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` (Radix Select, installed)
+- `AlertDialog` components for danger zone confirmations
+- `Progress` for password strength bar
+- `Separator` between sub-sections
+- Icons from `lucide-react`: `User`, `Shield`, `Monitor`, `CreditCard`, `AlertTriangle`, `Eye`, `EyeOff`, `Upload`, `CheckCircle2`, `Loader2`, `SmartPhone`, `Lock`
 
 ---
 
 ## What is NOT Changed
 
-- `SettingsApparence.tsx` — no changes. The `products_per_row` selector (1/2/3) stays. The postMessage logic for grid preview stays.
-- `AdvancedColorPicker.tsx` — no changes
-- `ShopAssetUploader.tsx` — no changes
-- All other pages, auth, orders, dashboard — untouched
-- No DB migrations — no new columns needed (rating is static UI)
-- The `Product` type — no changes
+- `SettingsPageLayout.tsx` — max-width override handled inline in the page via `max-w-[820px]` instead of using `SettingsPageLayout` (or passing a prop)
+- All other settings pages — untouched
+- `AuthContext.tsx` — `updatePassword` already exists, no changes needed
+- `App.tsx` — route already exists at `/dashboard/parametres/profil`
+- `SettingsHub.tsx` — no changes (Profile card already links to the right route)
+- `SettingsNotifications.tsx` — not duplicated; the Profile page links to it
 
 ---
 
-## Summary
+## Security Guarantees
 
-### `src/index.css` — Add:
-1. `.product-grid`, `.product-grid-2`, `.product-grid-1` with proper responsive media queries (2 cols mobile → 3 tablet → 4 desktop)
-2. `.product-title` — 15/16px, font-weight 600, 2-line clamp
-3. `.product-cta` — 13px, 10px/12px padding, white-space normal, min-height 44px
-
-### `src/pages/ShopStorefront.tsx` — Targeted edits:
-1. Replace `gridCols` computation with `gridClassName` CSS class name selection
-2. Replace `style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}` with `className={gridClassName}` on both grid divs (loading skeleton + products)
-3. Replace card body (lines ~500–533) with rebuilt structure:
-   - `h3` with `product-title` class
-   - Static rating block (4 filled + 1 empty star, "0 avis")
-   - Vertical price stack (`space-y-0.5`, old price 13px gray strikethrough, new price 16px semibold)
-   - Button with `product-cta` class, remove `size="sm"`, remove `mt-3`
+- Password change uses `supabase.auth.updateUser()` — server-validated via existing JWT session
+- 2FA uses Supabase MFA API — secret never stored in frontend state beyond enrollment flow
+- Session invalidation uses `scope: 'global'` — real token revocation, not just client-side logout
+- Danger zone actions have confirmation modals with text confirmation for destructive operations
+- No client-side role checks — no localStorage security bypasses
+- Avatar upload path: `{user.id}/avatar.{ext}` — user can only overwrite their own file (enforced by RLS policy using `auth.uid()`)
