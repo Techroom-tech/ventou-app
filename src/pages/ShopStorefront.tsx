@@ -66,14 +66,60 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
       if (e.data?.type !== 'VENTOU_THEME_UPDATE') return;
       const root = document.documentElement;
       const vars = e.data.vars as Record<string, string>;
-      Object.entries(vars).forEach(([k, v]) => {
-        root.style.setProperty(k, v);
-      });
-      // Also apply directly for elements that don't use CSS vars
+
+      // Apply all CSS custom properties to :root
+      Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
+
+      // Background color directly on body
       if (vars['--color-bg']) document.body.style.backgroundColor = vars['--color-bg'];
+
+      // Card bg: apply to all elements with data-card-bg attribute
       if (vars['--color-card-bg']) {
         document.querySelectorAll<HTMLElement>('[data-card-bg]').forEach(el => {
           el.style.backgroundColor = vars['--color-card-bg'];
+        });
+      }
+
+      // Dark mode: toggle 'dark' class on <html>
+      if (vars['--dark-mode']) {
+        if (vars['--dark-mode'] === 'dark') root.classList.add('dark');
+        else root.classList.remove('dark');
+      }
+
+      // Global radius: override --radius var used by Tailwind rounded-* utilities
+      if (vars['--global-radius']) root.style.setProperty('--radius', vars['--global-radius']);
+
+      // Button CSS vars: propagate to [data-storefront-btn] elements
+      if (vars['--color-btn-bg'] || vars['--color-btn-text'] || vars['--btn-radius'] || vars['--btn-shadow'] || vars['--btn-animation']) {
+        document.querySelectorAll<HTMLElement>('[data-storefront-btn]').forEach(el => {
+          if (vars['--color-btn-bg']) el.style.backgroundColor = vars['--color-btn-bg'];
+          if (vars['--color-btn-text']) el.style.color = vars['--color-btn-text'];
+          if (vars['--btn-radius']) el.style.borderRadius = vars['--btn-radius'];
+          if (vars['--btn-shadow']) el.style.boxShadow = vars['--btn-shadow'];
+          // Animation via CSS class swap
+          el.classList.remove('btn-anim-pulse', 'btn-anim-shine');
+          if (vars['--btn-animation'] === 'Pulse') el.classList.add('btn-anim-pulse');
+          else if (vars['--btn-animation'] === 'Shine') el.classList.add('btn-anim-shine');
+        });
+      }
+
+      // Typography: dynamically load Google Fonts if needed
+      [vars['--heading-font'], vars['--body-font']].filter(Boolean).forEach(font => {
+        if (!font || font === 'Inter') return;
+        const id = `gf-sf-${font.replace(/\s+/g, '-')}`;
+        if (!document.getElementById(id)) {
+          const link = document.createElement('link');
+          link.id = id;
+          link.rel = 'stylesheet';
+          link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@400;500;600;700&display=swap`;
+          document.head.appendChild(link);
+        }
+      });
+
+      // Product grid columns: update elements with data-products-grid attribute
+      if (vars['--products-grid-cols']) {
+        document.querySelectorAll<HTMLElement>('[data-products-grid]').forEach(el => {
+          el.style.gridTemplateColumns = vars['--products-grid-cols'];
         });
       }
     };
@@ -95,19 +141,37 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   });
 
   const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ['storefront-products', shop?.id],
+    queryKey: ['storefront-products', shop?.id, shop?.products_sort_order],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select('*')
         .eq('shop_id', shop!.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+
+      const sort = (shop as any).products_sort_order ?? 'recent';
+      if (sort === 'alpha') query = query.order('name', { ascending: true });
+      else if (sort === 'price_asc') query = query.order('price', { ascending: true });
+      else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+      else query = query.order('created_at', { ascending: false }); // recent & best_seller fallback
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as Product[];
     },
     enabled: !!shop?.id,
   });
+
+  // ── Apply dark mode on initial load based on shop setting ──
+  useEffect(() => {
+    if (!shop) return;
+    if ((shop as any).dark_mode_enabled) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    return () => { document.documentElement.classList.remove('dark'); };
+  }, [shop]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -156,10 +220,21 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const primaryColor = shop.primary_color || '#1E3A5F';
   const ctaBg = shop.button_color ?? primaryColor;
   const ctaText = shop.button_text_color ?? '#FFFFFF';
-  const ctaRadius = (shop.button_radius === 'Sharp' ? '4px' : shop.button_radius === 'Pill' ? '999px' : '8px');
+  const ctaRadius = shop.button_radius === 'Sharp' ? '4px' : shop.button_radius === 'Pill' ? '999px' : '8px';
+  const ctaShadow = shop.button_shadow === 'Soft' ? '0 2px 8px rgba(0,0,0,0.15)' : shop.button_shadow === 'Elevated' ? '0 4px 16px rgba(0,0,0,0.25)' : 'none';
+  const btnAnimClass = (shop as any).button_animation === 'Pulse' ? 'btn-anim-pulse' : (shop as any).button_animation === 'Shine' ? 'btn-anim-shine' : '';
   const displayMode = (shop as any).identity_display_mode ?? 'logo-name';
   const hasProducts = filteredProducts.length > 0;
   const isEmptyShop = !productsLoading && (!products || products.length === 0);
+
+  const perRow = String((shop as any).products_per_row ?? '3');
+  const gridCols = perRow === '1' ? '1fr' : perRow === '2' ? 'repeat(2, minmax(0,1fr))' : 'repeat(3, minmax(0,1fr))';
+
+  const cardClass = (shop as any).product_card_style === 'Border minimal'
+    ? 'rounded-xl border border-border/70 bg-card overflow-hidden cursor-pointer group transition-all duration-200'
+    : (shop as any).product_card_style === 'Flat'
+    ? 'rounded-xl bg-muted/40 overflow-hidden cursor-pointer group transition-all duration-200'
+    : 'rounded-xl border bg-card overflow-hidden hover:shadow-lg cursor-pointer group transition-all duration-200'; // Soft shadow (default)
 
   const showLogo = displayMode === 'logo-only' || displayMode === 'logo-name';
   const showName = displayMode === 'name-only' || displayMode === 'logo-name';
@@ -320,7 +395,10 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
               </h2>
 
               {productsLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div
+                  data-products-grid
+                  style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}
+                >
                   {[...Array(6)].map((_, i) => (
                     <Skeleton key={i} className="h-72 rounded-lg" />
                   ))}
@@ -331,7 +409,10 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                   <p className="text-muted-foreground">{t('dashboard.products.noResults')}</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div
+                  data-products-grid
+                  style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}
+                >
                   {filteredProducts.map(product => {
                     const hasPromo = product.compare_at_price && product.compare_at_price > product.price;
                     const discountPercent = hasPromo
@@ -343,7 +424,8 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                     return (
                       <div
                         key={product.id}
-                        className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                        data-card-bg
+                        className={cardClass}
                         onClick={() => {
                           setSelectedProduct(product);
                           setDetailOpen(true);
@@ -391,13 +473,16 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                             </span>
                           </div>
                           <Button
+                            data-storefront-btn
                             size="sm"
-                            className="w-full mt-3 gap-2"
+                            className={`w-full mt-3 gap-2 ${btnAnimClass}`}
                             disabled={isOutOfStock}
                             style={{
                               backgroundColor: isOutOfStock ? undefined : ctaBg,
                               color: isOutOfStock ? undefined : ctaText,
                               borderRadius: ctaRadius,
+                              boxShadow: isOutOfStock ? undefined : ctaShadow,
+                              width: (shop as any).button_width === 'Fit content' ? 'auto' : '100%',
                             }}
                             onClick={e => {
                               e.stopPropagation();

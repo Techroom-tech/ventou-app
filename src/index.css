@@ -133,3 +133,23 @@
     @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200;
   }
 }
+
+/* ── Storefront CTA button animations ── */
+@keyframes ventou-btn-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes ventou-btn-shine {
+  0% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0.3); }
+  60% { box-shadow: inset 100px 0 0 0 rgba(255, 255, 255, 0); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+.btn-anim-pulse {
+  animation: ventou-btn-pulse 1.5s ease-in-out infinite;
+}
+
+.btn-anim-shine {
+  animation: ventou-btn-shine 2s linear infinite;
+}
