@@ -70,9 +70,6 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
       // Apply all CSS custom properties to :root
       Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
 
-      // Background color directly on body
-      if (vars['--color-bg']) document.body.style.backgroundColor = vars['--color-bg'];
-
       // Card bg: apply to all elements with data-card-bg attribute
       if (vars['--color-card-bg']) {
         document.querySelectorAll<HTMLElement>('[data-card-bg]').forEach(el => {
@@ -103,8 +100,10 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         });
       }
 
-      // Typography: dynamically load Google Fonts if needed
-      [vars['--heading-font'], vars['--body-font']].filter(Boolean).forEach(font => {
+      // Typography: dynamically load Google Fonts and inject style override
+      const hFont = vars['--heading-font'];
+      const bFont = vars['--body-font'];
+      [hFont, bFont].filter(Boolean).forEach(font => {
         if (!font || font === 'Inter') return;
         const id = `gf-sf-${font.replace(/\s+/g, '-')}`;
         if (!document.getElementById(id)) {
@@ -115,6 +114,20 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
           document.head.appendChild(link);
         }
       });
+      if (hFont || bFont) {
+        let style = document.getElementById('ventou-font-overrides') as HTMLStyleElement | null;
+        if (!style) {
+          style = document.createElement('style');
+          style.id = 'ventou-font-overrides';
+          document.head.appendChild(style);
+        }
+        const resolvedH = hFont ?? root.style.getPropertyValue('--heading-font') ?? 'Inter';
+        const resolvedB = bFont ?? root.style.getPropertyValue('--body-font') ?? 'Inter';
+        style.textContent = `
+          body { font-family: '${resolvedB}', sans-serif !important; }
+          h1, h2, h3, h4, h5, h6 { font-family: '${resolvedH}', sans-serif !important; }
+        `;
+      }
 
       // Product grid columns: update elements with data-products-grid attribute
       if (vars['--products-grid-cols']) {
@@ -162,14 +175,38 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
     enabled: !!shop?.id,
   });
 
-  // ── Apply dark mode on initial load based on shop setting ──
+  // ── Apply dark mode + fonts on initial load based on shop settings ──
   useEffect(() => {
     if (!shop) return;
+    // Dark mode
     if ((shop as any).dark_mode_enabled) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Fonts
+    const hFont = (shop as any).heading_font ?? 'Inter';
+    const bFont = (shop as any).body_font ?? 'Inter';
+    [hFont, bFont].filter((f: string) => f && f !== 'Inter').forEach((font: string) => {
+      const id = `gf-sf-${font.replace(/\s+/g, '-')}`;
+      if (!document.getElementById(id)) {
+        const link = document.createElement('link');
+        link.id = id;
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@400;500;600;700&display=swap`;
+        document.head.appendChild(link);
+      }
+    });
+    let style = document.getElementById('ventou-font-overrides') as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'ventou-font-overrides';
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+      body { font-family: '${bFont}', sans-serif !important; }
+      h1, h2, h3, h4, h5, h6 { font-family: '${hFont}', sans-serif !important; }
+    `;
     return () => { document.documentElement.classList.remove('dark'); };
   }, [shop]);
 

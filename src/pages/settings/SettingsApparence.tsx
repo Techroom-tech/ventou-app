@@ -2,12 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Monitor, Smartphone, RefreshCw,
-  RotateCcw, Image, Palette, Type, MousePointer2, Globe, ChevronDown,
+  RotateCcw, Image, Palette, MousePointer2, Globe, ChevronDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -29,17 +28,11 @@ interface AppearanceForm {
   banner_url: string;
   identity_display_mode: string;
   primary_color: string;
-  secondary_color: string;
   button_color: string;
   button_text_color: string;
-  background_color: string;
   card_bg_color: string;
   heading_font: string;
   body_font: string;
-  title_size_px: number;
-  body_size_px: number;
-  letter_spacing_px: number;
-  line_height_pct: number;
   cta_label: string;
   button_radius: string;
   button_width: string;
@@ -57,17 +50,11 @@ const DEFAULT_FORM: AppearanceForm = {
   banner_url: '',
   identity_display_mode: 'logo-name',
   primary_color: '#1E3A5F',
-  secondary_color: '#FF6B35',
   button_color: '#FF6B35',
   button_text_color: '#FFFFFF',
-  background_color: '#F9FAFB',
   card_bg_color: '#FFFFFF',
   heading_font: 'Inter',
   body_font: 'Inter',
-  title_size_px: 22,
-  body_size_px: 14,
-  letter_spacing_px: 0,
-  line_height_pct: 160,
   cta_label: 'Acheter maintenant',
   button_radius: 'Medium',
   button_width: 'Full width',
@@ -82,10 +69,8 @@ const DEFAULT_FORM: AppearanceForm = {
 
 const COLOR_DEFAULTS: Record<string, string> = {
   primary_color: '#1E3A5F',
-  secondary_color: '#FF6B35',
   button_color: '#FF6B35',
   button_text_color: '#FFFFFF',
-  background_color: '#F9FAFB',
   card_bg_color: '#FFFFFF',
 };
 
@@ -195,7 +180,6 @@ function CtaPreview({ form }: { form: AppearanceForm }) {
           cursor: 'default',
           width: form.button_width === 'Full width' ? '100%' : 'auto',
           boxShadow: shadow,
-          letterSpacing: form.letter_spacing_px + 'px',
           fontFamily: form.body_font + ', sans-serif',
         }}
       >
@@ -232,17 +216,11 @@ export default function SettingsApparence() {
       banner_url: shop.banner_url ?? '',
       identity_display_mode: (shop as any).identity_display_mode ?? 'logo-name',
       primary_color: shop.primary_color ?? '#1E3A5F',
-      secondary_color: shop.secondary_color ?? '#FF6B35',
       button_color: shop.button_color ?? '#FF6B35',
       button_text_color: shop.button_text_color ?? '#FFFFFF',
-      background_color: shop.background_color ?? '#F9FAFB',
       card_bg_color: shop.card_bg_color ?? '#FFFFFF',
       heading_font: shop.heading_font ?? 'Inter',
       body_font: shop.body_font ?? 'Inter',
-      title_size_px: (shop as any).title_size_px ?? 22,
-      body_size_px: (shop as any).body_size_px ?? 14,
-      letter_spacing_px: (shop as any).letter_spacing_px ?? 0,
-      line_height_pct: (shop as any).line_height_pct ?? 160,
       cta_label: shop.cta_label ?? 'Acheter maintenant',
       button_radius: shop.button_radius ?? 'Medium',
       button_width: shop.button_width ?? 'Full width',
@@ -291,17 +269,11 @@ export default function SettingsApparence() {
           type: 'VENTOU_THEME_UPDATE',
           vars: {
             '--color-primary': form.primary_color,
-            '--color-secondary': form.secondary_color,
             '--color-btn-bg': form.button_color,
             '--color-btn-text': form.button_text_color,
-            '--color-bg': form.background_color,
             '--color-card-bg': form.card_bg_color,
             '--heading-font': form.heading_font,
             '--body-font': form.body_font,
-            '--heading-size': form.title_size_px + 'px',
-            '--body-size': form.body_size_px + 'px',
-            '--letter-spacing': form.letter_spacing_px + 'px',
-            '--line-height': String(form.line_height_pct / 100),
             '--btn-radius': btnRadius,
             '--btn-shadow': btnShadow,
             '--global-radius': globalRadius,
@@ -336,17 +308,11 @@ export default function SettingsApparence() {
         banner_url: form.banner_url || null,
         identity_display_mode: form.identity_display_mode,
         primary_color: form.primary_color,
-        secondary_color: form.secondary_color,
         button_color: form.button_color,
         button_text_color: form.button_text_color,
-        background_color: form.background_color,
         card_bg_color: form.card_bg_color,
         heading_font: form.heading_font,
         body_font: form.body_font,
-        title_size_px: form.title_size_px,
-        body_size_px: form.body_size_px,
-        letter_spacing_px: form.letter_spacing_px,
-        line_height_pct: form.line_height_pct,
         cta_label: form.cta_label,
         button_radius: form.button_radius,
         button_width: form.button_width,
@@ -556,7 +522,7 @@ export default function SettingsApparence() {
                     <Palette className="h-4 w-4 text-muted-foreground" />
                     Design
                     <div className="flex gap-1 ml-1">
-                      {(['primary_color', 'button_color', 'card_bg_color'] as const).map(k => (
+                      {(['primary_color', 'button_color', 'button_text_color'] as const).map(k => (
                         <div
                           key={k}
                           className="w-3 h-3 rounded-full border border-border/60"
@@ -578,13 +544,6 @@ export default function SettingsApparence() {
                       update={update}
                     />
                     <ColorRow
-                      label="Couleur secondaire"
-                      helper="Accents, badges secondaires"
-                      colorKey="secondary_color"
-                      form={form}
-                      update={update}
-                    />
-                    <ColorRow
                       label="Fond bouton CTA"
                       helper="Bouton d'achat principal"
                       colorKey="button_color"
@@ -595,13 +554,6 @@ export default function SettingsApparence() {
                       label="Texte bouton CTA"
                       helper="Couleur du texte sur le bouton"
                       colorKey="button_text_color"
-                      form={form}
-                      update={update}
-                    />
-                    <ColorRow
-                      label="Fond global"
-                      helper="Couleur de fond de la boutique"
-                      colorKey="background_color"
                       form={form}
                       update={update}
                     />
@@ -653,50 +605,12 @@ export default function SettingsApparence() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <p className="text-[12px] font-medium text-foreground">Taille titres — {form.title_size_px}px</p>
-                        <Slider min={14} max={40} step={1} value={[form.title_size_px]} onValueChange={([v]) => update('title_size_px', v)} />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-[12px] font-medium text-foreground">Taille texte — {form.body_size_px}px</p>
-                        <Slider min={10} max={20} step={1} value={[form.body_size_px]} onValueChange={([v]) => update('body_size_px', v)} />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-[12px] font-medium text-foreground">Espacement — {form.letter_spacing_px}px</p>
-                        <Slider min={-1} max={4} step={0.1} value={[form.letter_spacing_px]} onValueChange={([v]) => update('letter_spacing_px', v)} />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-[12px] font-medium text-foreground">Hauteur ligne — {form.line_height_pct}%</p>
-                        <Slider min={120} max={200} step={5} value={[form.line_height_pct]} onValueChange={([v]) => update('line_height_pct', v)} />
-                      </div>
-                    </div>
-
                     {/* Live typography preview */}
-                    <div className="rounded-lg border border-border bg-[#F6F8FA] dark:bg-muted/20 p-4 space-y-2">
-                      <p
-                        style={{
-                          fontFamily: `${form.heading_font}, sans-serif`,
-                          fontSize: form.title_size_px,
-                          fontWeight: 600,
-                          color: '#1F2937',
-                          letterSpacing: form.letter_spacing_px + 'px',
-                          lineHeight: form.line_height_pct / 100,
-                          margin: 0,
-                        }}
-                      >
+                    <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-1.5 mt-2">
+                      <p style={{ fontFamily: `${form.heading_font}, sans-serif`, fontSize: 16, fontWeight: 600, margin: 0 }}>
                         Titre de votre boutique
                       </p>
-                      <p
-                        style={{
-                          fontFamily: `${form.body_font}, sans-serif`,
-                          fontSize: form.body_size_px,
-                          color: '#6B7280',
-                          letterSpacing: form.letter_spacing_px + 'px',
-                          lineHeight: form.line_height_pct / 100,
-                          margin: 0,
-                        }}
-                      >
+                      <p style={{ fontFamily: `${form.body_font}, sans-serif`, fontSize: 13, color: '#6B7280', margin: 0 }}>
                         Texte de description du produit. Voici comment il apparaîtra.
                       </p>
                     </div>

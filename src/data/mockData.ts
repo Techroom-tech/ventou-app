@@ -48,10 +48,10 @@ export const mockShop: Shop = {
   button_shadow: 'None',
   // Identity & Typography V3
   identity_display_mode: 'logo-name',
-  title_size_px: 22,
-  body_size_px: 14,
-  letter_spacing_px: 0,
-  line_height_pct: 160,
+  title_size_px: null,
+  body_size_px: null,
+  letter_spacing_px: null,
+  line_height_pct: null,
 };
 
 
