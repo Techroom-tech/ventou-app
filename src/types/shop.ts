@@ -46,6 +46,12 @@ export interface Shop {
   products_per_row: string | null;
   products_sort_order: string | null;
   button_shadow: string | null;
+  // Identity & Typography V3
+  identity_display_mode: string | null;
+  title_size_px: number | null;
+  body_size_px: number | null;
+  letter_spacing_px: number | null;
+  line_height_pct: number | null;
 }
 
 

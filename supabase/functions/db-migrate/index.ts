@@ -80,6 +80,14 @@ Deno.serve(async (req) => {
 
     `CREATE INDEX IF NOT EXISTS idx_orders_status
       ON public.orders(status);`,
+
+    // Appearance V3 — new columns on shops table
+    `ALTER TABLE public.shops
+      ADD COLUMN IF NOT EXISTS identity_display_mode text DEFAULT 'logo-name',
+      ADD COLUMN IF NOT EXISTS title_size_px integer DEFAULT 22,
+      ADD COLUMN IF NOT EXISTS body_size_px integer DEFAULT 14,
+      ADD COLUMN IF NOT EXISTS letter_spacing_px numeric DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS line_height_pct integer DEFAULT 160;`,
   ];
 
   const results: Array<{ sql: string; ok: boolean; error?: string }> = [];
