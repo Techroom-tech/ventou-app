@@ -65,9 +65,17 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
     const handler = (e: MessageEvent) => {
       if (e.data?.type !== 'VENTOU_THEME_UPDATE') return;
       const root = document.documentElement;
-      Object.entries(e.data.vars as Record<string, string>).forEach(([k, v]) => {
+      const vars = e.data.vars as Record<string, string>;
+      Object.entries(vars).forEach(([k, v]) => {
         root.style.setProperty(k, v);
       });
+      // Also apply directly for elements that don't use CSS vars
+      if (vars['--color-bg']) document.body.style.backgroundColor = vars['--color-bg'];
+      if (vars['--color-card-bg']) {
+        document.querySelectorAll<HTMLElement>('[data-card-bg]').forEach(el => {
+          el.style.backgroundColor = vars['--color-card-bg'];
+        });
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -146,8 +154,15 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   }
 
   const primaryColor = shop.primary_color || '#1E3A5F';
+  const ctaBg = shop.button_color ?? primaryColor;
+  const ctaText = shop.button_text_color ?? '#FFFFFF';
+  const ctaRadius = (shop.button_radius === 'Sharp' ? '4px' : shop.button_radius === 'Pill' ? '999px' : '8px');
+  const displayMode = (shop as any).identity_display_mode ?? 'logo-name';
   const hasProducts = filteredProducts.length > 0;
   const isEmptyShop = !productsLoading && (!products || products.length === 0);
+
+  const showLogo = displayMode === 'logo-only' || displayMode === 'logo-name';
+  const showName = displayMode === 'name-only' || displayMode === 'logo-name';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -155,14 +170,18 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            {shop.logo_url ? (
-              <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
-                <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <ShopAvatar name={shop.name} color={primaryColor} size="md" />
+            {showLogo && (
+              shop.logo_url ? (
+                <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
+                  <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <ShopAvatar name={shop.name} color={primaryColor} size="md" />
+              )
             )}
-            <span className="font-bold text-lg truncate">{shop.name}</span>
+            {showName && (
+              <span className="font-bold text-lg truncate">{shop.name}</span>
+            )}
           </div>
 
           <nav className="hidden md:flex items-center gap-6">
@@ -213,29 +232,20 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
         )}
       </section>
 
-      {/* Shop Info */}
+      {/* Shop Info — name + meta only, no duplicate logo */}
       <div className="max-w-6xl mx-auto w-full px-4">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 -mt-8 relative z-10 pb-6">
-          <div className="flex items-end gap-4">
-            <div className="w-20 h-20 rounded-xl border-4 border-background bg-card flex items-center justify-center overflow-hidden shadow-lg shrink-0">
-              {shop.logo_url ? (
-                <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
-              ) : (
-                <ShopAvatar name={shop.name} color={primaryColor} size="lg" />
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 pt-4 pb-6 relative z-10">
+          <div className="pb-1">
+            <h1 className="text-xl md:text-2xl font-bold">{shop.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              {shop.category && (
+                <Badge variant="secondary" className="text-xs">
+                  {t(`createShop.categories.${shop.category}`, shop.category)}
+                </Badge>
               )}
-            </div>
-            <div className="pb-1">
-              <h1 className="text-xl md:text-2xl font-bold">{shop.name}</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                {shop.category && (
-                  <Badge variant="secondary" className="text-xs">
-                    {t(`createShop.categories.${shop.category}`, shop.category)}
-                  </Badge>
-                )}
-                {shop.city && shop.country && (
-                  <span className="text-xs text-muted-foreground">{shop.city}, {shop.country}</span>
-                )}
-              </div>
+              {shop.city && shop.country && (
+                <span className="text-xs text-muted-foreground">{shop.city}, {shop.country}</span>
+              )}
             </div>
           </div>
           {shop.whatsapp && (
@@ -384,13 +394,18 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                             size="sm"
                             className="w-full mt-3 gap-2"
                             disabled={isOutOfStock}
+                            style={{
+                              backgroundColor: isOutOfStock ? undefined : ctaBg,
+                              color: isOutOfStock ? undefined : ctaText,
+                              borderRadius: ctaRadius,
+                            }}
                             onClick={e => {
                               e.stopPropagation();
                               addToCart(product);
                             }}
                           >
                             <ShoppingCart className="h-3.5 w-3.5" />
-                            {t('storefront.addToCart')}
+                            {shop.cta_label || t('storefront.addToCart')}
                           </Button>
                         </div>
                       </div>

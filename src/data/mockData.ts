@@ -46,6 +46,12 @@ export const mockShop: Shop = {
   products_per_row: '3',
   products_sort_order: 'recent',
   button_shadow: 'None',
+  // Identity & Typography V3
+  identity_display_mode: 'logo-name',
+  title_size_px: 22,
+  body_size_px: 14,
+  letter_spacing_px: 0,
+  line_height_pct: 160,
 };
 
 

@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Palette, Type, MousePointer2, Globe, Loader2,
-  AlertCircle, Image, RefreshCw, Zap, CheckCircle2,
-  Monitor, Smartphone, RotateCcw,
+  ArrowLeft, Loader2, Monitor, Smartphone, RefreshCw,
+  RotateCcw, Image, Palette, Type, MousePointer2, Globe, ChevronDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { useShop } from '@/hooks/useShop';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -22,13 +22,13 @@ import { AdvancedColorPicker } from '@/components/settings/AdvancedColorPicker';
 import { ShopAssetUploader } from '@/components/settings/ShopAssetUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface AppearanceForm {
   logo_url: string;
   banner_url: string;
-  favicon_url: string;
   banner_size: string;
+  identity_display_mode: string;
   primary_color: string;
   secondary_color: string;
   button_color: string;
@@ -36,14 +36,12 @@ interface AppearanceForm {
   badge_color: string;
   background_color: string;
   card_bg_color: string;
-  header_color: string;
-  footer_color: string;
   heading_font: string;
   body_font: string;
-  title_size: number;
-  body_size: number;
-  letter_spacing: number;
-  line_height: number;
+  title_size_px: number;
+  body_size_px: number;
+  letter_spacing_px: number;
+  line_height_pct: number;
   cta_label: string;
   button_radius: string;
   button_width: string;
@@ -59,8 +57,8 @@ interface AppearanceForm {
 const DEFAULT_FORM: AppearanceForm = {
   logo_url: '',
   banner_url: '',
-  favicon_url: '',
   banner_size: 'Medium',
+  identity_display_mode: 'logo-name',
   primary_color: '#1E3A5F',
   secondary_color: '#FF6B35',
   button_color: '#FF6B35',
@@ -68,14 +66,12 @@ const DEFAULT_FORM: AppearanceForm = {
   badge_color: '#10B981',
   background_color: '#F9FAFB',
   card_bg_color: '#FFFFFF',
-  header_color: '#1E3A5F',
-  footer_color: '#1E3A5F',
   heading_font: 'Inter',
   body_font: 'Inter',
-  title_size: 22,
-  body_size: 14,
-  letter_spacing: 0,
-  line_height: 160,
+  title_size_px: 22,
+  body_size_px: 14,
+  letter_spacing_px: 0,
+  line_height_pct: 160,
   cta_label: 'Acheter maintenant',
   button_radius: 'Medium',
   button_width: 'Full width',
@@ -88,7 +84,7 @@ const DEFAULT_FORM: AppearanceForm = {
   products_sort_order: 'recent',
 };
 
-const COLOR_DEFAULTS: Partial<Record<keyof AppearanceForm, string>> = {
+const COLOR_DEFAULTS: Record<string, string> = {
   primary_color: '#1E3A5F',
   secondary_color: '#FF6B35',
   button_color: '#FF6B35',
@@ -96,100 +92,79 @@ const COLOR_DEFAULTS: Partial<Record<keyof AppearanceForm, string>> = {
   badge_color: '#10B981',
   background_color: '#F9FAFB',
   card_bg_color: '#FFFFFF',
-  header_color: '#1E3A5F',
-  footer_color: '#1E3A5F',
 };
 
 const FONTS = ['Inter', 'Poppins', 'Manrope', 'Montserrat', 'Open Sans'];
 const CTA_PRESETS = ['Acheter maintenant', 'Commander', 'Ajouter au panier', 'Obtenir maintenant', 'Je le veux'];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Sub-components ────────────────────────────────────────────────────────────
 
-function PillGroup<T extends string>({
-  options, value, onChange,
-}: { options: T[]; value: T; onChange: (v: T) => void }) {
+/** Minimal segmented control */
+function SegmentedControl<T extends string>({
+  options, value, onChange, labels,
+}: {
+  options: T[];
+  value: T;
+  onChange: (v: T) => void;
+  labels?: Record<T, string>;
+}) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5">
       {options.map(opt => (
         <button
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
           className={cn(
-            'rounded-full border px-3 py-1 text-xs font-medium transition-all',
+            'flex-1 rounded-md px-2 py-1.5 text-[12px] font-medium transition-all',
             value === opt
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground',
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {opt}
+          {labels?.[opt] ?? opt}
         </button>
       ))}
     </div>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-      {children}
-    </p>
-  );
-}
-
-function FontCard({ font, selected, onSelect }: { font: string; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'flex flex-col items-center justify-center rounded-xl border p-3 gap-1 transition-all text-center hover:border-primary/50',
-        selected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-background',
-      )}
-    >
-      <span style={{ fontFamily: `${font}, sans-serif` }} className="text-xl font-bold text-foreground leading-none">Aa</span>
-      <span className="text-[10px] text-muted-foreground">{font}</span>
-    </button>
-  );
-}
-
+/** Color row: label + helper text on left, swatch + hex on right */
 function ColorRow({
-  label, colorKey, form, update, defaultVal,
+  label, helper, colorKey, form, update,
 }: {
   label: string;
+  helper?: string;
   colorKey: keyof AppearanceForm;
   form: AppearanceForm;
   update: (k: keyof AppearanceForm, v: string) => void;
-  defaultVal: string;
 }) {
   const [open, setOpen] = useState(false);
   const value = form[colorKey] as string;
+  const defaultVal = COLOR_DEFAULTS[colorKey as string] ?? '#000000';
 
   return (
-    <div className="space-y-2">
+    <div>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2.5 hover:bg-muted/50 transition-colors group"
+        className="w-full flex items-center justify-between gap-3 py-3 hover:bg-muted/30 rounded-lg px-3 -mx-3 transition-colors group"
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="text-left min-w-0">
+          <p className="text-[13px] font-medium text-foreground">{label}</p>
+          {helper && <p className="text-[12px] text-muted-foreground mt-0.5">{helper}</p>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           <div
-            className="w-8 h-8 rounded-md border border-border/50 shrink-0 shadow-sm"
+            className="w-8 h-8 rounded-md border border-border/60 shadow-sm"
             style={{ backgroundColor: value }}
           />
-          <div className="text-left min-w-0">
-            <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="font-mono text-xs text-muted-foreground">{value.toUpperCase()}</p>
-          </div>
-        </div>
-        <div className={cn('h-4 w-4 text-muted-foreground transition-transform duration-200', open && 'rotate-180')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          <span className="font-mono text-[12px] text-muted-foreground hidden sm:block">{value.toUpperCase()}</span>
+          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', open && 'rotate-180')} />
         </div>
       </button>
       {open && (
-        <div className="pl-1">
+        <div className="pt-2 pb-3">
           <AdvancedColorPicker
             value={value}
             defaultValue={defaultVal}
@@ -201,43 +176,41 @@ function ColorRow({
   );
 }
 
-// ─── Live button preview ──────────────────────────────────────────────────────
-
-function CtaButtonPreview({ form }: { form: AppearanceForm }) {
-  const btnRadius = form.button_radius === 'Sharp' ? '4px' : form.button_radius === 'Pill' ? '999px' : '10px';
-  const btnShadow = form.button_shadow === 'Soft'
+/** CTA live preview button */
+function CtaPreview({ form }: { form: AppearanceForm }) {
+  const radius = form.button_radius === 'Sharp' ? '4px' : form.button_radius === 'Pill' ? '999px' : '8px';
+  const shadow = form.button_shadow === 'Soft'
     ? '0 2px 8px rgba(0,0,0,0.15)'
     : form.button_shadow === 'Elevated'
       ? '0 4px 16px rgba(0,0,0,0.25)'
       : 'none';
 
   return (
-    <div className="flex justify-center py-4 rounded-xl bg-muted/30 border border-border">
+    <div className="rounded-lg border border-border bg-muted/20 flex items-center justify-center p-5">
       <button
         type="button"
         style={{
           background: form.button_color,
           color: form.button_text_color,
-          borderRadius: btnRadius,
+          borderRadius: radius,
           padding: '9px 24px',
           fontSize: 13,
           fontWeight: 600,
           border: 'none',
           cursor: 'default',
-          width: form.button_width === 'Full width' ? 'calc(100% - 32px)' : 'auto',
-          boxShadow: btnShadow,
-          letterSpacing: form.letter_spacing + 'px',
+          width: form.button_width === 'Full width' ? '100%' : 'auto',
+          boxShadow: shadow,
+          letterSpacing: form.letter_spacing_px + 'px',
           fontFamily: form.body_font + ', sans-serif',
-          transition: 'all 0.2s',
         }}
       >
-        {form.cta_label}
+        {form.cta_label || 'Acheter maintenant'}
       </button>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function SettingsApparence() {
   const navigate = useNavigate();
@@ -262,8 +235,8 @@ export default function SettingsApparence() {
     const f: AppearanceForm = {
       logo_url: shop.logo_url ?? '',
       banner_url: shop.banner_url ?? '',
-      favicon_url: shop.favicon_url ?? '',
       banner_size: shop.banner_size ?? 'Medium',
+      identity_display_mode: (shop as any).identity_display_mode ?? 'logo-name',
       primary_color: shop.primary_color ?? '#1E3A5F',
       secondary_color: shop.secondary_color ?? '#FF6B35',
       button_color: shop.button_color ?? '#FF6B35',
@@ -271,14 +244,12 @@ export default function SettingsApparence() {
       badge_color: shop.badge_color ?? '#10B981',
       background_color: shop.background_color ?? '#F9FAFB',
       card_bg_color: shop.card_bg_color ?? '#FFFFFF',
-      header_color: shop.header_color ?? shop.primary_color ?? '#1E3A5F',
-      footer_color: shop.footer_color ?? '#1E3A5F',
       heading_font: shop.heading_font ?? 'Inter',
       body_font: shop.body_font ?? 'Inter',
-      title_size: 22,
-      body_size: 14,
-      letter_spacing: 0,
-      line_height: 160,
+      title_size_px: (shop as any).title_size_px ?? 22,
+      body_size_px: (shop as any).body_size_px ?? 14,
+      letter_spacing_px: (shop as any).letter_spacing_px ?? 0,
+      line_height_pct: (shop as any).line_height_pct ?? 160,
       cta_label: shop.cta_label ?? 'Acheter maintenant',
       button_radius: shop.button_radius ?? 'Medium',
       button_width: shop.button_width ?? 'Full width',
@@ -313,7 +284,7 @@ export default function SettingsApparence() {
     });
   }, [form.heading_font, form.body_font]);
 
-  // ── postMessage to iframe (debounced) ──
+  // ── postMessage to iframe (debounced 350ms) ──
   useEffect(() => {
     const t = setTimeout(() => {
       if (!iframeRef.current?.contentWindow) return;
@@ -328,8 +299,6 @@ export default function SettingsApparence() {
             '--color-badge': form.badge_color,
             '--color-bg': form.background_color,
             '--color-card-bg': form.card_bg_color,
-            '--color-header': form.header_color,
-            '--color-footer': form.footer_color,
             '--heading-font': form.heading_font,
             '--body-font': form.body_font,
           },
@@ -345,10 +314,10 @@ export default function SettingsApparence() {
   }, []);
 
   const handleReset = useCallback(() => {
-    const f = { ...DEFAULT_FORM, logo_url: form.logo_url, banner_url: form.banner_url, favicon_url: form.favicon_url };
+    const f = { ...DEFAULT_FORM, logo_url: form.logo_url, banner_url: form.banner_url };
     setForm(f);
     toast.info('Thème réinitialisé aux valeurs par défaut');
-  }, [form.logo_url, form.banner_url, form.favicon_url]);
+  }, [form.logo_url, form.banner_url]);
 
   const handleSave = async () => {
     if (!shop || saving) return;
@@ -357,8 +326,8 @@ export default function SettingsApparence() {
       const { error } = await supabase.from('shops').update({
         logo_url: form.logo_url || null,
         banner_url: form.banner_url || null,
-        favicon_url: form.favicon_url || null,
         banner_size: form.banner_size,
+        identity_display_mode: form.identity_display_mode,
         primary_color: form.primary_color,
         secondary_color: form.secondary_color,
         button_color: form.button_color,
@@ -366,10 +335,12 @@ export default function SettingsApparence() {
         badge_color: form.badge_color,
         background_color: form.background_color,
         card_bg_color: form.card_bg_color,
-        header_color: form.header_color,
-        footer_color: form.footer_color,
         heading_font: form.heading_font,
         body_font: form.body_font,
+        title_size_px: form.title_size_px,
+        body_size_px: form.body_size_px,
+        letter_spacing_px: form.letter_spacing_px,
+        line_height_pct: form.line_height_pct,
         cta_label: form.cta_label,
         button_radius: form.button_radius,
         button_width: form.button_width,
@@ -381,13 +352,13 @@ export default function SettingsApparence() {
         products_per_row: form.products_per_row,
         products_sort_order: form.products_sort_order,
         updated_at: new Date().toISOString(),
-      }).eq('id', shop.id);
+      } as any).eq('id', shop.id);
 
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ['shop'] });
       savedFormRef.current = { ...form };
       setIframeKey(k => k + 1);
-      toast.success('Apparence sauvegardée ! ✨');
+      toast.success('Apparence sauvegardée ✨');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
     } finally {
@@ -397,7 +368,6 @@ export default function SettingsApparence() {
 
   const storeFrontUrl = shop?.slug ? `/boutique/${shop.slug}?preview=true` : null;
 
-  // ── Loading state ──
   if (isLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background z-40">
@@ -406,100 +376,119 @@ export default function SettingsApparence() {
     );
   }
 
+  // ── Single iframe element (shared between desktop/mobile containers) ──
+  const iframeEl = storeFrontUrl ? (
+    <iframe
+      ref={iframeRef}
+      key={iframeKey}
+      src={storeFrontUrl}
+      title="Aperçu boutique"
+      className="w-full h-full border-0"
+      sandbox="allow-scripts allow-same-origin allow-forms"
+    />
+  ) : null;
+
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background z-40 overflow-hidden">
+    <div className="fixed inset-0 flex flex-col z-40 overflow-hidden bg-background">
 
-      {/* ────────────────────────────────────────────────────────────────────
-          HEADER
-      ──────────────────────────────────────────────────────────────────── */}
-      <header className="h-14 shrink-0 border-b border-border bg-background/95 backdrop-blur-sm flex items-center justify-between px-4 z-10">
-        {/* Left */}
+      {/* ── HEADER (64px) ── */}
+      <header className="h-16 shrink-0 border-b border-border bg-background flex items-center justify-between px-5 gap-4">
+        {/* Left: back + title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate('/dashboard/parametres')}
-            className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors shrink-0"
+            className="flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted transition-colors shrink-0"
+            aria-label="Retour"
           >
-            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+            <ArrowLeft className="h-4 w-4 text-foreground" />
           </button>
-          <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-sm font-semibold text-foreground">Apparence</h1>
-            {isDirty && (
-              <span className="hidden sm:flex items-center gap-1 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 shrink-0">
-                <AlertCircle className="h-3 w-3" />
-                Non enregistré
-              </span>
-            )}
-          </div>
+          <h1 className="text-[20px] font-semibold text-foreground tracking-tight">Apparence</h1>
         </div>
 
-        {/* Right */}
-        <div className="flex items-center gap-2">
+        {/* Center: dirty badge */}
+        <div className="flex-1 flex justify-center">
+          {isDirty && (
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span className="text-[12px] text-amber-600 dark:text-amber-400 font-medium">Modifications non enregistrées</span>
+            </div>
+          )}
+        </div>
+
+        {/* Right: reset + save */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleReset}
-            className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground border border-border rounded-lg px-3 h-8 hover:bg-muted transition-colors"
+            className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors"
           >
-            <RotateCcw className="h-3 w-3" />
+            <RotateCcw className="h-3.5 w-3.5" />
             Réinitialiser
           </button>
           <Button
             onClick={handleSave}
-            disabled={saving || isLoading}
-            className="h-8 px-4 text-sm font-medium gap-1.5"
+            disabled={saving}
+            className="h-9 px-4 text-[13px] font-medium rounded-lg"
+            style={{ backgroundColor: '#10B981', color: '#fff' }}
           >
             {saving
-              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Sauvegarde...</>
-              : <><CheckCircle2 className="h-3.5 w-3.5" />Enregistrer</>}
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Sauvegarde...</>
+              : 'Enregistrer'}
           </Button>
         </div>
       </header>
 
-      {/* ────────────────────────────────────────────────────────────────────
-          BODY — splits into LEFT config + RIGHT preview
-      ──────────────────────────────────────────────────────────────────── */}
-      <div className={cn(
-        'flex flex-1 overflow-hidden',
-        isMobile ? 'flex-col' : 'flex-row',
-      )}>
+      {/* ── BODY ── */}
+      <div className="flex flex-1 overflow-hidden">
 
         {/* ══════════════════════════════════════════════════════════════════
-            LEFT — Config panel (scrollable)
+            LEFT CONFIG PANEL — 560px fixed, independent scroll
         ══════════════════════════════════════════════════════════════════ */}
-        <div className={cn(
-          'overflow-y-auto border-r border-border bg-background',
-          isMobile ? 'flex-1' : 'w-[400px] xl:w-[440px] shrink-0',
-        )}>
-          <div className="p-4">
-            <Accordion type="single" collapsible defaultValue="colors" className="space-y-2">
+        <div
+          className="shrink-0 overflow-y-auto bg-[#F6F8FA] dark:bg-muted/10"
+          style={{ width: isMobile ? '100%' : 560 }}
+        >
+          <div className="p-6 space-y-3">
 
-              {/* ── 1. Identité visuelle ── */}
-              <AccordionItem value="identity" className="rounded-xl border border-border bg-card px-4 shadow-sm data-[state=open]:shadow-md transition-shadow">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2.5 font-semibold text-sm">
+            <Accordion type="single" collapsible defaultValue="design" className="space-y-3">
+
+              {/* ── Section 1: Brand Identity ── */}
+              <AccordionItem
+                value="identity"
+                className="rounded-xl border border-border bg-card overflow-hidden data-[state=open]:shadow-sm"
+              >
+                <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-muted/20 transition-colors [&[data-state=open]>svg]:rotate-180">
+                  <span className="flex items-center gap-2.5 text-[14px] font-medium text-foreground">
                     <Image className="h-4 w-4 text-muted-foreground" />
                     Identité visuelle
                   </span>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-6 pb-3 pt-1">
+                <AccordionContent className="px-4 pb-5 pt-1">
+                  <div className="space-y-6">
                     {shop && (
                       <>
-                        {/* Logo */}
-                        <ShopAssetUploader
-                          label="Logo"
-                          asset="logo"
-                          currentUrl={form.logo_url}
-                          shopId={shop.id}
-                          onChange={url => update('logo_url', url)}
-                          aspectRatio="1:1"
-                          maxSizeMB={2}
-                        />
-
-                        {/* Bannière */}
+                        {/* Logo upload */}
                         <div className="space-y-3">
+                          <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Logo</p>
+                          <ShopAssetUploader
+                            label="Logo"
+                            asset="logo"
+                            currentUrl={form.logo_url}
+                            shopId={shop.id}
+                            onChange={url => update('logo_url', url)}
+                            aspectRatio="1:1"
+                            maxSizeMB={2}
+                          />
+                        </div>
+
+                        <Separator className="bg-border/60" />
+
+                        {/* Banner upload */}
+                        <div className="space-y-3">
+                          <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Bannière</p>
                           <ShopAssetUploader
                             label="Bannière"
                             asset="banner"
@@ -509,9 +498,9 @@ export default function SettingsApparence() {
                             aspectRatio="16:9"
                             maxSizeMB={2}
                           />
-                          <div className="space-y-1.5">
-                            <SectionLabel>Taille d'affichage</SectionLabel>
-                            <PillGroup
+                          <div className="space-y-2 pt-1">
+                            <p className="text-[12px] font-medium text-foreground">Taille d'affichage</p>
+                            <SegmentedControl
                               options={['Small', 'Medium', 'Large'] as const}
                               value={form.banner_size as 'Small' | 'Medium' | 'Large'}
                               onChange={v => update('banner_size', v)}
@@ -519,114 +508,278 @@ export default function SettingsApparence() {
                           </div>
                         </div>
 
-                        {/* Favicon */}
-                        <ShopAssetUploader
-                          label="Favicon"
-                          asset="favicon"
-                          currentUrl={form.favicon_url}
-                          shopId={shop.id}
-                          onChange={url => update('favicon_url', url)}
-                          aspectRatio="favicon"
-                          maxSizeMB={1}
-                        />
+                        <Separator className="bg-border/60" />
+
+                        {/* Identity display mode */}
+                        <div className="space-y-3">
+                          <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Affichage du header</p>
+                          <RadioGroup
+                            value={form.identity_display_mode}
+                            onValueChange={v => update('identity_display_mode', v)}
+                            className="space-y-2"
+                          >
+                            {[
+                              { value: 'logo-only', label: 'Logo seul', desc: 'Affiche uniquement le logo' },
+                              { value: 'name-only', label: 'Nom seul', desc: 'Affiche uniquement le nom de la boutique' },
+                              { value: 'logo-name', label: 'Logo + Nom', desc: 'Affiche le logo et le nom côte à côte' },
+                            ].map(opt => (
+                              <div
+                                key={opt.value}
+                                className={cn(
+                                  'flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors',
+                                  form.identity_display_mode === opt.value
+                                    ? 'border-primary bg-primary/5'
+                                    : 'border-border hover:bg-muted/30',
+                                )}
+                                onClick={() => update('identity_display_mode', opt.value)}
+                              >
+                                <RadioGroupItem value={opt.value} id={`idm-${opt.value}`} />
+                                <div>
+                                  <Label htmlFor={`idm-${opt.value}`} className="text-[13px] font-medium cursor-pointer">{opt.label}</Label>
+                                  <p className="text-[12px] text-muted-foreground">{opt.desc}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </div>
                       </>
                     )}
                   </div>
                 </AccordionContent>
               </AccordionItem>
 
-              {/* ── 2. Couleurs ── */}
-              <AccordionItem value="colors" className="rounded-xl border border-border bg-card px-4 shadow-sm data-[state=open]:shadow-md transition-shadow">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2.5 font-semibold text-sm">
+              {/* ── Section 2: Design (Colors + Typography) — OPEN BY DEFAULT ── */}
+              <AccordionItem
+                value="design"
+                className="rounded-xl border border-border bg-card overflow-hidden data-[state=open]:shadow-sm"
+              >
+                <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-muted/20 transition-colors [&[data-state=open]>svg]:rotate-180">
+                  <span className="flex items-center gap-2.5 text-[14px] font-medium text-foreground">
                     <Palette className="h-4 w-4 text-muted-foreground" />
-                    Couleurs
+                    Design
                     <div className="flex gap-1 ml-1">
-                      {['primary_color', 'button_color', 'badge_color'].map(k => (
+                      {(['primary_color', 'button_color', 'badge_color'] as const).map(k => (
                         <div
                           key={k}
-                          className="w-3 h-3 rounded-full border border-border/60 shadow-sm"
-                          style={{ backgroundColor: form[k as keyof AppearanceForm] as string }}
+                          className="w-3 h-3 rounded-full border border-border/60"
+                          style={{ backgroundColor: form[k] }}
                         />
                       ))}
                     </div>
                   </span>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-2.5 pb-3 pt-1">
-                    <ColorRow label="Couleur principale" colorKey="primary_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.primary_color!} />
-                    <ColorRow label="Couleur secondaire" colorKey="secondary_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.secondary_color!} />
-                    <ColorRow label="Couleur header" colorKey="header_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.header_color!} />
-                    <ColorRow label="Couleur footer" colorKey="footer_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.footer_color!} />
-                    <ColorRow label="Fond bouton CTA" colorKey="button_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.button_color!} />
-                    <ColorRow label="Texte bouton CTA" colorKey="button_text_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.button_text_color!} />
-                    <ColorRow label="Fond global" colorKey="background_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.background_color!} />
-                    <ColorRow label="Fond cartes produit" colorKey="card_bg_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.card_bg_color!} />
-                    <ColorRow label="Badge promo" colorKey="badge_color" form={form} update={update} defaultVal={COLOR_DEFAULTS.badge_color!} />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+                <AccordionContent className="px-4 pb-5 pt-1">
 
-              {/* ── 3. Typographie ── */}
-              <AccordionItem value="typography" className="rounded-xl border border-border bg-card px-4 shadow-sm data-[state=open]:shadow-md transition-shadow">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2.5 font-semibold text-sm">
-                    <Type className="h-4 w-4 text-muted-foreground" />
-                    Typographie
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-5 pb-3 pt-1">
-                    <div className="space-y-2">
-                      <SectionLabel>Police des titres</SectionLabel>
-                      <div className="grid grid-cols-3 gap-2">
-                        {FONTS.map(f => (
-                          <FontCard key={f} font={f} selected={form.heading_font === f} onSelect={() => update('heading_font', f)} />
-                        ))}
+                  {/* COLORS */}
+                  <div className="space-y-0 divide-y divide-border/40">
+                    <ColorRow
+                      label="Couleur principale"
+                      helper="Prix, liens, icônes, avatar"
+                      colorKey="primary_color"
+                      form={form}
+                      update={update}
+                    />
+                    <ColorRow
+                      label="Couleur secondaire"
+                      helper="Accents, badges secondaires"
+                      colorKey="secondary_color"
+                      form={form}
+                      update={update}
+                    />
+                    <ColorRow
+                      label="Fond bouton CTA"
+                      helper="Bouton d'achat principal"
+                      colorKey="button_color"
+                      form={form}
+                      update={update}
+                    />
+                    <ColorRow
+                      label="Texte bouton CTA"
+                      helper="Couleur du texte sur le bouton"
+                      colorKey="button_text_color"
+                      form={form}
+                      update={update}
+                    />
+                    <ColorRow
+                      label="Fond global"
+                      helper="Couleur de fond de la boutique"
+                      colorKey="background_color"
+                      form={form}
+                      update={update}
+                    />
+                    <ColorRow
+                      label="Fond cartes produit"
+                      helper="Arrière-plan des fiches produit"
+                      colorKey="card_bg_color"
+                      form={form}
+                      update={update}
+                    />
+                    <ColorRow
+                      label="Badge promo"
+                      helper="Étiquette de réduction"
+                      colorKey="badge_color"
+                      form={form}
+                      update={update}
+                    />
+                  </div>
+
+                  <Separator className="my-5 bg-border/60" />
+
+                  {/* TYPOGRAPHY */}
+                  <div className="space-y-5">
+                    <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Typographie</p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-[12px] font-medium text-foreground">Police des titres</Label>
+                        <Select value={form.heading_font} onValueChange={v => update('heading_font', v)}>
+                          <SelectTrigger className="h-9 text-[13px] rounded-lg">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONTS.map(f => (
+                              <SelectItem key={f} value={f} className="text-[13px]">
+                                <span style={{ fontFamily: `${f}, sans-serif` }}>{f}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[12px] font-medium text-foreground">Police du texte</Label>
+                        <Select value={form.body_font} onValueChange={v => update('body_font', v)}>
+                          <SelectTrigger className="h-9 text-[13px] rounded-lg">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FONTS.map(f => (
+                              <SelectItem key={f} value={f} className="text-[13px]">
+                                <span style={{ fontFamily: `${f}, sans-serif` }}>{f}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <SectionLabel>Police du texte</SectionLabel>
-                      <div className="grid grid-cols-3 gap-2">
-                        {FONTS.map(f => (
-                          <FontCard key={f} font={f} selected={form.body_font === f} onSelect={() => update('body_font', f)} />
-                        ))}
-                      </div>
-                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <SectionLabel>Taille titres — {form.title_size}px</SectionLabel>
-                        <Slider min={14} max={40} step={1} value={[form.title_size]} onValueChange={([v]) => update('title_size', v)} />
+                        <p className="text-[12px] font-medium text-foreground">Taille titres — {form.title_size_px}px</p>
+                        <Slider min={14} max={40} step={1} value={[form.title_size_px]} onValueChange={([v]) => update('title_size_px', v)} />
                       </div>
                       <div className="space-y-2">
-                        <SectionLabel>Taille texte — {form.body_size}px</SectionLabel>
-                        <Slider min={10} max={20} step={1} value={[form.body_size]} onValueChange={([v]) => update('body_size', v)} />
+                        <p className="text-[12px] font-medium text-foreground">Taille texte — {form.body_size_px}px</p>
+                        <Slider min={10} max={20} step={1} value={[form.body_size_px]} onValueChange={([v]) => update('body_size_px', v)} />
                       </div>
                       <div className="space-y-2">
-                        <SectionLabel>Espacement — {form.letter_spacing}px</SectionLabel>
-                        <Slider min={-1} max={4} step={0.1} value={[form.letter_spacing]} onValueChange={([v]) => update('letter_spacing', v)} />
+                        <p className="text-[12px] font-medium text-foreground">Espacement — {form.letter_spacing_px}px</p>
+                        <Slider min={-1} max={4} step={0.1} value={[form.letter_spacing_px]} onValueChange={([v]) => update('letter_spacing_px', v)} />
                       </div>
                       <div className="space-y-2">
-                        <SectionLabel>Hauteur ligne — {form.line_height}%</SectionLabel>
-                        <Slider min={120} max={200} step={5} value={[form.line_height]} onValueChange={([v]) => update('line_height', v)} />
+                        <p className="text-[12px] font-medium text-foreground">Hauteur ligne — {form.line_height_pct}%</p>
+                        <Slider min={120} max={200} step={5} value={[form.line_height_pct]} onValueChange={([v]) => update('line_height_pct', v)} />
                       </div>
+                    </div>
+
+                    {/* Live typography preview */}
+                    <div className="rounded-lg border border-border bg-[#F6F8FA] dark:bg-muted/20 p-4 space-y-2">
+                      <p
+                        style={{
+                          fontFamily: `${form.heading_font}, sans-serif`,
+                          fontSize: form.title_size_px,
+                          fontWeight: 600,
+                          color: '#1F2937',
+                          letterSpacing: form.letter_spacing_px + 'px',
+                          lineHeight: form.line_height_pct / 100,
+                          margin: 0,
+                        }}
+                      >
+                        Titre de votre boutique
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: `${form.body_font}, sans-serif`,
+                          fontSize: form.body_size_px,
+                          color: '#6B7280',
+                          letterSpacing: form.letter_spacing_px + 'px',
+                          lineHeight: form.line_height_pct / 100,
+                          margin: 0,
+                        }}
+                      >
+                        Texte de description du produit. Voici comment il apparaîtra.
+                      </p>
                     </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
 
-              {/* ── 4. CTA Personnalisation ── */}
-              <AccordionItem value="cta-text" className="rounded-xl border border-border bg-card px-4 shadow-sm data-[state=open]:shadow-md transition-shadow">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2.5 font-semibold text-sm">
+              {/* ── Section 3: Layout & CTA ── */}
+              <AccordionItem
+                value="layout-cta"
+                className="rounded-xl border border-border bg-card overflow-hidden data-[state=open]:shadow-sm"
+              >
+                <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-muted/20 transition-colors [&[data-state=open]>svg]:rotate-180">
+                  <span className="flex items-center gap-2.5 text-[14px] font-medium text-foreground">
                     <MousePointer2 className="h-4 w-4 text-muted-foreground" />
-                    CTA — Personnalisation
+                    Layout & CTA
                   </span>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4 pb-3 pt-1">
+                <AccordionContent className="px-4 pb-5 pt-1">
+                  <div className="space-y-6">
+
+                    {/* Product grid */}
+                    <div className="space-y-3">
+                      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Grille produits</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['1', '2', '3'] as const).map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => update('products_per_row', n)}
+                            className={cn(
+                              'rounded-xl border p-3 flex flex-col items-center gap-2 transition-all',
+                              form.products_per_row === n
+                                ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                                : 'border-border hover:border-muted-foreground/30 bg-background',
+                            )}
+                          >
+                            <div className="flex gap-0.5 items-end h-6">
+                              {Array.from({ length: Number(n) }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="h-5 bg-muted-foreground/20 rounded-sm"
+                                  style={{ width: n === '1' ? 28 : n === '2' ? 12 : 8 }}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground font-medium">{n} / ligne</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Display order */}
                     <div className="space-y-2">
-                      <SectionLabel>Texte du bouton</SectionLabel>
+                      <p className="text-[12px] font-medium text-foreground">Ordre d'affichage</p>
+                      <Select value={form.products_sort_order} onValueChange={v => update('products_sort_order', v)}>
+                        <SelectTrigger className="h-9 text-[13px] rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="recent" className="text-[13px]">Plus récent</SelectItem>
+                          <SelectItem value="alpha" className="text-[13px]">Alphabétique</SelectItem>
+                          <SelectItem value="best_seller" className="text-[13px]">Plus vendu</SelectItem>
+                          <SelectItem value="price_asc" className="text-[13px]">Moins cher</SelectItem>
+                          <SelectItem value="price_desc" className="text-[13px]">Plus cher</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Separator className="bg-border/60" />
+
+                    {/* CTA text */}
+                    <div className="space-y-3">
+                      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Texte du bouton</p>
                       <div className="flex flex-wrap gap-1.5">
                         {CTA_PRESETS.map(preset => (
                           <button
@@ -634,10 +787,10 @@ export default function SettingsApparence() {
                             type="button"
                             onClick={() => { update('cta_label', preset); setIsCustomCta(false); }}
                             className={cn(
-                              'rounded-full border px-3 py-1 text-xs font-medium transition-all',
+                              'rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all',
                               form.cta_label === preset && !isCustomCta
                                 ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border bg-background text-muted-foreground hover:border-primary/50',
+                                : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground',
                             )}
                           >
                             {preset}
@@ -647,10 +800,10 @@ export default function SettingsApparence() {
                           type="button"
                           onClick={() => setIsCustomCta(true)}
                           className={cn(
-                            'rounded-full border px-3 py-1 text-xs font-medium transition-all',
+                            'rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all',
                             isCustomCta
                               ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-background text-muted-foreground hover:border-primary/50',
+                              : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground',
                           )}
                         >
                           Personnalisé
@@ -666,86 +819,80 @@ export default function SettingsApparence() {
                               update('cta_label', v);
                             }}
                             placeholder="Texte personnalisé (max 25 car.)"
-                            className="h-9 text-sm"
+                            className="h-9 text-[13px] rounded-lg"
                             maxLength={25}
                           />
                           <p className="text-[11px] text-muted-foreground text-right">{customCta.length}/25</p>
                         </div>
                       )}
                     </div>
-                    <div className="space-y-1.5">
-                      <SectionLabel>Aperçu</SectionLabel>
-                      <CtaButtonPreview form={form} />
+
+                    {/* CTA Style */}
+                    <div className="space-y-4">
+                      <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">Style du bouton</p>
+
+                      <div className="space-y-2">
+                        <p className="text-[12px] font-medium text-foreground">Forme</p>
+                        <SegmentedControl
+                          options={['Sharp', 'Medium', 'Pill'] as const}
+                          value={form.button_radius as 'Sharp' | 'Medium' | 'Pill'}
+                          onChange={v => update('button_radius', v)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-[12px] font-medium text-foreground">Largeur</p>
+                        <SegmentedControl
+                          options={['Fit content', 'Full width'] as const}
+                          value={form.button_width as 'Fit content' | 'Full width'}
+                          onChange={v => update('button_width', v)}
+                          labels={{ 'Fit content': 'Adapté', 'Full width': 'Pleine largeur' }}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-[12px] font-medium text-foreground">Animation</p>
+                        <SegmentedControl
+                          options={['None', 'Pulse', 'Shine'] as const}
+                          value={
+                            ['None', 'Pulse', 'Shine'].includes(form.button_animation)
+                              ? (form.button_animation as 'None' | 'Pulse' | 'Shine')
+                              : 'None'
+                          }
+                          onChange={v => update('button_animation', v)}
+                          labels={{ None: 'Aucune', Pulse: 'Pulse', Shine: 'Shine' }}
+                        />
+                      </div>
+
+                      {/* CTA preview */}
+                      <div className="space-y-2">
+                        <p className="text-[12px] font-medium text-foreground">Aperçu</p>
+                        <CtaPreview form={form} />
+                      </div>
                     </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
 
-              {/* ── 5. CTA Styling ── */}
-              <AccordionItem value="cta-style" className="rounded-xl border border-border bg-card px-4 shadow-sm data-[state=open]:shadow-md transition-shadow">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2.5 font-semibold text-sm">
-                    <Zap className="h-4 w-4 text-muted-foreground" />
-                    CTA — Style
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4 pb-3 pt-1">
-                    <div className="space-y-1.5">
-                      <SectionLabel>Arrondi</SectionLabel>
-                      <PillGroup
-                        options={['Sharp', 'Medium', 'Pill'] as const}
-                        value={form.button_radius as 'Sharp' | 'Medium' | 'Pill'}
-                        onChange={v => update('button_radius', v)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <SectionLabel>Largeur</SectionLabel>
-                      <PillGroup
-                        options={['Full width', 'Fit content'] as const}
-                        value={form.button_width as 'Full width' | 'Fit content'}
-                        onChange={v => update('button_width', v)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <SectionLabel>Ombre</SectionLabel>
-                      <PillGroup
-                        options={['None', 'Soft', 'Elevated'] as const}
-                        value={form.button_shadow as 'None' | 'Soft' | 'Elevated'}
-                        onChange={v => update('button_shadow', v)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <SectionLabel>Animation</SectionLabel>
-                      <PillGroup
-                        options={['None', 'Bounce', 'Pulse', 'Shake', 'Shine'] as const}
-                        value={form.button_animation as 'None' | 'Bounce' | 'Pulse' | 'Shake' | 'Shine'}
-                        onChange={v => update('button_animation', v)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <SectionLabel>Aperçu</SectionLabel>
-                      <CtaButtonPreview form={form} />
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* ── 6. Style global ── */}
-              <AccordionItem value="global" className="rounded-xl border border-border bg-card px-4 shadow-sm data-[state=open]:shadow-md transition-shadow">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <span className="flex items-center gap-2.5 font-semibold text-sm">
+              {/* ── Section 4: Style global ── */}
+              <AccordionItem
+                value="global"
+                className="rounded-xl border border-border bg-card overflow-hidden data-[state=open]:shadow-sm"
+              >
+                <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-muted/20 transition-colors [&[data-state=open]>svg]:rotate-180">
+                  <span className="flex items-center gap-2.5 text-[14px] font-medium text-foreground">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     Style global
                   </span>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-5 pb-3 pt-1">
+                <AccordionContent className="px-4 pb-5 pt-1">
+                  <div className="space-y-5">
+
                     {/* Dark mode */}
-                    <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-3 py-3">
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-foreground">Mode sombre</p>
-                        <p className="text-xs text-muted-foreground">Boutique adaptée à l'obscurité</p>
+                        <p className="text-[13px] font-medium text-foreground">Mode sombre</p>
+                        <p className="text-[12px] text-muted-foreground">Boutique adaptée à l'obscurité</p>
                       </div>
                       <Switch
                         checked={form.dark_mode_enabled}
@@ -755,89 +902,58 @@ export default function SettingsApparence() {
 
                     {/* Card style */}
                     <div className="space-y-2">
-                      <SectionLabel>Style des cartes produit</SectionLabel>
+                      <p className="text-[12px] font-medium text-foreground">Style des cartes produit</p>
                       <div className="grid grid-cols-3 gap-2">
-                        {(['Soft shadow', 'Border minimal', 'Flat'] as const).map(style => (
+                        {([
+                          { value: 'Soft shadow', label: 'Ombre douce' },
+                          { value: 'Border minimal', label: 'Bordure' },
+                          { value: 'Flat', label: 'Flat' },
+                        ]).map(s => (
                           <button
-                            key={style}
+                            key={s.value}
                             type="button"
-                            onClick={() => update('product_card_style', style)}
+                            onClick={() => update('product_card_style', s.value)}
                             className={cn(
-                              'rounded-xl border p-3 text-center transition-all space-y-1.5',
-                              form.product_card_style === style
-                                ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                : 'border-border hover:border-primary/50 bg-background',
+                              'rounded-xl border p-3 text-center transition-all space-y-2',
+                              form.product_card_style === s.value
+                                ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                                : 'border-border hover:border-muted-foreground/30 bg-background',
                             )}
                           >
                             <div className={cn(
-                              'w-full h-7 rounded-md',
-                              style === 'Soft shadow' ? 'shadow-md bg-card' : '',
-                              style === 'Border minimal' ? 'border border-border bg-card' : '',
-                              style === 'Flat' ? 'bg-muted' : '',
+                              'w-full h-8 rounded-md mx-auto',
+                              s.value === 'Soft shadow' ? 'shadow-md bg-card border border-border/20' : '',
+                              s.value === 'Border minimal' ? 'border border-border bg-card' : '',
+                              s.value === 'Flat' ? 'bg-muted' : '',
                             )} />
-                            <p className="text-[10px] text-muted-foreground leading-tight">{style}</p>
+                            <p className="text-[11px] text-muted-foreground font-medium leading-tight">{s.label}</p>
                           </button>
                         ))}
                       </div>
                     </div>
 
                     {/* Global radius */}
-                    <div className="space-y-1.5">
-                      <SectionLabel>Rayon global</SectionLabel>
-                      <PillGroup
+                    <div className="space-y-2">
+                      <p className="text-[12px] font-medium text-foreground">Rayon global</p>
+                      <SegmentedControl
                         options={['Sharp', 'Medium', 'Rounded'] as const}
                         value={form.global_radius as 'Sharp' | 'Medium' | 'Rounded'}
                         onChange={v => update('global_radius', v)}
+                        labels={{ Sharp: 'Carré', Medium: 'Moyen', Rounded: 'Arrondi' }}
                       />
                     </div>
 
-                    {/* Products per row */}
+                    {/* CTA shadow */}
                     <div className="space-y-2">
-                      <SectionLabel>Produits par ligne</SectionLabel>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(['1', '2', '3'] as const).map(n => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => update('products_per_row', n)}
-                            className={cn(
-                              'rounded-xl border p-3 flex flex-col items-center gap-1.5 transition-all',
-                              form.products_per_row === n
-                                ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                : 'border-border hover:border-primary/50 bg-background',
-                            )}
-                          >
-                            <div className="flex gap-0.5 items-end">
-                              {Array.from({ length: Number(n) }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className="h-5 bg-muted rounded-sm"
-                                  style={{ width: n === '1' ? 32 : n === '2' ? 14 : 9 }}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-[10px] text-muted-foreground">{n} / ligne</span>
-                          </button>
-                        ))}
-                      </div>
+                      <p className="text-[12px] font-medium text-foreground">Ombre du bouton</p>
+                      <SegmentedControl
+                        options={['None', 'Soft', 'Elevated'] as const}
+                        value={form.button_shadow as 'None' | 'Soft' | 'Elevated'}
+                        onChange={v => update('button_shadow', v)}
+                        labels={{ None: 'Aucune', Soft: 'Douce', Elevated: 'Forte' }}
+                      />
                     </div>
 
-                    {/* Sort order */}
-                    <div className="space-y-1.5">
-                      <SectionLabel>Ordre d'affichage</SectionLabel>
-                      <Select value={form.products_sort_order} onValueChange={v => update('products_sort_order', v)}>
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="recent">Plus récent</SelectItem>
-                          <SelectItem value="alpha">Alphabétique</SelectItem>
-                          <SelectItem value="best_seller">Plus vendu</SelectItem>
-                          <SelectItem value="price_asc">Moins cher</SelectItem>
-                          <SelectItem value="price_desc">Plus cher</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -846,11 +962,12 @@ export default function SettingsApparence() {
 
             {/* Mobile sticky save bar */}
             {isMobile && (
-              <div className="sticky bottom-0 pt-4 pb-2 bg-background border-t border-border mt-4 -mx-4 px-4">
+              <div className="sticky bottom-0 pt-4 pb-safe bg-[#F6F8FA] dark:bg-muted/10 border-t border-border mt-4">
                 <Button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full h-11 text-sm font-medium gap-2"
+                  className="w-full h-11 text-[13px] font-medium gap-2 rounded-lg"
+                  style={{ backgroundColor: '#10B981', color: '#fff' }}
                 >
                   {saving
                     ? <><Loader2 className="h-4 w-4 animate-spin" />Sauvegarde...</>
@@ -862,39 +979,23 @@ export default function SettingsApparence() {
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            RIGHT — Preview panel (sticky, never scrolls)
+            RIGHT PREVIEW PANEL — sticky, never scrolls, desktop only
         ══════════════════════════════════════════════════════════════════ */}
         {!isMobile && (
-          <div className="flex-1 flex flex-col overflow-hidden bg-muted/10">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#F6F8FA] dark:bg-muted/5">
 
             {/* Preview toolbar */}
-            <div className="h-12 shrink-0 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-4">
-              {/* Sync indicator */}
-              <div className="flex items-center gap-2">
-                {isDirty ? (
-                  <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">Modifications en attente</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    <span className="text-xs text-muted-foreground">Synchronisé</span>
-                  </>
-                )}
-              </div>
+            <div className="h-12 shrink-0 border-b border-border bg-background flex items-center justify-between px-4 gap-3">
 
-              {/* Device toggle */}
-              <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
+              {/* Device toggle (left) */}
+              <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/30 p-0.5">
                 <button
                   type="button"
                   onClick={() => setDeviceMode('desktop')}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all',
                     deviceMode === 'desktop'
-                      ? 'bg-foreground text-background shadow-sm'
+                      ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -905,9 +1006,9 @@ export default function SettingsApparence() {
                   type="button"
                   onClick={() => setDeviceMode('mobile')}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium transition-all',
                     deviceMode === 'mobile'
-                      ? 'bg-foreground text-background shadow-sm'
+                      ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -916,70 +1017,87 @@ export default function SettingsApparence() {
                 </button>
               </div>
 
-              {/* Refresh */}
-              {storeFrontUrl && (
-                <button
-                  type="button"
-                  onClick={() => setIframeKey(k => k + 1)}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg px-3 h-7 hover:bg-muted"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Actualiser
-                </button>
-              )}
+              {/* Sync indicator (center) */}
+              <div className="flex-1 flex justify-center">
+                {isDirty ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[12px] text-amber-600 dark:text-amber-400">Synchronisation en cours</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-[12px] text-muted-foreground">Synchronisé</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Refresh (right) */}
+              <button
+                type="button"
+                onClick={() => setIframeKey(k => k + 1)}
+                className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-medium text-muted-foreground border border-border rounded-lg hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Actualiser
+              </button>
             </div>
 
-            {/* Iframe container */}
-            <div className="flex-1 overflow-hidden flex items-center justify-center bg-muted/20">
+            {/* Iframe area — single iframe, CSS-positioned for device modes */}
+            <div className="flex-1 overflow-hidden relative">
               {storeFrontUrl ? (
-                deviceMode === 'desktop' ? (
-                  /* Desktop mode — full area */
-                  <iframe
-                    ref={iframeRef}
-                    key={iframeKey}
-                    src={storeFrontUrl}
-                    title="Aperçu boutique"
-                    className="w-full h-full border-0"
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                ) : (
-                  /* Mobile mode — phone frame */
+                <>
+                  {/* Desktop container */}
                   <div
-                    className="relative overflow-hidden bg-background"
-                    style={{
-                      width: 390,
-                      height: 844,
-                      borderRadius: 40,
-                      boxShadow: '0 0 0 10px hsl(var(--border)), 0 24px 60px rgba(0,0,0,0.35)',
-                      flexShrink: 0,
-                    }}
+                    className={cn(
+                      'absolute inset-0 transition-opacity duration-200',
+                      deviceMode === 'desktop' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                    )}
                   >
-                    {/* Notch */}
-                    <div
-                      className="absolute top-0 left-1/2 -translate-x-1/2 bg-border z-10"
-                      style={{ width: 120, height: 28, borderRadius: '0 0 16px 16px' }}
-                    />
-                    <iframe
-                      ref={iframeRef}
-                      key={iframeKey}
-                      src={storeFrontUrl}
-                      title="Aperçu mobile"
-                      className="w-full h-full border-0"
-                      sandbox="allow-scripts allow-same-origin"
-                    />
+                    <div className="w-full h-full p-4">
+                      <div className="w-full h-full rounded-2xl overflow-hidden border border-border">
+                        {deviceMode === 'desktop' && iframeEl}
+                      </div>
+                    </div>
                   </div>
-                )
+
+                  {/* Mobile container */}
+                  <div
+                    className={cn(
+                      'absolute inset-0 flex items-center justify-center bg-[#F6F8FA] dark:bg-muted/5 p-6 transition-opacity duration-200',
+                      deviceMode === 'mobile' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                    )}
+                  >
+                    <div
+                      className="relative bg-background overflow-hidden"
+                      style={{
+                        width: 390,
+                        height: 700,
+                        borderRadius: 40,
+                        boxShadow: '0 0 0 8px hsl(var(--border)), 0 20px 60px rgba(0,0,0,0.2)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {/* Notch */}
+                      <div
+                        className="absolute top-0 left-1/2 -translate-x-1/2 bg-border/60 z-10"
+                        style={{ width: 110, height: 24, borderRadius: '0 0 14px 14px' }}
+                      />
+                      {deviceMode === 'mobile' && iframeEl}
+                    </div>
+                  </div>
+                </>
               ) : (
-                <div className="flex flex-col items-center gap-3 text-center p-8">
-                  <Globe className="h-10 w-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">Aucune boutique trouvée</p>
-                  <p className="text-xs text-muted-foreground/60">Créez d'abord votre boutique pour voir l'aperçu</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-8">
+                  <Globe className="h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-[13px] text-muted-foreground">Aucune boutique configurée</p>
+                  <p className="text-[12px] text-muted-foreground/60">Créez votre boutique pour voir l'aperçu en direct</p>
                 </div>
               )}
             </div>
+
           </div>
         )}
-
       </div>
     </div>
   );
