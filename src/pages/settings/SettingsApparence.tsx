@@ -6,7 +6,6 @@ import {
   ChevronDown, CheckCircle2, Monitor,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -21,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AdvancedColorPicker } from '@/components/settings/AdvancedColorPicker';
+import { ShopAssetUploader } from '@/components/settings/ShopAssetUploader';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -513,47 +513,51 @@ export default function SettingsApparence() {
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="space-y-4 pb-1">
-                    {/* Logo */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Logo (URL)</Label>
-                      <div className="flex gap-2 items-center">
-                        {form.logo_url && (
-                          <div className="w-10 h-10 rounded-lg border border-border overflow-hidden shrink-0 bg-muted">
-                            <img src={form.logo_url} alt="Logo" className="w-full h-full object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
-                          </div>
-                        )}
-                        <Input value={form.logo_url} onChange={e => update('logo_url', e.target.value)} placeholder="https://…/logo.png" className="h-9 text-sm" />
-                      </div>
-                    </div>
+                  <div className="space-y-6 pb-2">
 
-                    {/* Banner */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Bannière (URL)</Label>
-                      {form.banner_url && (
-                        <div className="w-full h-16 rounded-lg border border-border overflow-hidden bg-muted">
-                          <img src={form.banner_url} alt="Banner" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
-                        </div>
-                      )}
-                      <Input value={form.banner_url} onChange={e => update('banner_url', e.target.value)} placeholder="https://…/banner.jpg" className="h-9 text-sm" />
+                    {/* Logo */}
+                    <ShopAssetUploader
+                      label="Logo"
+                      asset="logo"
+                      currentUrl={form.logo_url}
+                      shopId={shop!.id}
+                      onChange={url => update('logo_url', url)}
+                      aspectRatio="1:1"
+                      maxSizeMB={2}
+                    />
+
+                    {/* Bannière */}
+                    <div className="space-y-3">
+                      <ShopAssetUploader
+                        label="Bannière"
+                        asset="banner"
+                        currentUrl={form.banner_url}
+                        shopId={shop!.id}
+                        onChange={url => update('banner_url', url)}
+                        aspectRatio="16:9"
+                        maxSizeMB={2}
+                      />
                       <div className="space-y-1">
-                        <SectionLabel>Taille bannière</SectionLabel>
-                        <PillGroup options={['Small', 'Medium', 'Large'] as const} value={form.banner_size as 'Small' | 'Medium' | 'Large'} onChange={v => update('banner_size', v)} />
+                        <SectionLabel>Taille d'affichage</SectionLabel>
+                        <PillGroup
+                          options={['Small', 'Medium', 'Large'] as const}
+                          value={form.banner_size as 'Small' | 'Medium' | 'Large'}
+                          onChange={v => update('banner_size', v)}
+                        />
                       </div>
                     </div>
 
                     {/* Favicon */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Favicon (URL)</Label>
-                      <div className="flex gap-2 items-center">
-                        {form.favicon_url && (
-                          <div className="w-8 h-8 rounded border border-border shrink-0 bg-muted overflow-hidden">
-                            <img src={form.favicon_url} alt="Favicon" className="w-full h-full object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
-                          </div>
-                        )}
-                        <Input value={form.favicon_url} onChange={e => update('favicon_url', e.target.value)} placeholder="https://…/favicon.ico" className="h-9 text-sm" />
-                      </div>
-                    </div>
+                    <ShopAssetUploader
+                      label="Favicon"
+                      asset="favicon"
+                      currentUrl={form.favicon_url}
+                      shopId={shop!.id}
+                      onChange={url => update('favicon_url', url)}
+                      aspectRatio="favicon"
+                      maxSizeMB={1}
+                    />
+
                   </div>
                 </AccordionContent>
               </AccordionItem>
