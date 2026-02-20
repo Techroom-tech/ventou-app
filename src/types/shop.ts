@@ -38,7 +38,16 @@ export interface Shop {
   global_radius: string | null;
   banner_size: string | null;
   favicon_url: string | null;
+  // Apparence V2 Pro — new columns
+  background_color: string | null;
+  card_bg_color: string | null;
+  header_color: string | null;
+  footer_color: string | null;
+  products_per_row: string | null;
+  products_sort_order: string | null;
+  button_shadow: string | null;
 }
+
 
 export interface StorefrontOrder {
   id?: string;

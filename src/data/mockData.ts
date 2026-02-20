@@ -38,7 +38,16 @@ export const mockShop: Shop = {
   global_radius: 'Medium',
   banner_size: 'Medium',
   favicon_url: null,
+  // Apparence V2 Pro
+  background_color: null,
+  card_bg_color: null,
+  header_color: null,
+  footer_color: null,
+  products_per_row: '3',
+  products_sort_order: 'recent',
+  button_shadow: 'None',
 };
+
 
 const defaultProductFields = {
   slug: null,
