@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+
 import { Store, MessageCircle, ShoppingBag, Search, ShoppingCart, Menu, X } from 'lucide-react';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
 import { Shop, Product } from '@/types/shop';
@@ -57,6 +58,20 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // ── postMessage listener for live preview mode ──
+  useEffect(() => {
+    if (!window.location.search.includes('preview=true')) return;
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type !== 'VENTOU_THEME_UPDATE') return;
+      const root = document.documentElement;
+      Object.entries(e.data.vars as Record<string, string>).forEach(([k, v]) => {
+        root.style.setProperty(k, v);
+      });
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   const { data: shop, isLoading: shopLoading, error: shopError } = useQuery({
     queryKey: ['storefront-shop', slug],
