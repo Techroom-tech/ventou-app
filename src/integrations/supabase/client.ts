@@ -22,6 +22,9 @@ export interface Profile {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  phone: string | null;
+  language: string | null;
+  timezone: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -88,6 +88,62 @@ Deno.serve(async (req) => {
       ADD COLUMN IF NOT EXISTS body_size_px integer DEFAULT 14,
       ADD COLUMN IF NOT EXISTS letter_spacing_px numeric DEFAULT 0,
       ADD COLUMN IF NOT EXISTS line_height_pct integer DEFAULT 160;`,
+
+    // Profile V2 — extended user profile fields
+    `ALTER TABLE public.profiles
+      ADD COLUMN IF NOT EXISTS phone text,
+      ADD COLUMN IF NOT EXISTS language text DEFAULT 'fr',
+      ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'Africa/Abidjan';`,
+
+    // Avatars storage bucket
+    `INSERT INTO storage.buckets (id, name, public)
+      VALUES ('avatars', 'avatars', true)
+      ON CONFLICT (id) DO NOTHING;`,
+
+    // Storage RLS policies for avatars
+    `DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Avatar images are publicly accessible'
+      ) THEN
+        CREATE POLICY "Avatar images are publicly accessible"
+        ON storage.objects FOR SELECT
+        USING (bucket_id = 'avatars');
+      END IF;
+    END $$;`,
+
+    `DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Users can upload their own avatar'
+      ) THEN
+        CREATE POLICY "Users can upload their own avatar"
+        ON storage.objects FOR INSERT
+        WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+      END IF;
+    END $$;`,
+
+    `DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Users can update their own avatar'
+      ) THEN
+        CREATE POLICY "Users can update their own avatar"
+        ON storage.objects FOR UPDATE
+        USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+      END IF;
+    END $$;`,
+
+    `DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND schemaname = 'storage' AND policyname = 'Users can delete their own avatar'
+      ) THEN
+        CREATE POLICY "Users can delete their own avatar"
+        ON storage.objects FOR DELETE
+        USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+      END IF;
+    END $$;`,
   ];
 
   const results: Array<{ sql: string; ok: boolean; error?: string }> = [];
