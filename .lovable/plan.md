@@ -1,321 +1,361 @@
 
-# Profile Settings — Full Account Management Center Refactor
+# Dashboard Refactor — Intelligent Business Control Center
 
-## Feasibility Assessment (What Already Exists vs. What Needs Building)
+## Codebase Audit Summary
 
-### Already Available in Supabase Client:
-- `supabase.auth.updateUser({ password })` — password change (exists in AuthContext)
-- `supabase.auth.updateUser({ email })` — email change (triggers verification email)
-- `supabase.auth.signOut({ scope: 'global' })` — sign out all sessions
-- `supabase.auth.getSession()` — returns current session info (device user-agent, timestamps)
-- `supabase.auth.mfa.enroll()` / `.challenge()` / `.verify()` — full 2FA TOTP flow
-- `supabase.from('profiles').update(...)` — profile data update
-- `user.email_confirmed_at` — email verification status
+### Current State — Critical Problems:
 
-### Not Available / Requires Infrastructure:
-- Session listing across devices → **not possible client-side**; show only current session with "Sign out all" button
-- Avatar file upload → **Supabase Storage bucket needed** (SQL migration required)
-- Account deletion → **edge function required** (admin API); implement as a soft deactivation via profile flag for now
-- Subscription/Billing → **no infrastructure exists**; keep as a clean "Bientôt" section with plan display
-- `phone`, `language`, `timezone` columns → **not in `profiles` table**; require a DB migration to add
+| Issue | Impact |
+|---|---|
+| `RecentOrdersList` uses `mockOrders` — hardcoded fake data | Users see wrong data |
+| `StatsCard` uses `mockStats` — hardcoded 257 000 / 4 orders | KPIs never change |
+| `QuickActions` is a large dashed orange block — visually dominant | Feels decorative, not functional |
+| `RevenueSparkline` — hardcoded to 7 days, no toggle | Missing 30/90 day views |
+| Revenue chart uses `total_amount` column which **does not exist** (confirmed by network errors in the context) | Chart fails with 400 error |
+| No smart alerts system | No actionable intelligence |
+| No top products section | Missing conversion insight |
+| No i18n in Dashboard KPI strings — some text is hardcoded in French | Breaks when user switches to English |
 
-### Scope Decisions (Strict Functional-Only Rule):
-- **Sessions**: Show current session info + "Disconnect all devices" button only. No fake multi-session list.
-- **2FA**: Full TOTP implementation using Supabase MFA API — real QR code, real backup codes concept.
-- **Avatar upload**: Add Storage bucket via SQL migration; replace URL input with file upload.
-- **Account deletion**: Implement a confirmation modal that calls `supabase.auth.signOut()` + marks shop as inactive. Real behavior, no fake modal.
-- **Notifications section**: Link to the existing `/dashboard/parametres/notifications` page (already built) — don't duplicate it. Show a summary row instead.
-- **Subscription section**: Clean "Plan gratuit — Bientôt" display card (not fake UI).
+### What Already Works (Keep):
+- `useShop` hook — correct, connected to real DB
+- `useOrders` hook — correct, real paginated data
+- `useOrderCounts` — correct, real status counts
+- `useRevenueChart` — correct logic, BUT uses `total_amount` column. The DB uses `total` column (confirmed by the network error response). **Fix: remove `total_amount` from select, use only `total`**
+- `OrderStatusBadge` — correct, i18n-ready
+- `DashboardLayout`, `DashboardSidebar`, `DashboardHeader` — keep intact
+- i18n system — works, `fallbackLng: 'fr'`, detects from localStorage. Language toggle already exists.
 
 ---
 
-## Database Changes Required
+## Architecture of the New Dashboard
 
-### Migration 1: Extend `profiles` table
-Add columns for extended personal info:
-```sql
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS phone text,
-  ADD COLUMN IF NOT EXISTS language text DEFAULT 'fr',
-  ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'Africa/Abidjan';
-```
+### New Hooks to Create:
 
-### Migration 2: Create avatar Storage bucket
-```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('avatars', 'avatars', true)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE POLICY "Avatar images are publicly accessible"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
-
-CREATE POLICY "Users can upload their own avatar"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE
-USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can delete their own avatar"
-ON storage.objects FOR DELETE
-USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-```
-
-### Migration 3: Update `Profile` type
-Update `src/integrations/supabase/client.ts` to add new profile fields to the `Profile` interface.
-
----
-
-## Page Architecture — 5 Sections
-
-The full page is a single scrollable page at `/dashboard/parametres/profil` with 5 card sections stacked vertically. No tabs, no nested routing. Max width 820px.
-
-```
-┌─────────────────────────────────────────┐
-│  ← Paramètres     Profil & Compte        │
-├─────────────────────────────────────────┤
-│  [1] Personal Information Card          │
-│      Avatar upload + name/email/phone   │
-│      Language + Timezone dropdowns      │
-│      Email verified badge               │
-│      [Save button]                      │
-├─────────────────────────────────────────┤
-│  [2] Security Card                      │
-│      Change password (3 fields)         │
-│      Password strength bar              │
-│      2FA toggle (TOTP via Supabase MFA) │
-│      [Save password button]             │
-├─────────────────────────────────────────┤
-│  [3] Sessions Card                      │
-│      Current session info (device/IP)   │
-│      [Sign out all devices button]      │
-├─────────────────────────────────────────┤
-│  [4] Subscription Card                  │
-│      Plan: Gratuit / Bientôt badge      │
-├─────────────────────────────────────────┤
-│  [5] Danger Zone Card                   │
-│      Red border                         │
-│      Deactivate shop / Delete account   │
-│      Confirmation modal on each         │
-└─────────────────────────────────────────┘
-```
-
----
-
-## Section-by-Section Technical Design
-
-### Section 1 — Personal Information
-
-**State:**
+**1. `src/hooks/useDashboardKPIs.ts`**
+Fetches today's and yesterday's aggregated data from `orders` table:
 ```ts
-const [form, setForm] = useState({
-  first_name: '', last_name: '', phone: '',
-  language: 'fr', timezone: 'Africa/Abidjan'
-});
-const [avatarFile, setAvatarFile] = useState<File | null>(null);
-const [avatarPreview, setAvatarPreview] = useState<string>('');
-const [isDirty, setIsDirty] = useState(false);
+// Today: SELECT count(*), sum(total) FROM orders WHERE shop_id=? AND date(created_at)=current_date
+// Yesterday: same with date = current_date - 1
+// Returns: { revenueToday, ordersToday, avgOrderValue, revenueYesterday, ordersYesterday }
+// %change computed in hook: (today - yesterday) / yesterday * 100
 ```
+Note: The `order_items` table is needed for "products sold today". But from the network responses, we can only confirm `orders` and `products` tables exist. We'll compute "products sold" by summing `items` array quantities from today's orders (items is a JSONB column in orders, confirmed by `items` in `useCreateOrder` insert payload).
 
-**Avatar upload logic:**
+**2. `src/hooks/useDashboardAlerts.ts`**  
+Detects alerts from real data without requiring a new DB table:
+- **Pending > 2h**: Query orders with `status='pending'` and `created_at < now() - 2 hours`
+- **Out of stock**: Query products with `stock_quantity = 0` and `track_stock = true`
+
+This avoids the migration requirement while being 100% functional. The `dashboard_alerts` table proposed in the spec is overkill for client-side detection — we compute alerts from existing data.
+
+**3. `src/hooks/useTopProducts.ts`**
+Fetches recent delivered/confirmed orders, extracts items array, groups by product_id, sums quantities and revenue. Returns top 3.
+
+### Modified Hooks:
+
+**`useRevenueChart.ts`** — Fix the `total_amount` bug:
 ```ts
-const uploadAvatar = async (file: File) => {
-  const ext = file.name.split('.').pop();
-  const path = `${user.id}/avatar.${ext}`;
-  const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-  if (error) throw error;
-  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-  return data.publicUrl;
-};
+// Replace:
+.select('created_at, total, total_amount, status')
+// With:
+.select('created_at, total, status')
+// And in the aggregation:
+map[key].revenue += (row.total ?? 0);
 ```
-
-**Email section:** Read-only field showing `user.email` + badge:
-- `user.email_confirmed_at` exists → green `<Badge>` "Vérifié"
-- Otherwise → amber badge "Non vérifié" + "Renvoyer l'email de vérification" link
-
-**Language dropdown options:** French, English (2 options only, matching app scope)
-
-**Timezone dropdown options:** Africa/Abidjan, Africa/Lagos, Africa/Dakar, Africa/Douala, Europe/Paris, UTC (6 options — relevant to West/Central Africa market)
-
-**Save action:**
-1. If `avatarFile`, upload to storage → get URL → include in profile update
-2. Update `profiles` table with all form fields
-3. Show success toast
-
-**Dirty state:** Track `isDirty` to disable save button when no changes made.
 
 ---
 
-### Section 2 — Security
+## i18n Strategy
 
-**Sub-section A: Change Password**
+All new dashboard text must use `t()`. New translation keys needed in both `fr.json` and `en.json`:
 
+```json
+// dashboard section additions:
+"dashboard": {
+  "summary": {
+    "todayRevenue": "Aujourd'hui votre boutique a généré {{amount}} grâce à {{count}} commande(s)",
+    "noActivity": "Aucune activité aujourd'hui. Partagez votre boutique pour recevoir des commandes.",
+    "vsYesterday": "vs. hier"
+  },
+  "kpis": {
+    "revenueToday": "Revenus aujourd'hui",
+    "ordersToday": "Commandes aujourd'hui",
+    "productsSold": "Produits vendus",
+    "avgOrder": "Panier moyen"
+  },
+  "alerts": {
+    "title": "Alertes",
+    "pendingOld": "{{count}} commande(s) en attente depuis plus de 2h",
+    "outOfStock": "{{count}} produit(s) en rupture de stock",
+    "viewOrders": "Voir les commandes",
+    "viewProducts": "Gérer les stocks"
+  },
+  "actions": {
+    "addProduct": "Ajouter un produit",
+    "addProductSub": "Élargissez votre catalogue",
+    "shareShop": "Partager la boutique",
+    "shareSub": "Copier le lien",
+    "viewAnalytics": "Voir les stats",
+    "analyticsSub": "Revenus et tendances",
+    "createPromo": "Créer une promo",
+    "promoSub": "Codes de réduction"
+  },
+  "chart": {
+    "title": "Revenus",
+    "days7": "7 jours",
+    "days30": "30 jours",
+    "days90": "90 jours",
+    "noData": "Aucune donnée pour cette période"
+  },
+  "topProducts": {
+    "title": "Top produits",
+    "units": "unités",
+    "noData": "Données insuffisantes"
+  }
+}
+```
+
+English equivalents will be added to `en.json` accordingly.
+
+---
+
+## Files to Create / Modify
+
+### 1. `src/hooks/useDashboardKPIs.ts` — NEW
 ```ts
-const [pwForm, setPwForm] = useState({
-  current_password: '', new_password: '', confirm_password: ''
-});
-const [showCurrent, setShowCurrent] = useState(false);
-const [showNew, setShowNew] = useState(false);
+// Queries orders for today and yesterday
+// Computes:
+// - revenueToday (sum of total where date = today, status != cancelled)
+// - ordersToday (count where date = today)
+// - productsSoldToday (sum of item quantities from today's orders items JSONB)
+// - avgOrderValue (revenueToday / ordersToday or 0)
+// - revenueChange, ordersChange (% vs yesterday)
+// staleTime: 60_000
 ```
 
-**Password strength bar:** Real-time computation based on `new_password`:
-- `< 6 chars` → Weak (red)
-- `6–9 chars with no special chars` → Fair (amber)
-- `10+ chars` → Strong (green)
-- `14+ chars with special chars + uppercase` → Very strong (green, full bar)
+The `items` column is a JSONB array stored directly in the `orders` table (confirmed by `useCreateOrder` which inserts `items` as a JSON array). So to count products sold today, we fetch today's orders and sum `item.quantity` for each item in each order's `items` array.
 
-**Save logic:**
-1. Validate: `new_password === confirm_password`
-2. Call `supabase.auth.updateUser({ password: new_password })`
-3. The Supabase API does NOT require current password verification — Supabase handles this via the existing session. Note: `updatePassword` already exists in `AuthContext`.
-4. Show toast success + clear form
-
-**Sub-section B: Two-Factor Authentication (2FA)**
-
-Using Supabase MFA API:
+### 2. `src/hooks/useDashboardAlerts.ts` — NEW
 ```ts
-// Enroll (enable 2FA)
-const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
-// data.totp.qr_code — SVG QR code
-// data.totp.secret — manual key
-// data.id — factor ID for verification
+// Alert 1: Stale pending orders
+const { data: stalePending } = supabase
+  .from('orders')
+  .select('id, order_number, customer_name, created_at')
+  .eq('shop_id', shopId)
+  .eq('status', 'pending')
+  .lt('created_at', new Date(Date.now() - 2 * 3600000).toISOString());
 
-// Verify enrollment
-const { data: challengeData } = await supabase.auth.mfa.challenge({ factorId });
-await supabase.auth.mfa.verify({ factorId, challengeId, code: otpInput });
+// Alert 2: Out of stock products  
+const { data: outOfStock } = supabase
+  .from('products')
+  .select('id, name')
+  .eq('shop_id', shopId)
+  .eq('track_stock', true)
+  .eq('stock_quantity', 0)
+  .eq('is_active', true);
 
-// Unenroll (disable 2FA)
-await supabase.auth.mfa.unenroll({ factorId });
+// Returns: Alert[]
+// interface Alert { type: 'pending_stale' | 'out_of_stock'; severity: 'warning' | 'critical'; count: number; actionUrl: string; }
 ```
 
-**UI flow:**
-- Initial state: check `user.factors` — if TOTP factor exists and is verified → show "2FA Active" with disable button
-- If not active → show toggle to enable → on enable, show modal with QR code + manual key + 6-digit OTP input to verify
-- On verify success → dismiss modal, show "2FA Activé" badge
-- On disable → confirm dialog → call unenroll → success toast
-
-**State:**
+### 3. `src/hooks/useTopProducts.ts` — NEW
 ```ts
-const [mfaFactors, setMfaFactors] = useState<any[]>([]);
-const [enrolling, setEnrolling] = useState(false);
-const [enrollData, setEnrollData] = useState<{ factorId: string; qrCode: string; secret: string } | null>(null);
-const [otpCode, setOtpCode] = useState('');
+// Fetch last 30 days orders (delivered/confirmed/shipping)
+// Extract items array from each order (JSONB column)
+// Group by product name (no product_id join needed — name is stored in items)
+// Sum quantities and revenue
+// Return top 3 sorted by revenue
+// staleTime: 300_000 (5 min — doesn't need to be real-time)
 ```
 
-Load MFA state on mount:
+### 4. Fix `src/hooks/useRevenueChart.ts`
+Remove `total_amount` from the select — it doesn't exist in the DB. Use only `total`:
 ```ts
-useEffect(() => {
-  supabase.auth.mfa.listFactors().then(({ data }) => {
-    setMfaFactors(data?.totp ?? []);
-  });
-}, []);
+// Change line 22:
+.select('created_at, total, status')
+// Change line 44:
+map[key].revenue += (row.total ?? 0);
+```
+
+### 5. `src/pages/Dashboard.tsx` — COMPLETE REWRITE
+Replace the entire page with 7 sections:
+
+**Section 1 — Smart Summary Banner**
+- Compact banner (not a card — just a subtle `bg-muted/40 rounded-xl p-4` strip)
+- Dynamic sentence using `t('dashboard.summary.todayRevenue', { amount, count })`
+- If `ordersToday === 0` → show `t('dashboard.summary.noActivity')`
+- Revenue change badge: `+12%` in green or `-8%` in red
+
+**Section 2 — KPI Cards (4)**
+```tsx
+<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  <KpiCard title={t('dashboard.kpis.revenueToday')} value={formatCurrency(kpi.revenueToday, currency)} change={kpi.revenueChange} icon={DollarSign} />
+  <KpiCard title={t('dashboard.kpis.ordersToday')} value={kpi.ordersToday} change={kpi.ordersChange} icon={ShoppingCart} />
+  <KpiCard title={t('dashboard.kpis.productsSold')} value={kpi.productsSold} change={null} icon={Package} />
+  <KpiCard title={t('dashboard.kpis.avgOrder')} value={formatCurrency(kpi.avgOrderValue, currency)} change={null} icon={TrendingUp} />
+</div>
+```
+
+New `KpiCard` component — compact version of `StatsCard`:
+- Compact: `p-4` max, `text-xl font-bold` value, `text-xs` label
+- No large icon background — small inline icon on the right
+- `grid-cols-2` mobile → `grid-cols-4` desktop
+
+**Section 3 — Smart Alerts (conditional)**
+```tsx
+{alerts.length > 0 && (
+  <div className="space-y-2">
+    {alerts.map(alert => <AlertCard key={alert.type} alert={alert} />)}
+  </div>
+)}
+```
+`AlertCard`: `bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between` for warnings. Red variant for critical. Hidden completely when `alerts.length === 0`.
+
+**Section 4 — Quick Actions**
+Replace the large dashed orange block with a clean horizontal 4-button grid:
+```tsx
+<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  <QuickActionBtn icon={Plus} label={t('dashboard.actions.addProduct')} sub={t('dashboard.actions.addProductSub')} to="/dashboard/products/new" />
+  <QuickActionBtn icon={Share2} label={t('dashboard.actions.shareShop')} sub={t('dashboard.actions.shareSub')} onClick={handleShare} />
+  <QuickActionBtn icon={BarChart2} label={t('dashboard.actions.viewAnalytics')} sub={t('dashboard.actions.analyticsSub')} to="/dashboard/orders" />
+  <QuickActionBtn icon={Tag} label={t('dashboard.actions.createPromo')} sub={t('dashboard.actions.promoSub')} to="/dashboard/parametres/codes-promo" />
+</div>
+```
+`QuickActionBtn`: `Card` with `p-4 h-auto flex flex-col items-start gap-1.5 rounded-xl border hover:bg-muted/50 transition-colors cursor-pointer`. No dashed border, no accent bg, no orange.
+
+**Section 5 — Revenue Chart (with toggle)**
+```tsx
+<Card className="p-4 sm:p-5">
+  <div className="flex items-center justify-between mb-4">
+    <h3 className="font-semibold text-sm">{t('dashboard.chart.title')}</h3>
+    <div className="flex gap-1">
+      {[7, 30, 90].map(d => (
+        <button key={d} onClick={() => setChartDays(d)} className={cn('text-xs px-2.5 py-1 rounded-md', chartDays === d ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
+          {t(`dashboard.chart.days${d}`)}
+        </button>
+      ))}
+    </div>
+  </div>
+  <div className="h-[220px] sm:h-[260px]">
+    <ResponsiveContainer>
+      <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+        ...
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+</Card>
+```
+
+**Section 6 — Recent Orders (real data)**
+Replace `mockOrders` with real `useOrders({ shopId, page: 0 })` limited to 5:
+```tsx
+const { data: ordersData } = useOrders({ shopId: shop?.id });
+const recentOrders = (ordersData?.orders ?? []).slice(0, 5);
+```
+Row format: `customer_name | #order_number · time ago | amount | StatusBadge | payment_method`
+"View all" button navigates to `/dashboard/orders`.
+
+**Section 7 — Top Products (conditional)**
+```tsx
+{topProducts.length > 0 && (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-sm font-semibold">{t('dashboard.topProducts.title')}</CardTitle>
+    </CardHeader>
+    <CardContent className="p-0">
+      {topProducts.map((p, i) => (
+        <div key={p.name} className="flex items-center gap-3 px-4 py-3 border-b last:border-0">
+          <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{p.name}</p>
+            <p className="text-xs text-muted-foreground">{p.units} {t('dashboard.topProducts.units')}</p>
+          </div>
+          <span className="text-sm font-semibold">{formatCurrency(p.revenue, currency)}</span>
+        </div>
+      ))}
+    </CardContent>
+  </Card>
+)}
+```
+
+**Desktop Layout (2-column bottom):**
+```tsx
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div className="lg:col-span-2">
+    <RecentOrdersSection />
+  </div>
+  <div>
+    <TopProductsSection />
+  </div>
+</div>
+```
+
+### 6. i18n files — `src/i18n/locales/fr.json` and `src/i18n/locales/en.json`
+Add new `dashboard` sub-keys for all new strings. The language toggle already works — `i18nextLng` is stored in localStorage, the LanguageDetector reads it on init, `useTranslation()` reactively updates when `i18n.changeLanguage()` is called. No changes to the i18n infrastructure are needed.
+
+### 7. Deprecate `QuickActions.tsx` and `RecentOrdersList.tsx`
+These components become inline sections in the new `Dashboard.tsx`. No need for separate files since they are dashboard-specific and the new logic is tightly coupled to the KPI hooks. The files can be kept but will no longer be imported from Dashboard.
+
+---
+
+## Component Structure
+
+```text
+src/pages/Dashboard.tsx (main)
+  ├── SmartSummaryBanner    (inline component)
+  ├── KpiCard               (inline component, replaces StatsCard)
+  ├── AlertCard             (inline component)
+  ├── QuickActionBtn        (inline component, replaces QuickActions)
+  ├── RevenueChart          (inline component, replaces RevenueSparkline)
+  ├── RecentOrdersSection   (inline, uses useOrders — replaces RecentOrdersList)
+  └── TopProductsSection    (inline, uses useTopProducts)
+
+New hooks:
+  src/hooks/useDashboardKPIs.ts
+  src/hooks/useDashboardAlerts.ts
+  src/hooks/useTopProducts.ts
+
+Fixed hook:
+  src/hooks/useRevenueChart.ts  (remove total_amount)
+
+Updated i18n:
+  src/i18n/locales/fr.json  (add dashboard sub-keys)
+  src/i18n/locales/en.json  (add dashboard sub-keys)
 ```
 
 ---
 
-### Section 3 — Active Sessions
+## No Database Migration Required
 
-**What is available via Supabase client-side:**
-- `supabase.auth.getSession()` → `session.access_token`, `session.user` — current session only
-- `user.last_sign_in_at` — last sign-in date
-- `user.app_metadata` — may contain provider info
-
-**What we render:**
-A single row showing the current session:
-```
-┌─────────────────────────────────────────┐
-│  [💻 icon]  Session actuelle            │
-│             Navigateur Web              │
-│             Connecté depuis [date]      │
-│             [Badge: Session actuelle]   │
-└─────────────────────────────────────────┘
-  [Déconnecter tous les appareils]
-```
-
-**"Déconnecter tous les appareils" logic:**
-```ts
-await supabase.auth.signOut({ scope: 'global' });
-navigate('/login');
-```
-
-This is a real Supabase API that revokes all refresh tokens for the user.
+- All KPI data is computed from the existing `orders` table using `total` column (not `total_amount`)
+- Alerts are detected from existing `orders` and `products` tables
+- Top products are computed from the `items` JSONB column in `orders`
+- The proposed `dashboard_alerts` DB table is not needed — client-side detection is sufficient and real-time via React Query
 
 ---
 
-### Section 4 — Subscription
+## What Is NOT Changed
 
-A clean informational card (no fake controls):
-```
-Plan actuel: Gratuit
-Toutes les fonctionnalités de base incluses.
-[Badge: Gratuit] 
-[Badge: Bientôt — Plans Pro disponibles]
-```
-
-This is honest UI — no fake pricing, no fake "Cancel subscription" button.
+- `DashboardLayout`, `DashboardSidebar`, `DashboardHeader`, `MobileBottomNav` — untouched
+- `useShop`, `useOrders`, `useOrderCounts` hooks — untouched (except `useRevenueChart` fix)
+- All other dashboard pages (Products, Orders, Settings) — untouched
+- i18n infrastructure (`src/i18n/index.ts`) — untouched, already correct
+- `OrderStatusBadge` — untouched, already i18n-ready
+- Auth flow — untouched
 
 ---
 
-### Section 5 — Danger Zone
+## Summary of Files
 
-Card with `border-destructive/40` border and `bg-destructive/5` header area.
-
-**Two action rows:**
-
-1. **Désactiver la boutique**
-   - Description: "Votre boutique ne sera plus accessible aux clients."
-   - Button: "Désactiver" (outline destructive)
-   - Confirmation modal: "Confirmer la désactivation" → calls `supabase.from('shops').update({ is_active: false }).eq('owner_id', user.id)`
-   - Real effect: storefront becomes unreachable
-
-2. **Supprimer le compte**
-   - Description: "Action irréversible. Toutes vos données seront archivées."
-   - Button: "Supprimer le compte" (solid destructive)
-   - Confirmation modal requires typing "SUPPRIMER" to confirm
-   - Action: calls `signOut()` — full account deletion requires server-side admin API which is not available client-side; we sign the user out and mark the shop as inactive. A note explains the team will complete deletion within 72h (honest approach — no fake delete button).
-
----
-
-## Files to Create/Modify
-
-### 1. Supabase migration — `supabase/functions/db-migrate/index.ts`
-Add the `ALTER TABLE` statements for `profiles` (phone, language, timezone columns) and the Storage bucket + RLS policies for avatars.
-
-### 2. Update `src/integrations/supabase/client.ts`
-Add `phone`, `language`, `timezone` to the `Profile` interface.
-
-### 3. Rewrite `src/pages/settings/SettingsProfil.tsx`
-Complete rebuild of the page with 5 sections. This is the primary file change. It will be a self-contained component (~400–500 lines) that uses existing Supabase client, AuthContext, and UI components.
-
-**Components used (all already installed):**
-- `Card`, `CardContent`, `CardHeader`, `CardTitle` (already imported)
-- `Input`, `Label`, `Button`, `Switch`, `Badge` (all installed)
-- `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` (Radix Select, installed)
-- `AlertDialog` components for danger zone confirmations
-- `Progress` for password strength bar
-- `Separator` between sub-sections
-- Icons from `lucide-react`: `User`, `Shield`, `Monitor`, `CreditCard`, `AlertTriangle`, `Eye`, `EyeOff`, `Upload`, `CheckCircle2`, `Loader2`, `SmartPhone`, `Lock`
-
----
-
-## What is NOT Changed
-
-- `SettingsPageLayout.tsx` — max-width override handled inline in the page via `max-w-[820px]` instead of using `SettingsPageLayout` (or passing a prop)
-- All other settings pages — untouched
-- `AuthContext.tsx` — `updatePassword` already exists, no changes needed
-- `App.tsx` — route already exists at `/dashboard/parametres/profil`
-- `SettingsHub.tsx` — no changes (Profile card already links to the right route)
-- `SettingsNotifications.tsx` — not duplicated; the Profile page links to it
-
----
-
-## Security Guarantees
-
-- Password change uses `supabase.auth.updateUser()` — server-validated via existing JWT session
-- 2FA uses Supabase MFA API — secret never stored in frontend state beyond enrollment flow
-- Session invalidation uses `scope: 'global'` — real token revocation, not just client-side logout
-- Danger zone actions have confirmation modals with text confirmation for destructive operations
-- No client-side role checks — no localStorage security bypasses
-- Avatar upload path: `{user.id}/avatar.{ext}` — user can only overwrite their own file (enforced by RLS policy using `auth.uid()`)
+| File | Action |
+|---|---|
+| `src/hooks/useDashboardKPIs.ts` | CREATE |
+| `src/hooks/useDashboardAlerts.ts` | CREATE |
+| `src/hooks/useTopProducts.ts` | CREATE |
+| `src/hooks/useRevenueChart.ts` | FIX (remove `total_amount`) |
+| `src/pages/Dashboard.tsx` | REWRITE |
+| `src/i18n/locales/fr.json` | ADD keys |
+| `src/i18n/locales/en.json` | ADD keys |
+| `src/components/dashboard/RecentOrdersList.tsx` | KEEP (unused from Dashboard) |
+| `src/components/dashboard/QuickActions.tsx` | KEEP (unused from Dashboard) |
+| `src/components/dashboard/StatsCard.tsx` | KEEP (used elsewhere potentially) |
