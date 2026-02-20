@@ -188,13 +188,53 @@
       "totalSales": "Ventes totales",
       "ordersToday": "Commandes aujourd'hui"
     },
+    "summary": {
+      "todayRevenue": "Aujourd'hui votre boutique a généré {{amount}} grâce à {{count}} commande(s)",
+      "noActivity": "Aucune activité aujourd'hui. Partagez votre boutique pour recevoir des commandes.",
+      "vsYesterday": "vs. hier"
+    },
+    "kpis": {
+      "revenueToday": "Revenus aujourd'hui",
+      "ordersToday": "Commandes aujourd'hui",
+      "productsSold": "Produits vendus",
+      "avgOrder": "Panier moyen"
+    },
+    "alerts": {
+      "title": "Alertes",
+      "pendingOld": "{{count}} commande(s) en attente depuis plus de 2h",
+      "outOfStock": "{{count}} produit(s) en rupture de stock",
+      "viewOrders": "Voir les commandes",
+      "viewProducts": "Gérer les stocks"
+    },
     "actions": {
       "addProduct": "Ajouter un produit",
       "addProductSubtitle": "Élargissez votre catalogue",
+      "addProductSub": "Élargissez votre catalogue",
       "shareShop": "Partager",
       "shareShopSubtitle": "Copier le lien",
+      "shareSub": "Copier le lien",
+      "shareCopied": "Lien copié !",
+      "viewAnalytics": "Voir les stats",
+      "analyticsSub": "Revenus et tendances",
+      "createPromo": "Créer une promo",
+      "promoSub": "Codes de réduction",
       "withdraw": "Retrait",
       "withdrawSubtitle": "Via MoMo"
+    },
+    "chart": {
+      "title": "Revenus",
+      "revenue": "Revenus",
+      "order": "commande",
+      "orders": "commandes",
+      "days7": "7j",
+      "days30": "30j",
+      "days90": "90j",
+      "noData": "Aucune donnée pour cette période"
+    },
+    "topProducts": {
+      "title": "Top produits",
+      "units": "unités",
+      "noData": "Données insuffisantes"
     },
     "products": {
       "title": "Catalogue Produits",

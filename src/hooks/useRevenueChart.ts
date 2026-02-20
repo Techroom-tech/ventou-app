@@ -19,7 +19,7 @@ export function useRevenueChart(shopId: string | undefined, days = 7) {
 
       const { data, error } = await supabase
         .from('orders')
-        .select('created_at, total, total_amount, status')
+        .select('created_at, total, status')
         .eq('shop_id', shopId)
         .neq('status', 'cancelled')
         .gte('created_at', since.toISOString())
@@ -41,7 +41,7 @@ export function useRevenueChart(shopId: string | undefined, days = 7) {
       for (const row of data ?? []) {
         const key = new Date(row.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
         if (map[key]) {
-          map[key].revenue += (row.total_amount ?? row.total ?? 0);
+          map[key].revenue += (row.total ?? 0);
           map[key].orders += 1;
         }
       }
