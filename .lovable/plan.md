@@ -1,233 +1,274 @@
 
-# Appearance Settings — Functional Cleanup & Behavior Implementation
+# Product Card Layout & Responsive Grid Refactor
 
-## Complete Audit Summary
+## Current State Audit
 
-After reading all 1095 lines of `SettingsApparence.tsx` and all 569 lines of `ShopStorefront.tsx`, here is the definitive status:
+### Critical Issues Found:
 
-### DEAD CONTROLS (remove or fix):
-
-| Control | Status | Decision |
-|---|---|---|
-| `secondary_color` | postMessage sends `--color-secondary`, nothing in storefront reads it | **REMOVE** |
-| `background_color` | Body bg set, but `div.min-h-screen bg-background` overrides with Tailwind class | **FIX** (apply inline style to root div) or **REMOVE** |
-| Title size / Body size / Espacement / Hauteur ligne sliders | postMessage sends vars but storefront uses hardcoded Tailwind `text-sm`, `text-lg` — nothing reads the CSS vars | **REMOVE all 4 sliders** |
-| `heading_font` / `body_font` | Google Font LOADS, `--heading-font` var is set on `:root`, but storefront elements use `font-sans` (Tailwind) not `var(--heading-font)` | **FIX** (apply font via inline style on storefront root elements) |
-
-### WORKING CONTROLS (keep as-is):
-
-| Control | Mechanism | Status |
-|---|---|---|
-| `primary_color` | Inline style on price text, avatar, footer link | ✅ |
-| `button_color`, `button_text_color` | Inline style on `data-storefront-btn` | ✅ |
-| `button_radius` | Computed `ctaRadius`, inline style | ✅ |
-| `button_shadow` | Computed `ctaShadow`, inline style | ✅ |
-| `button_animation` | CSS classes `btn-anim-pulse` / `btn-anim-shine` | ✅ |
-| `button_width` | Inline style `width: '100%' / 'auto'` | ✅ |
-| `cta_label` | `shop.cta_label` on button text | ✅ |
-| `logo_url`, `banner_url` | Direct `img src` | ✅ |
-| `identity_display_mode` | `showLogo` / `showName` conditionals | ✅ |
-| `products_per_row` | `data-products-grid` DOM query on postMessage + initial computed `gridCols` | ✅ |
-| `products_sort_order` | Dynamic Supabase `query.order()` call | ✅ |
-| `dark_mode_enabled` | `documentElement.classList.toggle('dark')` | ✅ |
-| `product_card_style` | `cardClass` conditional string | ✅ |
-| `global_radius` | postMessage sets `--radius` on `:root` | ✅ |
-| `card_bg_color` | `querySelectorAll('[data-card-bg]')` direct DOM mutation | ✅ |
-
----
-
-## Changes Required
-
-### File 1: `src/pages/settings/SettingsApparence.tsx`
-
-**A. Remove from `AppearanceForm` type, `DEFAULT_FORM`, `COLOR_DEFAULTS`, form init, save, and JSX:**
-- `secondary_color` — dead, nothing reads `--color-secondary` in storefront
-- `background_color` — inconsistently applied, creates confusion
-- `title_size_px` — slider has no effect on live store
-- `body_size_px` — slider has no effect on live store  
-- `letter_spacing_px` — slider has no effect on live store
-- `line_height_pct` — slider has no effect on live store
-
-**B. Remove from postMessage vars:**
-- `--color-secondary`, `--color-bg`, `--heading-size`, `--body-size`, `--letter-spacing`, `--line-height`
-
-**C. Simplify `COLOR_DEFAULTS` to only:**
-```ts
-const COLOR_DEFAULTS: Record<string, string> = {
-  primary_color: '#1E3A5F',
-  button_color: '#FF6B35',
-  button_text_color: '#FFFFFF',
-  card_bg_color: '#FFFFFF',
-};
-```
-
-**D. Remove typography sliders block (lines 656–702):**
-The entire `grid grid-cols-2 gap-4` div with 4 sliders and the live preview block (which referenced the removed fields) is deleted. Keep only the 2 font `Select` dropdowns.
-
-**E. Keep font dropdowns — replace live preview content:**
-The live preview block now only shows font rendering (no size/spacing), using `form.heading_font` and `form.body_font` at fixed sizes:
+**1. Grid is not responsive (most critical bug)**
+The grid at line 451 uses:
 ```tsx
-<div className="rounded-lg border bg-muted/20 p-4 space-y-1.5 mt-4">
-  <p style={{ fontFamily: `${form.heading_font}, sans-serif`, fontSize: 16, fontWeight: 600, margin: 0 }}>
-    Titre de votre boutique
-  </p>
-  <p style={{ fontFamily: `${form.body_font}, sans-serif`, fontSize: 13, color: '#6B7280', margin: 0 }}>
-    Texte de description du produit.
-  </p>
-</div>
+style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}
 ```
+Where `gridCols` is computed from `products_per_row` with no breakpoints. If the seller sets `products_per_row = '3'`, mobile shows 3 columns — broken layout.
 
-**F. Update Design accordion trigger color dots:**
-Remove `card_bg_color` from the 3-dot color preview in the trigger since we're removing `background_color`. Show: `primary_color`, `button_color`, `button_text_color`.
+**2. Product card title is visually weak**
+Line 501: `className="font-medium text-sm line-clamp-2 mb-2"` — `text-sm` (14px) is too small and `font-medium` (500) is too light.
 
-**G. Remove orange hardcoded styles:**
-The header in `SettingsApparence.tsx` has no hardcoded orange. The save button uses `#10B981` (green) — keep this. No other hardcoded orange detected in this file.
+**3. No rating system**
+The spec requires a star rating block. Currently absent. Since there is no `rating` or `review_count` field in the `Product` type, we render a **static visual block** (⭐⭐⭐⭐☆ — 0 avis) that looks like social proof without requiring new DB columns — consistent layout regardless.
 
-**H. Update `handleSave` to not persist removed fields:**
-Remove from the Supabase update call: `secondary_color`, `background_color`, `title_size_px`, `body_size_px`, `letter_spacing_px`, `line_height_pct`.
+**4. CTA button can overflow**
+`size="sm"` with no `white-space: normal` or `text-align: center` — on narrow columns the text can clip or overflow on mobile.
 
-**I. Preview layout refinement:**
-The current preview panel uses `p-4` padding around the iframe. Reduce to `p-3` to reclaim space. The mobile phone frame is `width:390, height:700` — this is reasonable. Keep as-is. No major layout change needed here — the structure is already a proper sticky non-scrolling 60% right panel.
+**5. Price structure lacks hierarchy**
+Old price and new price are in the same `flex` row with `gap-2` — no vertical stacking, no size differentiation.
+
+**6. No responsive CSS for the grid**
+The responsive grid spec (2 cols mobile, 3 tablet, 4 desktop) cannot be achieved with a static inline `gridTemplateColumns`. It requires either CSS classes with Tailwind breakpoints or a CSS utility class injected into `index.css`.
 
 ---
 
-### File 2: `src/pages/ShopStorefront.tsx`
+## Architecture Decision: How to Implement the Responsive Grid
 
-**A. Fix font application — make fonts actually render in the storefront:**
+The seller controls `products_per_row` (1, 2, or 3). The spec says the grid must also adapt to screen size automatically.
 
-Currently fonts LOAD via Google Fonts but are never APPLIED to DOM elements. The storefront uses Tailwind's `font-sans` implicitly. Fix by applying CSS vars via `document.documentElement.style` AND adding inline styles to the key text elements.
+**The approach:** Define named CSS classes in `index.css` that combine the seller's preference with automatic responsive behavior:
 
-The cleanest approach: in the postMessage handler, when a font arrives, set a CSS var AND inject a `<style>` tag that overrides `body { font-family: ... }` and heading elements:
+```css
+/* Default: 3 per row (seller default) */
+.product-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
 
-```ts
-// In postMessage handler, after setting CSS vars:
-if (vars['--heading-font'] || vars['--body-font']) {
-  let style = document.getElementById('ventou-font-overrides') as HTMLStyleElement;
-  if (!style) {
-    style = document.createElement('style');
-    style.id = 'ventou-font-overrides';
-    document.head.appendChild(style);
-  }
-  const hFont = vars['--heading-font'] ?? document.documentElement.style.getPropertyValue('--heading-font');
-  const bFont = vars['--body-font'] ?? document.documentElement.style.getPropertyValue('--body-font');
-  style.textContent = `
-    body { font-family: '${bFont}', sans-serif !important; }
-    h1, h2, h3, h4, h5, h6 { font-family: '${hFont}', sans-serif !important; }
-  `;
+/* Seller sets 2 per row */
+.product-grid-2 { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 1024px) { .product-grid-2 { grid-template-columns: repeat(3, 1fr); } }
+
+/* Seller sets 1 per row (large) */
+.product-grid-1 { display: grid; gap: 16px; grid-template-columns: 1fr; }
+```
+
+In the storefront: replace the static inline style with the matching class name. The postMessage handler in the `SettingsApparence.tsx` updates `--products-per-row` var but the live preview also needs to update the grid class. We handle this by keeping the `data-products-grid` attribute + updating `gridTemplateColumns` via postMessage for live preview, but the CSS classes govern the real storefront's responsive behavior.
+
+**For live preview in the iframe**: The postMessage handler already sets `gridTemplateColumns` via DOM query on `[data-products-grid]`. We keep this for instant preview. For the real storefront (after save), the CSS class controls responsiveness.
+
+---
+
+## Files to Modify
+
+### 1. `src/index.css`
+Add responsive grid classes + product card CSS utilities:
+
+```css
+/* ── Responsive product grid ── */
+.product-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, 1fr); /* mobile default: always 2 */
+}
+@media (min-width: 640px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 1024px) {
+  .product-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Seller prefers 2/row → cap at 3 on desktop */
+.product-grid-2 {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 1024px) {
+  .product-grid-2 { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Seller prefers 1/row (large layout) */
+.product-grid-1 {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+/* ── Product title 2-line clamp ── */
+.product-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: inherit;
+}
+@media (min-width: 1024px) {
+  .product-title { font-size: 16px; }
+}
+
+/* ── Product CTA button ── */
+.product-cta {
+  font-size: 13px;
+  padding: 10px 12px;
+  white-space: normal;
+  text-align: center;
+  min-height: 44px;
+  line-height: 1.3;
 }
 ```
 
-**B. Apply font on initial load (from `shop` data):**
-Add a `useEffect` that runs when `shop` loads to set the fonts from `shop.heading_font` and `shop.body_font`:
+### 2. `src/pages/ShopStorefront.tsx`
 
+**A. Grid className logic (replaces inline style):**
 ```tsx
-useEffect(() => {
-  if (!shop) return;
-  const hFont = shop.heading_font ?? 'Inter';
-  const bFont = shop.body_font ?? 'Inter';
-  // Load fonts
-  [hFont, bFont].filter(f => f && f !== 'Inter').forEach(font => {
-    const id = `gf-sf-${font!.replace(/\s+/g, '-')}`;
-    if (!document.getElementById(id)) {
-      const link = document.createElement('link');
-      link.id = id; link.rel = 'stylesheet';
-      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font!)}:wght@400;500;600;700&display=swap`;
-      document.head.appendChild(link);
-    }
-  });
-  // Apply via style injection
-  let style = document.getElementById('ventou-font-overrides') as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement('style');
-    style.id = 'ventou-font-overrides';
-    document.head.appendChild(style);
-  }
-  style.textContent = `
-    body { font-family: '${bFont}', sans-serif !important; }
-    h1, h2, h3, h4, h5, h6 { font-family: '${hFont}', sans-serif !important; }
-  `;
-}, [shop]);
+// Replace:
+const gridCols = perRow === '1' ? '1fr' : perRow === '2' ? 'repeat(2, minmax(0,1fr))' : 'repeat(3, minmax(0,1fr))';
+
+// With:
+const gridClassName = perRow === '1' ? 'product-grid-1' : perRow === '2' ? 'product-grid-2' : 'product-grid';
 ```
 
-**C. Remove `--color-bg` / `--color-secondary` postMessage handling from the handler:**
-Since we remove those settings from the sender, clean up the handler in `ShopStorefront.tsx` to remove the body background mutation (`document.body.style.backgroundColor`) to prevent leftover code that does nothing.
+For the grid `<div>`:
+```tsx
+// Replace:
+<div data-products-grid style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}>
 
-**D. NO changes to:**
-- Product grid logic (already correct)
-- Sort order logic (already correct)  
-- Dark mode toggle (already correct)
-- Button styles/animation (already correct)
-- Card styles (already correct)
+// With:
+<div data-products-grid className={gridClassName}>
+```
 
----
+The postMessage handler still overrides `gridTemplateColumns` inline for live preview — this works because inline style takes precedence over class. No change needed in the postMessage handler.
 
-### File 3: `src/types/shop.ts`
+**B. Product card structure — full rebuild of the card body (lines 461–533):**
 
-Remove the `background_color` reference from consideration in the type — but `background_color`, `secondary_color`, `header_color`, `footer_color` can stay in the type since they're legacy DB columns that still exist in the DB. The type file doesn't need to change (extra DB columns in the type don't cause harm, and removing them could break other code that imports the type). No changes to `shop.ts`.
+New card structure:
+```tsx
+<div key={product.id} data-card-bg className={cardClass} onClick={...}>
+  {/* Image — aspect ratio 4/3 */}
+  <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+    {/* image or placeholder */}
+    {/* Promo badge — top left */}
+    {hasPromo && (
+      <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-semibold">
+        -{discountPercent}%
+      </Badge>
+    )}
+    {/* Low stock badge — top right */}
+    {isLowStock && !isOutOfStock && (
+      <Badge className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground text-xs">
+        {t('storefront.stockLow', { count: product.stock_quantity })}
+      </Badge>
+    )}
+    {/* Out of stock overlay */}
+    {isOutOfStock && (
+      <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+        <Badge variant="secondary">{t('storefront.outOfStock')}</Badge>
+      </div>
+    )}
+  </div>
 
----
+  {/* Card body */}
+  <div className="p-4 space-y-2">
+    {/* Title — 2-line clamp */}
+    <h3 className="product-title">{product.name}</h3>
 
-### File 4: `src/data/mockData.ts`
+    {/* Rating block — static visual */}
+    <div className="flex items-center gap-1.5 mt-0">
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4].map(i => (
+          <svg key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+        <svg className="w-3.5 h-3.5 fill-gray-200 text-gray-200 dark:fill-gray-600" viewBox="0 0 20 20">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      </div>
+      <span className="text-[12px] text-[#6B7280]">0 avis</span>
+    </div>
 
-Remove `secondary_color`, `background_color`, `title_size_px`, `body_size_px`, `letter_spacing_px`, `line_height_pct` from mock data defaults. Quick cleanup.
+    {/* Price structure — stacked */}
+    <div className="space-y-0.5">
+      {hasPromo && (
+        <p className="text-[13px] text-[#9CA3AF] line-through leading-none">
+          {formatCurrency(product.compare_at_price!, shop.currency ?? country.currency)}
+        </p>
+      )}
+      <p className="text-[16px] font-semibold leading-none" style={{ color: primaryColor }}>
+        {formatCurrency(product.price, shop.currency ?? country.currency)}
+      </p>
+    </div>
 
----
+    {/* CTA button */}
+    <Button
+      data-storefront-btn
+      className={`product-cta w-full gap-1.5 ${btnAnimClass}`}
+      disabled={isOutOfStock}
+      style={{
+        backgroundColor: isOutOfStock ? undefined : ctaBg,
+        color: isOutOfStock ? undefined : ctaText,
+        borderRadius: ctaRadius,
+        boxShadow: isOutOfStock ? undefined : ctaShadow,
+        width: (shop as any).button_width === 'Fit content' ? 'auto' : '100%',
+      }}
+      onClick={e => {
+        e.stopPropagation();
+        addToCart(product);
+      }}
+    >
+      <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+      {shop.cta_label || t('storefront.addToCart')}
+    </Button>
+  </div>
+</div>
+```
 
-## Summary of All Changes
+**Key changes in card body:**
+- Remove `size="sm"` from `<Button>` — size handled by `.product-cta` CSS class
+- Remove `mt-3` from button — handled by `space-y-2` on parent div
+- Remove `flex items-center gap-2` price row — replaced by vertical `space-y-0.5`
+- Add rating block (4 filled stars + 1 empty, "0 avis") between title and price
+- Title: `className="product-title"` (CSS class with font-weight 600, 15–16px, 2-line clamp)
 
-### `SettingsApparence.tsx` — 9 targeted changes:
-1. Remove `secondary_color` from `AppearanceForm`, `DEFAULT_FORM`, `COLOR_DEFAULTS`, form init (`useEffect`), `handleSave`, postMessage vars, and JSX (`ColorRow`)
-2. Remove `background_color` from same 6 locations
-3. Remove `title_size_px`, `body_size_px`, `letter_spacing_px`, `line_height_pct` from `AppearanceForm`, `DEFAULT_FORM`, form init, `handleSave`, postMessage vars — 4 fields × 5 locations each
-4. Delete the 4-slider grid block (lines 656–672) entirely
-5. Update the live typography preview to fixed-size rendering only
-6. Update the Design accordion trigger to show 3 relevant color dots: `primary_color`, `button_color`, `button_text_color`
-7. Remove `--color-secondary`, `--color-bg`, `--heading-size`, `--body-size`, `--letter-spacing`, `--line-height` from the postMessage vars object
-8. Keep the font Select dropdowns and their Google Font loading — they're correct
-9. `CtaPreview` component: remove `letterSpacing` and `fontFamily` references to the now-removed fields (keep other styles)
+**C. Also update skeleton grid:**
+Line 432–442 (skeleton loading state) also uses the old inline style. Update to use same `gridClassName` class.
 
-### `ShopStorefront.tsx` — 2 targeted changes:
-1. Add `useEffect` for font application on initial shop load (inject `<style id="ventou-font-overrides">`)
-2. In postMessage handler: add `<style>` injection block for font vars (alongside existing Google Font link injection). Remove `body.style.backgroundColor` mutation.
-
-### `src/data/mockData.ts` — 1 cleanup:
-Remove removed fields from mock defaults.
+**D. postMessage handler update (line 133–136):**
+The handler updates `gridTemplateColumns` inline on `[data-products-grid]` — this overrides the class for live preview, which is correct behavior. The mapping needs to reflect the new responsive grid intent:
+```ts
+if (vars['--products-grid-cols']) {
+  document.querySelectorAll<HTMLElement>('[data-products-grid]').forEach(el => {
+    el.style.gridTemplateColumns = vars['--products-grid-cols'];
+  });
+}
+```
+This stays unchanged — it works correctly for live preview override.
 
 ---
 
 ## What is NOT Changed
 
-- UI design, layout, spacing, card styles — fully preserved
+- `SettingsApparence.tsx` — no changes. The `products_per_row` selector (1/2/3) stays. The postMessage logic for grid preview stays.
 - `AdvancedColorPicker.tsx` — no changes
 - `ShopAssetUploader.tsx` — no changes
-- Accordion structure (4 sections remain: Identity, Design, Layout & CTA, Style global)
-- All other working settings (CTA, grid, dark mode, card style, etc.)
-- No DB migrations needed — removing these settings from the UI doesn't require dropping columns
-- All other pages — untouched
+- All other pages, auth, orders, dashboard — untouched
+- No DB migrations — no new columns needed (rating is static UI)
+- The `Product` type — no changes
 
 ---
 
-## Result After Changes
+## Summary
 
-Remaining controls in the form:
+### `src/index.css` — Add:
+1. `.product-grid`, `.product-grid-2`, `.product-grid-1` with proper responsive media queries (2 cols mobile → 3 tablet → 4 desktop)
+2. `.product-title` — 15/16px, font-weight 600, 2-line clamp
+3. `.product-cta` — 13px, 10px/12px padding, white-space normal, min-height 44px
 
-**Identité visuelle:** Logo, Banner, Identity display mode (3 radio options)
-
-**Design:**
-- Colors (4): Primary, CTA background, CTA text, Card background  
-- Typography (2): Heading font dropdown, Body font dropdown + preview block
-
-**Layout & CTA:**
-- Product grid (1/2/3 per row visual selector)
-- Display order dropdown (5 options)
-- CTA text (5 presets + Personnalisé with input)
-- CTA style (Shape: Sharp/Medium/Pill, Width: Fit/Full, Animation: None/Pulse/Shine)
-- CTA preview
-
-**Style global:**
-- Dark mode toggle
-- Card style (Soft shadow / Border / Flat)
-- Global radius (Sharp/Medium/Rounded)
-- Button shadow (None/Soft/Elevated)
-
-Every remaining control either already works or will be fixed to work. Zero dead controls remaining.
+### `src/pages/ShopStorefront.tsx` — Targeted edits:
+1. Replace `gridCols` computation with `gridClassName` CSS class name selection
+2. Replace `style={{ display: 'grid', gap: 16, gridTemplateColumns: gridCols }}` with `className={gridClassName}` on both grid divs (loading skeleton + products)
+3. Replace card body (lines ~500–533) with rebuilt structure:
+   - `h3` with `product-title` class
+   - Static rating block (4 filled + 1 empty star, "0 avis")
+   - Vertical price stack (`space-y-0.5`, old price 13px gray strikethrough, new price 16px semibold)
+   - Button with `product-cta` class, remove `size="sm"`, remove `mt-3`
