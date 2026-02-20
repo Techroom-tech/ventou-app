@@ -1,31 +1,38 @@
 
-# Mandatory Behavioral Corrections — Appearance Settings
+# Appearance Settings — Functional Cleanup & Behavior Implementation
 
-## Full Audit Results
+## Complete Audit Summary
 
-After reading all 484 lines of `ShopStorefront.tsx` and all 1104 lines of `SettingsApparence.tsx`, here is the exact status of every controlled setting:
+After reading all 1095 lines of `SettingsApparence.tsx` and all 569 lines of `ShopStorefront.tsx`, here is the definitive status:
 
-### Dead controls confirmed (not read in storefront):
-| Control | Evidence | Decision |
+### DEAD CONTROLS (remove or fix):
+
+| Control | Status | Decision |
 |---|---|---|
-| `banner_size` | Storefront: `h-48 md:h-64` hardcoded (line 229), `shop.banner_size` never read | **Remove entirely** |
-| `badge_color` | Promo badges use `bg-destructive` hardcoded (line 366), `shop.badge_color` never read | **Remove** |
-| `button_animation` | Button at lines 393–409 has no animation class logic | **Implement real CSS animation** |
-| `product_card_style` | Product card uses `className="rounded-xl border bg-card overflow-hidden hover:shadow-lg"` hardcoded (line 346) | **Implement real conditional classes** |
-| `global_radius` | Saved to DB, never applied in storefront | **Implement via CSS var injection** |
-| `button_shadow` | Only used in local `CtaPreview` component (line 182–186), not on storefront buttons | **Implement on storefront buttons** |
-| `products_per_row` | Grid is hardcoded `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` (lines 323, 334) | **Implement dynamic grid columns** |
-| `products_sort_order` | Product query always orders by `created_at desc` (line 105) | **Implement dynamic query ordering** |
-| `dark_mode_enabled` | Storefront root has no dark class logic, postMessage doesn't send dark mode | **Implement via postMessage + class** |
-| Typography sliders | postMessage sends `--heading-font`, `--body-font` but NOT size/spacing/lineheight vars. Storefront elements use Tailwind hardcoded sizes | **Fix postMessage + storefront consumption** |
+| `secondary_color` | postMessage sends `--color-secondary`, nothing in storefront reads it | **REMOVE** |
+| `background_color` | Body bg set, but `div.min-h-screen bg-background` overrides with Tailwind class | **FIX** (apply inline style to root div) or **REMOVE** |
+| Title size / Body size / Espacement / Hauteur ligne sliders | postMessage sends vars but storefront uses hardcoded Tailwind `text-sm`, `text-lg` — nothing reads the CSS vars | **REMOVE all 4 sliders** |
+| `heading_font` / `body_font` | Google Font LOADS, `--heading-font` var is set on `:root`, but storefront elements use `font-sans` (Tailwind) not `var(--heading-font)` | **FIX** (apply font via inline style on storefront root elements) |
 
-### Working controls (keep as-is):
-- `primary_color` — used directly in storefront (price text, avatar bg, footer link)
-- `button_color`, `button_text_color`, `button_radius` — correctly applied to buy buttons (lines 397–401)
-- `cta_label` — correctly read at line 408
-- `logo_url`, `banner_url`, `identity_display_mode` — correctly implemented
-- `heading_font`, `body_font` — partially working (fonts load but size/spacing not propagated)
-- `background_color`, `card_bg_color` — postMessage sets CSS var but storefront elements use Tailwind classes, not CSS vars
+### WORKING CONTROLS (keep as-is):
+
+| Control | Mechanism | Status |
+|---|---|---|
+| `primary_color` | Inline style on price text, avatar, footer link | ✅ |
+| `button_color`, `button_text_color` | Inline style on `data-storefront-btn` | ✅ |
+| `button_radius` | Computed `ctaRadius`, inline style | ✅ |
+| `button_shadow` | Computed `ctaShadow`, inline style | ✅ |
+| `button_animation` | CSS classes `btn-anim-pulse` / `btn-anim-shine` | ✅ |
+| `button_width` | Inline style `width: '100%' / 'auto'` | ✅ |
+| `cta_label` | `shop.cta_label` on button text | ✅ |
+| `logo_url`, `banner_url` | Direct `img src` | ✅ |
+| `identity_display_mode` | `showLogo` / `showName` conditionals | ✅ |
+| `products_per_row` | `data-products-grid` DOM query on postMessage + initial computed `gridCols` | ✅ |
+| `products_sort_order` | Dynamic Supabase `query.order()` call | ✅ |
+| `dark_mode_enabled` | `documentElement.classList.toggle('dark')` | ✅ |
+| `product_card_style` | `cardClass` conditional string | ✅ |
+| `global_radius` | postMessage sets `--radius` on `:root` | ✅ |
+| `card_bg_color` | `querySelectorAll('[data-card-bg]')` direct DOM mutation | ✅ |
 
 ---
 
@@ -33,269 +40,194 @@ After reading all 484 lines of `ShopStorefront.tsx` and all 1104 lines of `Setti
 
 ### File 1: `src/pages/settings/SettingsApparence.tsx`
 
-**A. Remove `banner_size` control** (lines 501–508)
-Remove the "Taille d'affichage" block and its `SegmentedControl`. Remove `banner_size` from `AppearanceForm`, `DEFAULT_FORM`, and `handleSave`.
+**A. Remove from `AppearanceForm` type, `DEFAULT_FORM`, `COLOR_DEFAULTS`, form init, save, and JSX:**
+- `secondary_color` — dead, nothing reads `--color-secondary` in storefront
+- `background_color` — inconsistently applied, creates confusion
+- `title_size_px` — slider has no effect on live store
+- `body_size_px` — slider has no effect on live store  
+- `letter_spacing_px` — slider has no effect on live store
+- `line_height_pct` — slider has no effect on live store
 
-**B. Remove `badge_color` control** (lines 617–623)
-Remove the `ColorRow` for "Badge promo". Remove `badge_color` from `AppearanceForm`, `DEFAULT_FORM`, `COLOR_DEFAULTS`, and `handleSave`. Also remove it from the accordion trigger color dot preview (line 561).
+**B. Remove from postMessage vars:**
+- `--color-secondary`, `--color-bg`, `--heading-size`, `--body-size`, `--letter-spacing`, `--line-height`
 
-**C. Expand postMessage to include all typography and layout vars** (lines 288–310)
-Current postMessage only sends 8 vars. Extend to send:
+**C. Simplify `COLOR_DEFAULTS` to only:**
 ```ts
-'--heading-font': form.heading_font,
-'--body-font': form.body_font,
-'--heading-size': form.title_size_px + 'px',
-'--body-size': form.body_size_px + 'px',
-'--letter-spacing': form.letter_spacing_px + 'px',
-'--line-height': form.line_height_pct / 100 + '',
-'--color-primary': form.primary_color,
-'--color-secondary': form.secondary_color,
-'--color-btn-bg': form.button_color,
-'--color-btn-text': form.button_text_color,
-'--color-bg': form.background_color,
-'--color-card-bg': form.card_bg_color,
-'--btn-radius': form.button_radius === 'Sharp' ? '4px' : form.button_radius === 'Pill' ? '999px' : '8px',
-'--btn-shadow': form.button_shadow === 'Soft' ? '0 2px 8px rgba(0,0,0,0.15)' : form.button_shadow === 'Elevated' ? '0 4px 16px rgba(0,0,0,0.25)' : 'none',
-'--global-radius': form.global_radius === 'Sharp' ? '4px' : form.global_radius === 'Rounded' ? '16px' : '8px',
-'--btn-animation': form.button_animation,
-'--dark-mode': form.dark_mode_enabled ? 'dark' : 'light',
-'--card-style': form.product_card_style,
-'--products-per-row': form.products_per_row,
-'--products-sort': form.products_sort_order,
+const COLOR_DEFAULTS: Record<string, string> = {
+  primary_color: '#1E3A5F',
+  button_color: '#FF6B35',
+  button_text_color: '#FFFFFF',
+  card_bg_color: '#FFFFFF',
+};
 ```
 
-**D. Remove `banner_size` from `handleSave`**
-Already noted above — also remove from the Supabase update call.
+**D. Remove typography sliders block (lines 656–702):**
+The entire `grid grid-cols-2 gap-4` div with 4 sliders and the live preview block (which referenced the removed fields) is deleted. Keep only the 2 font `Select` dropdowns.
+
+**E. Keep font dropdowns — replace live preview content:**
+The live preview block now only shows font rendering (no size/spacing), using `form.heading_font` and `form.body_font` at fixed sizes:
+```tsx
+<div className="rounded-lg border bg-muted/20 p-4 space-y-1.5 mt-4">
+  <p style={{ fontFamily: `${form.heading_font}, sans-serif`, fontSize: 16, fontWeight: 600, margin: 0 }}>
+    Titre de votre boutique
+  </p>
+  <p style={{ fontFamily: `${form.body_font}, sans-serif`, fontSize: 13, color: '#6B7280', margin: 0 }}>
+    Texte de description du produit.
+  </p>
+</div>
+```
+
+**F. Update Design accordion trigger color dots:**
+Remove `card_bg_color` from the 3-dot color preview in the trigger since we're removing `background_color`. Show: `primary_color`, `button_color`, `button_text_color`.
+
+**G. Remove orange hardcoded styles:**
+The header in `SettingsApparence.tsx` has no hardcoded orange. The save button uses `#10B981` (green) — keep this. No other hardcoded orange detected in this file.
+
+**H. Update `handleSave` to not persist removed fields:**
+Remove from the Supabase update call: `secondary_color`, `background_color`, `title_size_px`, `body_size_px`, `letter_spacing_px`, `line_height_pct`.
+
+**I. Preview layout refinement:**
+The current preview panel uses `p-4` padding around the iframe. Reduce to `p-3` to reclaim space. The mobile phone frame is `width:390, height:700` — this is reasonable. Keep as-is. No major layout change needed here — the structure is already a proper sticky non-scrolling 60% right panel.
 
 ---
 
 ### File 2: `src/pages/ShopStorefront.tsx`
 
-This file requires the most changes. Every dead control becomes a real one.
+**A. Fix font application — make fonts actually render in the storefront:**
 
-**A. Fix postMessage handler** (lines 63–82)
-Expand the handler to apply all new CSS vars AND handle non-CSS-var changes (font, dark mode, grid, sort):
+Currently fonts LOAD via Google Fonts but are never APPLIED to DOM elements. The storefront uses Tailwind's `font-sans` implicitly. Fix by applying CSS vars via `document.documentElement.style` AND adding inline styles to the key text elements.
+
+The cleanest approach: in the postMessage handler, when a font arrives, set a CSS var AND inject a `<style>` tag that overrides `body { font-family: ... }` and heading elements:
 
 ```ts
-const handler = (e: MessageEvent) => {
-  if (e.data?.type !== 'VENTOU_THEME_UPDATE') return;
-  const root = document.documentElement;
-  const vars = e.data.vars as Record<string, string>;
-  
-  // Apply all CSS custom properties
-  Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
-  
-  // Background color directly on body
-  if (vars['--color-bg']) document.body.style.backgroundColor = vars['--color-bg'];
-  
-  // Dark mode: toggle 'dark' class on <html>
-  if (vars['--dark-mode']) {
-    if (vars['--dark-mode'] === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
+// In postMessage handler, after setting CSS vars:
+if (vars['--heading-font'] || vars['--body-font']) {
+  let style = document.getElementById('ventou-font-overrides') as HTMLStyleElement;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'ventou-font-overrides';
+    document.head.appendChild(style);
   }
-  
-  // Typography: dynamically load Google Fonts if needed
-  if (vars['--heading-font'] || vars['--body-font']) {
-    [vars['--heading-font'], vars['--body-font']].filter(Boolean).forEach(font => {
-      if (font === 'Inter') return;
-      const id = `gf-sf-${font.replace(/\s+/g, '-')}`;
-      if (!document.getElementById(id)) {
-        const link = document.createElement('link');
-        link.id = id;
-        link.rel = 'stylesheet';
-        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@400;500;600;700&display=swap`;
-        document.head.appendChild(link);
-      }
-    });
-  }
-  
-  // Products per row: update CSS var used by grid
-  // Products sort: trigger re-sort via state ref (cannot re-query without React state)
-  // These are handled via CSS var injection approach below
-};
-```
-
-**B. Fix product query to use `products_sort_order`** (lines 97–110)
-Currently always orders by `created_at desc`. Change to dynamic ordering:
-
-```ts
-const { data: products } = useQuery({
-  queryKey: ['storefront-products', shop?.id, shop?.products_sort_order],
-  queryFn: async () => {
-    let query = supabase.from('products').select('*')
-      .eq('shop_id', shop!.id)
-      .eq('is_active', true);
-    
-    const sort = (shop as any).products_sort_order ?? 'recent';
-    if (sort === 'alpha') query = query.order('name', { ascending: true });
-    else if (sort === 'price_asc') query = query.order('price', { ascending: true });
-    else if (sort === 'price_desc') query = query.order('price', { ascending: false });
-    else query = query.order('created_at', { ascending: false }); // recent + best_seller (no order_count column, fallback to recent)
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    return data as Product[];
-  },
-  enabled: !!shop?.id,
-});
-```
-
-**C. Fix product grid to use `products_per_row`** (lines 323, 334)
-Replace hardcoded `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` with a dynamic grid style using inline CSS or dynamic class:
-
-```tsx
-const perRow = (shop as any).products_per_row ?? '3';
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gap: '1rem',
-  gridTemplateColumns: perRow === '1' ? '1fr' : perRow === '2' ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-};
-// On small screens, always single column:
-// Use CSS variable that the postMessage can update
-```
-
-Since we need responsive fallback AND live update via postMessage, the best approach: set `--products-per-row` CSS var via postMessage, and use it in the grid's `gridTemplateColumns` inline style with a media-query-aware pattern. The simplest working approach:
-
-```tsx
-// Compute from shop data (used on initial load and after save+reload)
-const perRow = String((shop as any).products_per_row ?? '3');
-const gridCols = perRow === '1' ? '1fr' : perRow === '2' ? 'repeat(2, minmax(0,1fr))' : 'repeat(3, minmax(0,1fr))';
-
-// Use in JSX:
-<div style={{ display: 'grid', gap: 16, gridTemplateColumns: `var(--products-grid-cols, ${gridCols})` }}>
-```
-
-And in postMessage handler: set `--products-grid-cols` based on `--products-per-row`.
-
-**D. Fix button animation** (line 393–409)
-Apply real CSS animation class to the buy button based on `shop.button_animation`. Add keyframe definitions to `index.css` and apply via className:
-
-Add to `src/index.css`:
-```css
-@keyframes btn-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.04); opacity: 0.9; }
+  const hFont = vars['--heading-font'] ?? document.documentElement.style.getPropertyValue('--heading-font');
+  const bFont = vars['--body-font'] ?? document.documentElement.style.getPropertyValue('--body-font');
+  style.textContent = `
+    body { font-family: '${bFont}', sans-serif !important; }
+    h1, h2, h3, h4, h5, h6 { font-family: '${hFont}', sans-serif !important; }
+  `;
 }
-@keyframes btn-shine {
-  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
-  100% { box-shadow: 0 0 0 8px rgba(255,255,255,0); }
-}
-.btn-anim-pulse { animation: btn-pulse 1.5s ease-in-out infinite; }
-.btn-anim-shine { animation: btn-shine 2s ease-in-out infinite; }
 ```
 
-Apply in storefront:
-```tsx
-const btnAnimClass = shop.button_animation === 'Pulse' ? 'btn-anim-pulse' 
-  : shop.button_animation === 'Shine' ? 'btn-anim-shine' : '';
-<Button className={`w-full mt-3 gap-2 ${btnAnimClass}`} ... >
-```
+**B. Apply font on initial load (from `shop` data):**
+Add a `useEffect` that runs when `shop` loads to set the fonts from `shop.heading_font` and `shop.body_font`:
 
-For live preview: postMessage sends `--btn-animation`, handler converts to class on existing buttons via DOM query. However, modifying className via JS on React-rendered elements is unreliable. Better: apply animation via CSS var: `animation: var(--btn-animation-value, none)`. Set `--btn-animation-value` via postMessage.
-
-**E. Fix `product_card_style`** (line 346)
-Replace hardcoded `hover:shadow-lg` with dynamic classes based on `shop.product_card_style`:
-
-```tsx
-const cardClass = shop.product_card_style === 'Border minimal' 
-  ? 'rounded-xl border border-border/70 bg-card overflow-hidden cursor-pointer group'
-  : shop.product_card_style === 'Flat'
-  ? 'rounded-xl bg-muted/40 overflow-hidden cursor-pointer group'
-  : 'rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group'; // Soft shadow (default)
-```
-
-For live postMessage: the handler sets `--card-style` var; use it via a CSS approach where we inject a `<style>` tag into the iframe's head based on card style value.
-
-**F. Fix `global_radius`** (applied to cards)
-Inject `--radius` override via postMessage: the handler maps `global_radius` string to px value and sets it. All Tailwind `rounded-xl`/`rounded-lg` elements use `--radius` via the theme system. Setting this CSS var on `:root` directly changes all radiuses.
-
-```ts
-// In postMessage handler:
-const globalRadius = vars['--global-radius'];
-if (globalRadius) root.style.setProperty('--radius', globalRadius); // overrides Tailwind theme
-```
-
-**G. Fix `button_shadow`** (line 393–409)
-Apply shadow via inline style on storefront buy button, same as `button_color`:
-
-```tsx
-const ctaShadow = shop.button_shadow === 'Soft' ? '0 2px 8px rgba(0,0,0,0.15)'
-  : shop.button_shadow === 'Elevated' ? '0 4px 16px rgba(0,0,0,0.25)' : 'none';
-
-<Button style={{
-  backgroundColor: ctaBg,
-  color: ctaText,
-  borderRadius: ctaRadius,
-  boxShadow: ctaShadow,
-}}>
-```
-
-For live postMessage: handler sets `--btn-shadow` and a `<style>` injection targets `[data-storefront-btn]` attribute placed on buy buttons.
-
-**H. Fix `dark_mode_enabled`**
-On initial load of the storefront, read `shop.dark_mode_enabled` and toggle the `dark` class:
 ```tsx
 useEffect(() => {
-  if ((shop as any).dark_mode_enabled) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
+  if (!shop) return;
+  const hFont = shop.heading_font ?? 'Inter';
+  const bFont = shop.body_font ?? 'Inter';
+  // Load fonts
+  [hFont, bFont].filter(f => f && f !== 'Inter').forEach(font => {
+    const id = `gf-sf-${font!.replace(/\s+/g, '-')}`;
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id = id; link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font!)}:wght@400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+    }
+  });
+  // Apply via style injection
+  let style = document.getElementById('ventou-font-overrides') as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'ventou-font-overrides';
+    document.head.appendChild(style);
   }
+  style.textContent = `
+    body { font-family: '${bFont}', sans-serif !important; }
+    h1, h2, h3, h4, h5, h6 { font-family: '${hFont}', sans-serif !important; }
+  `;
 }, [shop]);
 ```
 
-For live postMessage: already handled in the expanded handler (section A above).
+**C. Remove `--color-bg` / `--color-secondary` postMessage handling from the handler:**
+Since we remove those settings from the sender, clean up the handler in `ShopStorefront.tsx` to remove the body background mutation (`document.body.style.backgroundColor`) to prevent leftover code that does nothing.
 
-**I. Fix `background_color` and `card_bg_color` live update**
-postMessage sends the CSS vars. Storefront consumes `--color-bg` → body background, `--color-card-bg` → product cards. Add `style={{ backgroundColor: 'var(--color-card-bg, transparent)' }}` to product card divs.
-
----
-
-### File 3: `src/index.css`
-
-Add button animation keyframes:
-```css
-@keyframes ventou-btn-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04); }
-}
-@keyframes ventou-btn-shine {
-  0% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0.3); }
-  60% { box-shadow: inset 100px 0 0 0 rgba(255,255,255,0); }
-  100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
-}
-.btn-anim-pulse { animation: ventou-btn-pulse 1.5s ease-in-out infinite; }
-.btn-anim-shine { animation: ventou-btn-shine 2s linear infinite; }
-```
+**D. NO changes to:**
+- Product grid logic (already correct)
+- Sort order logic (already correct)  
+- Dark mode toggle (already correct)
+- Button styles/animation (already correct)
+- Card styles (already correct)
 
 ---
 
-## Summary of Changes
+### File 3: `src/types/shop.ts`
 
-### `SettingsApparence.tsx` changes:
-1. Remove `banner_size` from type, defaults, form init, save, and JSX (lines 501–508)
-2. Remove `badge_color` from type, defaults, `COLOR_DEFAULTS`, form init, save, and JSX (lines 617–623)
-3. Expand postMessage to send 19 vars including typography sizes, layout vars, dark mode signal, animation, card style, global radius
-
-### `ShopStorefront.tsx` changes:
-1. Expand postMessage listener (lines 63–82) to handle dark mode, Google Font loading, and all new CSS vars
-2. Fix product query to apply `products_sort_order` to Supabase ordering (line 105)
-3. Add `dark_mode_enabled` effect on mount (new `useEffect` after shop loads)
-4. Replace hardcoded grid classes with dynamic `gridTemplateColumns` based on `products_per_row` (lines 323, 334)
-5. Add `product_card_style` conditional classes to product card (line 346)
-6. Add `button_shadow` to buy button inline styles (line 397–401)
-7. Add `button_animation` class to buy button (line 393)
-8. Add `data-card-bg` attribute to product cards for CSS var targeting (line 344)
-
-### `src/index.css` changes:
-1. Add `@keyframes ventou-btn-pulse` and `@keyframes ventou-btn-shine`
-2. Add `.btn-anim-pulse` and `.btn-anim-shine` utility classes
+Remove the `background_color` reference from consideration in the type — but `background_color`, `secondary_color`, `header_color`, `footer_color` can stay in the type since they're legacy DB columns that still exist in the DB. The type file doesn't need to change (extra DB columns in the type don't cause harm, and removing them could break other code that imports the type). No changes to `shop.ts`.
 
 ---
 
-## What is NOT changed
-- The entire visual design of `SettingsApparence.tsx` (colors, spacing, typography tokens, layout — all preserved)
-- `ShopAssetUploader.tsx` — no changes
+### File 4: `src/data/mockData.ts`
+
+Remove `secondary_color`, `background_color`, `title_size_px`, `body_size_px`, `letter_spacing_px`, `line_height_pct` from mock data defaults. Quick cleanup.
+
+---
+
+## Summary of All Changes
+
+### `SettingsApparence.tsx` — 9 targeted changes:
+1. Remove `secondary_color` from `AppearanceForm`, `DEFAULT_FORM`, `COLOR_DEFAULTS`, form init (`useEffect`), `handleSave`, postMessage vars, and JSX (`ColorRow`)
+2. Remove `background_color` from same 6 locations
+3. Remove `title_size_px`, `body_size_px`, `letter_spacing_px`, `line_height_pct` from `AppearanceForm`, `DEFAULT_FORM`, form init, `handleSave`, postMessage vars — 4 fields × 5 locations each
+4. Delete the 4-slider grid block (lines 656–672) entirely
+5. Update the live typography preview to fixed-size rendering only
+6. Update the Design accordion trigger to show 3 relevant color dots: `primary_color`, `button_color`, `button_text_color`
+7. Remove `--color-secondary`, `--color-bg`, `--heading-size`, `--body-size`, `--letter-spacing`, `--line-height` from the postMessage vars object
+8. Keep the font Select dropdowns and their Google Font loading — they're correct
+9. `CtaPreview` component: remove `letterSpacing` and `fontFamily` references to the now-removed fields (keep other styles)
+
+### `ShopStorefront.tsx` — 2 targeted changes:
+1. Add `useEffect` for font application on initial shop load (inject `<style id="ventou-font-overrides">`)
+2. In postMessage handler: add `<style>` injection block for font vars (alongside existing Google Font link injection). Remove `body.style.backgroundColor` mutation.
+
+### `src/data/mockData.ts` — 1 cleanup:
+Remove removed fields from mock defaults.
+
+---
+
+## What is NOT Changed
+
+- UI design, layout, spacing, card styles — fully preserved
 - `AdvancedColorPicker.tsx` — no changes
-- All other pages, hooks, auth, orders, products — untouched
-- No new DB migrations needed — all columns already exist
+- `ShopAssetUploader.tsx` — no changes
+- Accordion structure (4 sections remain: Identity, Design, Layout & CTA, Style global)
+- All other working settings (CTA, grid, dark mode, card style, etc.)
+- No DB migrations needed — removing these settings from the UI doesn't require dropping columns
+- All other pages — untouched
+
+---
+
+## Result After Changes
+
+Remaining controls in the form:
+
+**Identité visuelle:** Logo, Banner, Identity display mode (3 radio options)
+
+**Design:**
+- Colors (4): Primary, CTA background, CTA text, Card background  
+- Typography (2): Heading font dropdown, Body font dropdown + preview block
+
+**Layout & CTA:**
+- Product grid (1/2/3 per row visual selector)
+- Display order dropdown (5 options)
+- CTA text (5 presets + Personnalisé with input)
+- CTA style (Shape: Sharp/Medium/Pill, Width: Fit/Full, Animation: None/Pulse/Shine)
+- CTA preview
+
+**Style global:**
+- Dark mode toggle
+- Card style (Soft shadow / Border / Flat)
+- Global radius (Sharp/Medium/Rounded)
+- Button shadow (None/Soft/Elevated)
+
+Every remaining control either already works or will be fixed to work. Zero dead controls remaining.
