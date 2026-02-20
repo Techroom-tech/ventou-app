@@ -27,13 +27,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface AppearanceForm {
   logo_url: string;
   banner_url: string;
-  banner_size: string;
   identity_display_mode: string;
   primary_color: string;
   secondary_color: string;
   button_color: string;
   button_text_color: string;
-  badge_color: string;
   background_color: string;
   card_bg_color: string;
   heading_font: string;
@@ -57,13 +55,11 @@ interface AppearanceForm {
 const DEFAULT_FORM: AppearanceForm = {
   logo_url: '',
   banner_url: '',
-  banner_size: 'Medium',
   identity_display_mode: 'logo-name',
   primary_color: '#1E3A5F',
   secondary_color: '#FF6B35',
   button_color: '#FF6B35',
   button_text_color: '#FFFFFF',
-  badge_color: '#10B981',
   background_color: '#F9FAFB',
   card_bg_color: '#FFFFFF',
   heading_font: 'Inter',
@@ -89,7 +85,6 @@ const COLOR_DEFAULTS: Record<string, string> = {
   secondary_color: '#FF6B35',
   button_color: '#FF6B35',
   button_text_color: '#FFFFFF',
-  badge_color: '#10B981',
   background_color: '#F9FAFB',
   card_bg_color: '#FFFFFF',
 };
@@ -235,13 +230,11 @@ export default function SettingsApparence() {
     const f: AppearanceForm = {
       logo_url: shop.logo_url ?? '',
       banner_url: shop.banner_url ?? '',
-      banner_size: shop.banner_size ?? 'Medium',
       identity_display_mode: (shop as any).identity_display_mode ?? 'logo-name',
       primary_color: shop.primary_color ?? '#1E3A5F',
       secondary_color: shop.secondary_color ?? '#FF6B35',
       button_color: shop.button_color ?? '#FF6B35',
       button_text_color: shop.button_text_color ?? '#FFFFFF',
-      badge_color: shop.badge_color ?? '#10B981',
       background_color: shop.background_color ?? '#F9FAFB',
       card_bg_color: shop.card_bg_color ?? '#FFFFFF',
       heading_font: shop.heading_font ?? 'Inter',
@@ -288,6 +281,11 @@ export default function SettingsApparence() {
   useEffect(() => {
     const t = setTimeout(() => {
       if (!iframeRef.current?.contentWindow) return;
+      const btnRadius = form.button_radius === 'Sharp' ? '4px' : form.button_radius === 'Pill' ? '999px' : '8px';
+      const btnShadow = form.button_shadow === 'Soft' ? '0 2px 8px rgba(0,0,0,0.15)' : form.button_shadow === 'Elevated' ? '0 4px 16px rgba(0,0,0,0.25)' : 'none';
+      const globalRadius = form.global_radius === 'Sharp' ? '4px' : form.global_radius === 'Rounded' ? '16px' : '8px';
+      const perRow = form.products_per_row;
+      const gridCols = perRow === '1' ? '1fr' : perRow === '2' ? 'repeat(2, minmax(0,1fr))' : 'repeat(3, minmax(0,1fr))';
       iframeRef.current.contentWindow.postMessage(
         {
           type: 'VENTOU_THEME_UPDATE',
@@ -296,11 +294,21 @@ export default function SettingsApparence() {
             '--color-secondary': form.secondary_color,
             '--color-btn-bg': form.button_color,
             '--color-btn-text': form.button_text_color,
-            '--color-badge': form.badge_color,
             '--color-bg': form.background_color,
             '--color-card-bg': form.card_bg_color,
             '--heading-font': form.heading_font,
             '--body-font': form.body_font,
+            '--heading-size': form.title_size_px + 'px',
+            '--body-size': form.body_size_px + 'px',
+            '--letter-spacing': form.letter_spacing_px + 'px',
+            '--line-height': String(form.line_height_pct / 100),
+            '--btn-radius': btnRadius,
+            '--btn-shadow': btnShadow,
+            '--global-radius': globalRadius,
+            '--btn-animation': form.button_animation,
+            '--dark-mode': form.dark_mode_enabled ? 'dark' : 'light',
+            '--card-style': form.product_card_style,
+            '--products-grid-cols': gridCols,
           },
         },
         '*',
@@ -326,13 +334,11 @@ export default function SettingsApparence() {
       const { error } = await supabase.from('shops').update({
         logo_url: form.logo_url || null,
         banner_url: form.banner_url || null,
-        banner_size: form.banner_size,
         identity_display_mode: form.identity_display_mode,
         primary_color: form.primary_color,
         secondary_color: form.secondary_color,
         button_color: form.button_color,
         button_text_color: form.button_text_color,
-        badge_color: form.badge_color,
         background_color: form.background_color,
         card_bg_color: form.card_bg_color,
         heading_font: form.heading_font,
@@ -498,15 +504,7 @@ export default function SettingsApparence() {
                             aspectRatio="16:9"
                             maxSizeMB={2}
                           />
-                          <div className="space-y-2 pt-1">
-                            <p className="text-[12px] font-medium text-foreground">Taille d'affichage</p>
-                            <SegmentedControl
-                              options={['Small', 'Medium', 'Large'] as const}
-                              value={form.banner_size as 'Small' | 'Medium' | 'Large'}
-                              onChange={v => update('banner_size', v)}
-                            />
-                          </div>
-                        </div>
+                         </div>
 
                         <Separator className="bg-border/60" />
 
@@ -558,7 +556,7 @@ export default function SettingsApparence() {
                     <Palette className="h-4 w-4 text-muted-foreground" />
                     Design
                     <div className="flex gap-1 ml-1">
-                      {(['primary_color', 'button_color', 'badge_color'] as const).map(k => (
+                      {(['primary_color', 'button_color', 'card_bg_color'] as const).map(k => (
                         <div
                           key={k}
                           className="w-3 h-3 rounded-full border border-border/60"
@@ -611,13 +609,6 @@ export default function SettingsApparence() {
                       label="Fond cartes produit"
                       helper="Arrière-plan des fiches produit"
                       colorKey="card_bg_color"
-                      form={form}
-                      update={update}
-                    />
-                    <ColorRow
-                      label="Badge promo"
-                      helper="Étiquette de réduction"
-                      colorKey="badge_color"
                       form={form}
                       update={update}
                     />
