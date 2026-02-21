@@ -1,38 +1,16 @@
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Users,
-  Megaphone,
-  Settings,
-  BadgeCheck,
-  Store,
-} from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShop } from '@/hooks/useShop';
-
-const fullNavItems = [
-  { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { key: 'products', icon: Package, path: '/dashboard/products' },
-  { key: 'orders', icon: ShoppingCart, path: '/dashboard/orders' },
-  { key: 'customers', icon: Users, path: '/dashboard/customers' },
-  { key: 'marketing', icon: Megaphone, path: '/dashboard/marketing' },
-  { key: 'settings', icon: Settings, path: '/dashboard/parametres' },
-];
-
-const onboardingNavItems = [
-  { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { key: 'createShop', icon: Store, path: '/dashboard/create-shop' },
-];
+import { allNavItems, onboardingNavItems, isNavActive } from '@/config/navigation';
 
 export function DashboardSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
   const { hasShop, shop } = useShop();
 
-  const navItems = hasShop ? fullNavItems : onboardingNavItems;
+  const navItems = hasShop ? allNavItems : onboardingNavItems;
 
   return (
     <aside className="hidden lg:flex flex-col w-60 bg-sidebar text-sidebar-foreground min-h-screen fixed left-0 top-0 z-40">
@@ -49,19 +27,21 @@ export function DashboardSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path ||
-            (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+          const isActive = isNavActive(item.path, location.pathname);
           return (
             <Link
               key={item.key}
               to={item.path}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative',
                 isActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
               )}
             >
+              {isActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary" />
+              )}
               <item.icon className="h-5 w-5" />
               {t(`dashboard.nav.${item.key}`)}
             </Link>

@@ -255,7 +255,9 @@
       "customers": "Customers",
       "marketing": "Marketing",
       "settings": "Settings",
-      "wallet": "Wallet"
+      "wallet": "Wallet",
+      "plus": "More",
+      "account": "My account"
     },
     "notifications": {
       "title": "Notifications",

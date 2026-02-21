@@ -316,7 +316,9 @@
       "customers": "Clients",
       "marketing": "Marketing",
       "settings": "Paramètres",
-      "wallet": "Portefeuille"
+      "wallet": "Portefeuille",
+      "plus": "Plus",
+      "account": "Mon compte"
     },
     "notifications": {
       "title": "Notifications",

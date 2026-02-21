@@ -61,7 +61,7 @@ export function DashboardHeader() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>{profile?.first_name || user?.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/parametres/profil')}>
               <User className="h-4 w-4 mr-2" />
               {t('dashboard.myAccount', 'Mon compte')}
             </DropdownMenuItem>
