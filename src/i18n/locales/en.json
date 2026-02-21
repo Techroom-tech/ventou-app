@@ -633,6 +633,11 @@
       "subscriptions": "Subscriptions",
       "users": "Users",
       "settings": "Settings"
+    },
+    "login": {
+      "title": "Sign in",
+      "submit": "Continue",
+      "error": "Invalid credentials"
     }
   }
 }
