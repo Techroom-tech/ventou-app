@@ -1,8 +1,5 @@
 [functions.check-slug]
 verify_jwt = false
 
-[functions.db-migrate]
-verify_jwt = false
-
 [functions.send-email]
 verify_jwt = false
