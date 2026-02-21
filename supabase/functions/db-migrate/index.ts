@@ -264,6 +264,88 @@ Deno.serve(async (req) => {
     `DROP POLICY IF EXISTS "Admins can read all profiles" ON public.profiles;`,
     `CREATE POLICY "Admins can read all profiles" ON public.profiles FOR SELECT TO authenticated
       USING (public.is_admin(auth.uid()));`,
+
+    // ════════════════════════════════════════════════════
+    // EMAIL SYSTEM TABLES
+    // ════════════════════════════════════════════════════
+
+    // ─── Email Providers ─────────────────────────────
+    `CREATE TABLE IF NOT EXISTS public.email_providers (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      driver text NOT NULL CHECK (driver IN ('smtp','sendgrid','mailersend','resend')),
+      name text NOT NULL,
+      config jsonb NOT NULL DEFAULT '{}'::jsonb,
+      is_active boolean DEFAULT false,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now()
+    );`,
+
+    `ALTER TABLE public.email_providers ENABLE ROW LEVEL SECURITY;`,
+
+    `DROP POLICY IF EXISTS "Super admins manage email providers" ON public.email_providers;`,
+    `CREATE POLICY "Super admins manage email providers" ON public.email_providers FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'super_admin'))
+      WITH CHECK (public.has_role(auth.uid(), 'super_admin'));`,
+
+    // ─── Email Templates ─────────────────────────────
+    `CREATE TABLE IF NOT EXISTS public.email_templates (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      slug text UNIQUE NOT NULL,
+      name text NOT NULL,
+      subject text NOT NULL,
+      body text NOT NULL,
+      is_active boolean DEFAULT true,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now()
+    );`,
+
+    `ALTER TABLE public.email_templates ENABLE ROW LEVEL SECURITY;`,
+
+    `DROP POLICY IF EXISTS "Admins can read email templates" ON public.email_templates;`,
+    `CREATE POLICY "Admins can read email templates" ON public.email_templates FOR SELECT TO authenticated
+      USING (public.is_admin(auth.uid()));`,
+
+    `DROP POLICY IF EXISTS "Super admins manage email templates" ON public.email_templates;`,
+    `CREATE POLICY "Super admins manage email templates" ON public.email_templates FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'super_admin'))
+      WITH CHECK (public.has_role(auth.uid(), 'super_admin'));`,
+
+    // ─── Platform Settings ───────────────────────────
+    `CREATE TABLE IF NOT EXISTS public.platform_settings (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      key text UNIQUE NOT NULL,
+      value jsonb,
+      created_at timestamptz DEFAULT now()
+    );`,
+
+    `ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;`,
+
+    `DROP POLICY IF EXISTS "Admins can read platform settings" ON public.platform_settings;`,
+    `CREATE POLICY "Admins can read platform settings" ON public.platform_settings FOR SELECT TO authenticated
+      USING (public.is_admin(auth.uid()));`,
+
+    `DROP POLICY IF EXISTS "Super admins manage platform settings" ON public.platform_settings;`,
+    `CREATE POLICY "Super admins manage platform settings" ON public.platform_settings FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'super_admin'))
+      WITH CHECK (public.has_role(auth.uid(), 'super_admin'));`,
+
+    // ─── Seed Email Templates ────────────────────────
+    `INSERT INTO public.email_templates (slug, name, subject, body) VALUES
+      ('welcome_vendor', 'Bienvenue Vendeur', 'Bienvenue sur {{site_name}} !', '<h2>Bienvenue {{vendor_name}} !</h2><p>Votre compte vendeur a été créé avec succès sur <strong>{{site_name}}</strong>.</p><p>Vous pouvez dès maintenant créer votre boutique et commencer à vendre.</p>'),
+      ('email_verification', 'Vérification Email', 'Vérifiez votre adresse email', '<h2>Vérification de votre email</h2><p>Bonjour {{vendor_name}},</p><p>Votre code de vérification est : <strong>{{verification_code}}</strong></p><p>Ce code expire dans 10 minutes.</p>'),
+      ('vendor_subscription_expiring_7_days', 'Abonnement expire dans 7 jours', 'Votre abonnement expire dans {{days_left}} jours', '<h2>Votre abonnement arrive à expiration</h2><p>Bonjour {{vendor_name}},</p><p>Votre abonnement <strong>{{plan_name}}</strong> expire dans <strong>{{days_left}} jours</strong>.</p><p>Renouvelez-le pour continuer à profiter de toutes les fonctionnalités.</p>'),
+      ('vendor_subscription_expiring_1_day', 'Abonnement expire demain', 'Votre abonnement expire demain !', '<h2>Dernière chance !</h2><p>Bonjour {{vendor_name}},</p><p>Votre abonnement expire <strong>demain</strong>. Renouvelez maintenant pour éviter toute interruption.</p>'),
+      ('vendor_subscription_expired', 'Abonnement expiré', 'Votre abonnement a expiré', '<h2>Abonnement expiré</h2><p>Bonjour {{vendor_name}},</p><p>Votre abonnement <strong>{{plan_name}}</strong> a expiré. Vos boutiques sont temporairement désactivées.</p><p>Renouvelez votre abonnement pour les réactiver.</p>'),
+      ('store_suspended', 'Boutique suspendue', 'Votre boutique a été suspendue', '<h2>Boutique suspendue</h2><p>Bonjour {{vendor_name}},</p><p>Votre boutique <strong>{{store_name}}</strong> a été suspendue pour la raison suivante :</p><p><em>{{reason}}</em></p><p>Contactez le support pour plus d''informations.</p>'),
+      ('report_warning', 'Avertissement signalement', 'Avertissement concernant votre contenu', '<h2>Avertissement</h2><p>Bonjour {{vendor_name}},</p><p>Un contenu de votre boutique a fait l''objet d''un signalement :</p><p><em>{{reason}}</em></p><p>Veuillez corriger le contenu concerné sous 48h.</p>')
+    ON CONFLICT (slug) DO NOTHING;`,
+
+    // ─── Seed Platform Settings ──────────────────────
+    `INSERT INTO public.platform_settings (key, value) VALUES
+      ('site_name', '"Ventou"'::jsonb),
+      ('logo_url', 'null'::jsonb),
+      ('support_email', '"support@ventou.shop"'::jsonb)
+    ON CONFLICT (key) DO NOTHING;`,
   ];
 
   const results: Array<{ sql: string; ok: boolean; error?: string }> = [];

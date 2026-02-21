@@ -60,6 +60,7 @@ const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminEmailSettings = lazy(() => import("./pages/admin/AdminEmailSettings"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 // Admin guard
@@ -163,6 +164,7 @@ const App = () => {
             <Route path="/admin/subscriptions" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminSubscriptions /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminUsers /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminSettings /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailSettings /></AdminGuard></ProtectedRoute>} />
 
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
