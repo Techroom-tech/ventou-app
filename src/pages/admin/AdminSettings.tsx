@@ -4,18 +4,20 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Settings, Palette, CreditCard, Bell, Shield, Scale, Wrench } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const sections = [
   { icon: Settings, title: 'Général', description: 'Nom de la plateforme, logo, URLs' },
   { icon: Palette, title: 'Branding', description: 'Couleurs, polices, favicon' },
   { icon: CreditCard, title: 'Abonnements', description: 'Plans, tarifs, essais' },
-  { icon: Bell, title: 'Notifications', description: 'Email, Push, In-App, SMS (placeholder)' },
+  { icon: Bell, title: 'Notifications & Email', description: 'Fournisseurs email, templates, notifications', link: '/admin/settings/email' },
   { icon: Shield, title: 'Sécurité', description: 'Rôles admin, journaux d\'audit' },
   { icon: Scale, title: 'Légal', description: 'CGU, Politique de confidentialité, mentions légales' },
   { icon: Wrench, title: 'Maintenance', description: 'Mode maintenance, bypass IP admin' },
 ];
 
 export default function AdminSettings() {
+  const navigate = useNavigate();
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -25,8 +27,8 @@ export default function AdminSettings() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sections.map(({ icon: Icon, title, description }) => (
-            <Card key={title} className="hover:shadow-md transition-shadow cursor-pointer">
+          {sections.map(({ icon: Icon, title, description, link }) => (
+            <Card key={title} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => link && navigate(link)}>
               <CardHeader className="flex flex-row items-center gap-4 pb-2">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Icon className="h-5 w-5 text-primary" />
