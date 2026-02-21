@@ -14,8 +14,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardGuard } from "@/components/DashboardGuard";
 import { getSubdomain } from "@/lib/subdomain";
 
+// Vendor pages
 const Index = lazy(() => import("./pages/Index"));
-
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -50,12 +50,31 @@ const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
 const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 
+// Admin pages
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminVendors = lazy(() => import("./pages/admin/AdminVendors"));
+const AdminVendorDetail = lazy(() => import("./pages/admin/AdminVendorDetail"));
+const AdminStores = lazy(() => import("./pages/admin/AdminStores"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
+const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+
+// Admin guard
+import { AdminGuard } from "@/components/admin/AdminGuard";
+
 const queryClient = new QueryClient();
+
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+  </div>
+);
 
 const App = () => {
   const subdomain = getSubdomain();
 
-  // Catch unhandled promise rejections to prevent white screens
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
       console.error("Unhandled promise rejection:", event.reason);
@@ -73,7 +92,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+            <Suspense fallback={<LoadingSpinner />}>
               <ShopStorefront slug={subdomain} />
             </Suspense>
           </TooltipProvider>
@@ -91,8 +110,9 @@ const App = () => {
       <BrowserRouter>
         <AuthProvider>
           <ProductProvider>
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+          <Suspense fallback={<LoadingSpinner />}>
           <Routes>
+            {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
@@ -100,71 +120,19 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/support" element={<Support />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <Dashboard />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/products"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <Products />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/products/new"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <AddProduct />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/orders"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <Orders />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/create-shop"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <CreateShop />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/shop-created"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <ShopCreatedSuccess />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/products/:id/edit"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <EditProduct />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/settings"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <Settings />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
-            {/* Settings V6 routes */}
+
+            {/* Vendor dashboard */}
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardGuard><Dashboard /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/products" element={<ProtectedRoute><DashboardGuard><Products /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/products/new" element={<ProtectedRoute><DashboardGuard><AddProduct /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/orders" element={<ProtectedRoute><DashboardGuard><Orders /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/create-shop" element={<ProtectedRoute><DashboardGuard><CreateShop /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/shop-created" element={<ProtectedRoute><DashboardGuard><ShopCreatedSuccess /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/products/:id/edit" element={<ProtectedRoute><DashboardGuard><EditProduct /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardGuard><Settings /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/commandes/:orderId" element={<ProtectedRoute><DashboardGuard><OrderDetail /></DashboardGuard></ProtectedRoute>} />
+
+            {/* Settings V6 */}
             <Route path="/dashboard/parametres" element={<ProtectedRoute><DashboardGuard><SettingsHub /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/parametres/identite" element={<ProtectedRoute><DashboardGuard><SettingsIdentite /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/parametres/domaine" element={<ProtectedRoute><DashboardGuard><SettingsDomaine /></DashboardGuard></ProtectedRoute>} />
@@ -180,17 +148,22 @@ const App = () => {
             <Route path="/dashboard/parametres/equipe" element={<ProtectedRoute><DashboardGuard><SettingsEquipe /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/parametres/facturation" element={<ProtectedRoute><DashboardGuard><SettingsFacturation /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/parametres/api" element={<ProtectedRoute><DashboardGuard><SettingsApi /></DashboardGuard></ProtectedRoute>} />
-            <Route
-              path="/dashboard/commandes/:orderId"
-              element={
-                <ProtectedRoute><DashboardGuard>
-                  <OrderDetail />
-                </DashboardGuard></ProtectedRoute>
-              }
-            />
+
+            {/* Admin */}
+            <Route path="/admin" element={<ProtectedRoute><AdminGuard><AdminDashboard /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/vendors" element={<ProtectedRoute><AdminGuard><AdminVendors /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/vendors/:id" element={<ProtectedRoute><AdminGuard><AdminVendorDetail /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/stores" element={<ProtectedRoute><AdminGuard><AdminStores /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/products" element={<ProtectedRoute><AdminGuard><AdminProducts /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute><AdminGuard><AdminReports /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminGuard><AdminSubscriptions /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminGuard><AdminUsers /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute><AdminGuard role="super_admin"><AdminSettings /></AdminGuard></ProtectedRoute>} />
+
+            {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>

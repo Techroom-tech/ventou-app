@@ -14,9 +14,6 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
   const { isLoading: shopLoading, hasShop } = useShop();
   const { pathname } = useLocation();
 
-  console.log('[Guard]', { authLoading, shopLoading, hasShop, pathname });
-
-  // 1. Wait for both auth and shop data to resolve — never redirect while loading
   if (authLoading || shopLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -25,11 +22,9 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
     );
   }
 
-  // 2. No shop → redirect to create-shop (unless already on an allowed page)
   if (!hasShop && !ALLOWED_WITHOUT_SHOP.includes(pathname)) {
     return <Navigate to="/dashboard/create-shop" replace />;
   }
 
-  // 3. Everything resolved — render page
   return <>{children}</>;
 }

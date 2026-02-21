@@ -52,6 +52,8 @@ export const mockShop: Shop = {
   body_size_px: null,
   letter_spacing_px: null,
   line_height_pct: null,
+  is_suspended: false,
+  suspended_reason: null,
 };
 
 
