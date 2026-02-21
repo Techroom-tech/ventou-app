@@ -622,5 +622,17 @@
       "whatsappContact": "Contact on WhatsApp",
       "viewMap": "View on Maps"
     }
+  },
+  "admin": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "vendors": "Vendors",
+      "stores": "Stores",
+      "products": "Products",
+      "reports": "Reports",
+      "subscriptions": "Subscriptions",
+      "users": "Users",
+      "settings": "Settings"
+    }
   }
 }

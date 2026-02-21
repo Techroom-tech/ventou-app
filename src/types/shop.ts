@@ -52,6 +52,9 @@ export interface Shop {
   body_size_px: number | null;
   letter_spacing_px: number | null;
   line_height_pct: number | null;
+  // Multi-store & moderation
+  is_suspended: boolean;
+  suspended_reason: string | null;
 }
 
 
