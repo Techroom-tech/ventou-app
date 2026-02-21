@@ -633,6 +633,11 @@
       "subscriptions": "Abonnements",
       "users": "Utilisateurs",
       "settings": "Paramètres"
+    },
+    "login": {
+      "title": "Connexion",
+      "submit": "Continuer",
+      "error": "Identifiants invalides"
     }
   }
 }

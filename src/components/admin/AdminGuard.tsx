@@ -1,8 +1,10 @@
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Loader2 } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import type { AdminRole } from '@/types/admin';
+
+const NotFound = lazy(() => import('@/pages/NotFound'));
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -22,12 +24,12 @@ export function AdminGuard({ children, role }: AdminGuardProps) {
   }
 
   if (!user || !isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Suspense fallback={null}><NotFound /></Suspense>;
   }
 
   // Check specific role requirement
   if (role && userRole !== role) {
-    return <Navigate to="/admin" replace />;
+    return <Suspense fallback={null}><NotFound /></Suspense>;
   }
 
   return <>{children}</>;

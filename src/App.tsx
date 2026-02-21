@@ -60,6 +60,7 @@ const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 // Admin guard
 import { AdminGuard } from "@/components/admin/AdminGuard";
@@ -149,16 +150,19 @@ const App = () => {
             <Route path="/dashboard/parametres/facturation" element={<ProtectedRoute><DashboardGuard><SettingsFacturation /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/parametres/api" element={<ProtectedRoute><DashboardGuard><SettingsApi /></DashboardGuard></ProtectedRoute>} />
 
-            {/* Admin */}
-            <Route path="/admin" element={<ProtectedRoute><AdminGuard><AdminDashboard /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/vendors" element={<ProtectedRoute><AdminGuard><AdminVendors /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/vendors/:id" element={<ProtectedRoute><AdminGuard><AdminVendorDetail /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/stores" element={<ProtectedRoute><AdminGuard><AdminStores /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/products" element={<ProtectedRoute><AdminGuard><AdminProducts /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute><AdminGuard><AdminReports /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminGuard><AdminSubscriptions /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><AdminGuard><AdminUsers /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute><AdminGuard role="super_admin"><AdminSettings /></AdminGuard></ProtectedRoute>} />
+            {/* Hidden admin login */}
+            <Route path="/0x8v3k/auth" element={<AdminLogin />} />
+
+            {/* Admin — returns 404 for non-admins */}
+            <Route path="/admin" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminDashboard /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/vendors" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminVendors /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/vendors/:id" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminVendorDetail /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/stores" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminStores /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/products" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminProducts /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminReports /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/subscriptions" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminSubscriptions /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminUsers /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminSettings /></AdminGuard></ProtectedRoute>} />
 
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
