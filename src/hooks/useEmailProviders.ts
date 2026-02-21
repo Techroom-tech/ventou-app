@@ -4,12 +4,13 @@ import { toast } from 'sonner';
 
 export interface EmailProvider {
   id: string;
-  driver: 'smtp' | 'sendgrid' | 'mailersend' | 'resend';
+  driver: 'smtp' | 'sendgrid' | 'mailersend' | 'resend' | 'mailchimp' | 'mailgun' | 'postmark' | 'sendinblue' | 'ses';
   name: string;
+  sender_email: string;
+  sender_name: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  // config is NOT returned for security
 }
 
 export function useEmailProviders() {
@@ -18,10 +19,9 @@ export function useEmailProviders() {
   const query = useQuery({
     queryKey: ['email-providers'],
     queryFn: async () => {
-      // Select without config to avoid exposing credentials
       const { data, error } = await supabase
         .from('email_providers')
-        .select('id, driver, name, is_active, created_at, updated_at')
+        .select('id, driver, name, sender_email, sender_name, is_active, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as EmailProvider[];
@@ -29,8 +29,12 @@ export function useEmailProviders() {
   });
 
   const createProvider = useMutation({
-    mutationFn: async (provider: { driver: string; name: string; config: Record<string, any> }) => {
-      const { error } = await supabase.from('email_providers').insert(provider);
+    mutationFn: async (provider: { driver: string; name: string; config: Record<string, any>; sender_email?: string; sender_name?: string }) => {
+      const { config, ...rest } = provider;
+      const { error } = await supabase.from('email_providers').insert({
+        ...rest,
+        encrypted_config: config,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -41,8 +45,12 @@ export function useEmailProviders() {
   });
 
   const updateProvider = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; driver?: string; name?: string; config?: Record<string, any> }) => {
-      const { error } = await supabase.from('email_providers').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    mutationFn: async ({ id, config, ...updates }: { id: string; config?: Record<string, any>; [key: string]: any }) => {
+      const payload: any = { ...updates, updated_at: new Date().toISOString() };
+      if (config && Object.keys(config).length > 0) {
+        payload.encrypted_config = config;
+      }
+      const { error } = await supabase.from('email_providers').update(payload).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -54,10 +62,8 @@ export function useEmailProviders() {
 
   const activateProvider = useMutation({
     mutationFn: async (id: string) => {
-      // Deactivate all first
       const { error: e1 } = await supabase.from('email_providers').update({ is_active: false, updated_at: new Date().toISOString() }).neq('id', '00000000-0000-0000-0000-000000000000');
       if (e1) throw e1;
-      // Activate selected
       const { error: e2 } = await supabase.from('email_providers').update({ is_active: true, updated_at: new Date().toISOString() }).eq('id', id);
       if (e2) throw e2;
     },

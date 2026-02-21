@@ -9,6 +9,7 @@ export interface EmailTemplate {
   subject: string;
   body: string;
   is_active: boolean;
+  multi_lang_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
