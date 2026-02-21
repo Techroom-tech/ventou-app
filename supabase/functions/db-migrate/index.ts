@@ -280,10 +280,49 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ─── Create admin test user ──────────────────────
+  let adminResult: any = { skipped: true };
+  try {
+    const url = new URL(req.url);
+    if (url.searchParams.get("setup_admin") === "1") {
+      // Delete existing test user
+      const { data: existingUsers } = await supabase.auth.admin.listUsers();
+      const existing = existingUsers?.users?.find((u: any) => u.email === "admin@ventou.test");
+      if (existing) {
+        await supabase.auth.admin.deleteUser(existing.id);
+      }
+
+      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+        email: "admin@ventou.test",
+        password: "Admin2025!",
+        email_confirm: true,
+        user_metadata: { first_name: "Admin", last_name: "Ventou" },
+      });
+
+      if (createErr) {
+        adminResult = { error: createErr.message };
+      } else {
+        const { error: roleErr } = await supabase
+          .from("user_roles")
+          .upsert({ user_id: newUser.user.id, role: "super_admin" }, { onConflict: "user_id,role" });
+
+        adminResult = {
+          success: true,
+          email: "admin@ventou.test",
+          password: "Admin2025!",
+          roleError: roleErr?.message ?? null,
+        };
+      }
+    }
+  } catch (e) {
+    adminResult = { error: e.message };
+  }
+
   return new Response(
     JSON.stringify({
       message: "If exec_sql RPC is unavailable, run the SQL below manually in Supabase SQL Editor → New Query",
       results,
+      adminResult,
       manual_sql: migrations.join("\n\n"),
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
