@@ -60,7 +60,13 @@ const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
-const AdminEmailSettings = lazy(() => import("./pages/admin/AdminEmailSettings"));
+const AdminEmailHub = lazy(() => import("./pages/admin/AdminEmailHub"));
+const AdminEmailProviders = lazy(() => import("./pages/admin/AdminEmailProviders"));
+const AdminEmailProviderConfig = lazy(() => import("./pages/admin/AdminEmailProviderConfig"));
+const AdminEmailDefaultTemplate = lazy(() => import("./pages/admin/AdminEmailDefaultTemplate"));
+const AdminEmailTemplates = lazy(() => import("./pages/admin/AdminEmailTemplates"));
+const AdminEmailLogs = lazy(() => import("./pages/admin/AdminEmailLogs"));
+const AdminEmailDomains = lazy(() => import("./pages/admin/AdminEmailDomains"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 // Admin guard
@@ -164,7 +170,13 @@ const App = () => {
             <Route path="/admin/subscriptions" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminSubscriptions /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminUsers /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminSettings /></AdminGuard></ProtectedRoute>} />
-            <Route path="/admin/settings/email" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailSettings /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailHub /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email/providers" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailProviders /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email/providers/:driver" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailProviderConfig /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email/default-template" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailDefaultTemplate /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email/templates" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailTemplates /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email/logs" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailLogs /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/settings/email/domains" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailDomains /></AdminGuard></ProtectedRoute>} />
 
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
