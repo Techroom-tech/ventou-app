@@ -79,21 +79,29 @@ Deno.serve(async (req) => {
 
     console.log("[smtp-relay] Request received:", { provider_id, to, subject, has_smtp_config: !!smtp_config });
 
-    let host: string, port: number, username: string, password: string, senderEmail: string;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    let host: string;
+    let port: number;
+    let username: string;
+    let password: string;
+    let senderEmail: string;
+    let senderName = "";
 
     if (smtp_config) {
       // Mode 1: Direct SMTP config passed in body (for inline test)
-      host = smtp_config.host;
-      port = parseInt(smtp_config.port, 10);
-      username = smtp_config.username;
-      password = smtp_config.password;
-      senderEmail = smtp_config.sender_email || to;
+      host = String(smtp_config.host || "").trim();
+      port = parseInt(String(smtp_config.port || ""), 10);
+      username = String(smtp_config.username || "").trim();
+      password = String(smtp_config.password || "");
+      senderEmail = String(smtp_config.sender_email || "").trim();
+      senderName = String(smtp_config.sender_name || "").trim();
       console.log("[smtp-relay] Using direct smtp_config");
     } else if (provider_id) {
       // Mode 2: Load from DB flat columns
       const { data: provider, error: provErr } = await supabaseAdmin
         .from("email_providers")
-        .select("mail_host, mail_port, mail_username, mail_password, sender_email")
+        .select("mail_host, mail_port, mail_username, mail_password, sender_email, sender_name")
         .eq("id", provider_id)
         .maybeSingle();
 
@@ -106,11 +114,12 @@ Deno.serve(async (req) => {
         });
       }
 
-      host = provider.mail_host || "";
+      host = String(provider.mail_host || "").trim();
       port = provider.mail_port || 465;
-      username = provider.mail_username || "";
-      password = provider.mail_password || "";
-      senderEmail = provider.sender_email || username;
+      username = String(provider.mail_username || "").trim();
+      password = String(provider.mail_password || "");
+      senderEmail = String(provider.sender_email || username).trim();
+      senderName = String(provider.sender_name || "").trim();
 
       console.log("[smtp-relay] Provider config loaded:", { host, port, username: username ? "***" : "(empty)", senderEmail });
     } else {
@@ -120,13 +129,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!host || !port || !username || !password) {
-      console.error("[smtp-relay] Incomplete config:", { host: !!host, port: !!port, username: !!username, password: !!password });
+    if (!to || !emailRegex.test(String(to).trim())) {
+      return new Response(JSON.stringify({ error: "Invalid recipient email" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!senderEmail || !emailRegex.test(senderEmail)) {
+      return new Response(JSON.stringify({ error: "Invalid sender email" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!host || !Number.isFinite(port) || port < 1 || port > 65535 || !username || !password) {
+      console.error("[smtp-relay] Incomplete config:", { host: !!host, port, username: !!username, password: !!password });
       return new Response(JSON.stringify({ error: "Incomplete SMTP configuration. Please fill in all SMTP fields and save before testing." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const fromHeader = senderName ? `${senderName} <${senderEmail}>` : senderEmail;
 
     // ─── Send via Nodemailer ─────────────────────
     console.log("[smtp-relay] Creating transporter:", { host, port, secure: port === 465 });
@@ -139,18 +164,39 @@ Deno.serve(async (req) => {
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
+      tls: {
+        minVersion: "TLSv1.2",
+      },
     });
 
-    await transporter.sendMail({
-      from: senderEmail,
-      to,
+    await transporter.verify();
+
+    const info = await transporter.sendMail({
+      from: fromHeader,
+      to: String(to).trim(),
       subject: subject || "SMTP Test Email",
       html: html || `<h2>✅ SMTP is working correctly</h2><p>This email was sent via your configured SMTP provider.</p><p>Sent at: ${new Date().toISOString()}</p>`,
     });
 
-    console.log("[smtp-relay] Email sent successfully to:", to);
+    const accepted = Array.isArray(info.accepted) ? info.accepted.map(String) : [];
+    const rejected = Array.isArray(info.rejected) ? info.rejected.map(String) : [];
 
-    return new Response(JSON.stringify({ success: true }), {
+    console.log("[smtp-relay] Email sent:", {
+      to,
+      messageId: info.messageId,
+      accepted,
+      rejected,
+      response: info.response,
+    });
+
+    if (accepted.length === 0) {
+      return new Response(JSON.stringify({ error: "SMTP accepted 0 recipients", delivery: { messageId: info.messageId, accepted, rejected, response: info.response } }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, delivery: { messageId: info.messageId, accepted, rejected, response: info.response } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {

@@ -11,7 +11,7 @@ export interface EmailProvider {
   mail_host: string | null;
   mail_port: number | null;
   mail_username: string | null;
-  mail_password: string | null;
+  mail_password?: never;
   is_active: boolean;
   email_notification_enabled: boolean;
   email_verification_enabled: boolean;
@@ -27,7 +27,7 @@ export function useEmailProviders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('email_providers')
-        .select('id, driver, name, sender_email, sender_name, mail_host, mail_port, mail_username, mail_password, is_active, email_notification_enabled, email_verification_enabled, created_at, updated_at')
+        .select('id, driver, name, sender_email, sender_name, mail_host, mail_port, mail_username, is_active, email_notification_enabled, email_verification_enabled, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as EmailProvider[];
