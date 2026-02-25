@@ -8,6 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEmailProviders } from '@/hooks/useEmailProviders';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +51,10 @@ export default function AdminEmailProviderConfig() {
   const [settingDefault, setSettingDefault] = useState(false);
   const [showFields, setShowFields] = useState<Record<string, boolean>>({});
 
+  // Test Mail Modal state
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+
   useEffect(() => {
     if (existing) {
       setSenderEmail(existing.sender_email || '');
@@ -59,15 +71,33 @@ export default function AdminEmailProviderConfig() {
   const isDefault = existing?.is_active === true;
   const toggleShow = (key: string) => setShowFields(prev => ({ ...prev, [key]: !prev[key] }));
 
-  // ─── Save: non-sensitive fields via Supabase, then encrypt credentials via edge function ───
+  // ─── Validation ───
+  const validateBeforeSave = (): boolean => {
+    if (!senderEmail) {
+      toast.error("Sender Email est requis");
+      return false;
+    }
+    if (driver === 'smtp') {
+      if (!existing) {
+        // New provider: all fields required
+        if (!config.host) { toast.error("Mail Host est requis"); return false; }
+        if (!config.port) { toast.error("Mail Port est requis"); return false; }
+        if (!config.username) { toast.error("Mail Username est requis"); return false; }
+        if (!config.password) { toast.error("Mail Password est requis"); return false; }
+      }
+      // Existing: fields optional (keep old values)
+    }
+    return true;
+  };
+
+  // ─── Save ───
   const handleSave = async () => {
-    if (!senderEmail) { toast.error("Sender Email est requis"); return; }
+    if (!validateBeforeSave()) return;
     setSaving(true);
     try {
       let providerId = existing?.id;
 
       if (existing) {
-        // Update non-sensitive fields
         await updateProvider.mutateAsync({
           id: existing.id,
           name: meta.label,
@@ -77,18 +107,16 @@ export default function AdminEmailProviderConfig() {
           email_verification_enabled: emailVerification,
         } as any);
       } else {
-        // Create provider first (without sensitive config)
         await createProvider.mutateAsync({
           driver,
           name: meta.label,
-          config: {}, // empty - will encrypt separately
+          config: {},
           sender_email: senderEmail,
           sender_name: senderName,
           email_notification_enabled: emailNotification,
           email_verification_enabled: emailVerification,
         } as any);
 
-        // Refetch to get the new provider ID
         const { data: newProviders } = await supabase
           .from('email_providers')
           .select('id')
@@ -98,7 +126,6 @@ export default function AdminEmailProviderConfig() {
         providerId = newProviders?.[0]?.id;
       }
 
-      // Encrypt sensitive config via edge function
       if (providerId && Object.keys(config).length > 0) {
         const { error } = await supabase.functions.invoke('encrypt-config', {
           body: { provider_id: providerId, config },
@@ -107,7 +134,7 @@ export default function AdminEmailProviderConfig() {
       }
 
       toast.success('Configuration sauvegardée');
-      setConfig({}); // Clear sensitive fields after save
+      setConfig({});
     } catch (e: any) {
       toast.error(e.message || 'Erreur de sauvegarde');
     } finally {
@@ -127,30 +154,30 @@ export default function AdminEmailProviderConfig() {
     }
   };
 
-  // ─── Test Mail: sends a real email via smtp-relay edge function ───
-  const handleTest = async () => {
-    if (!senderEmail) { toast.error("Entrez un Sender Email d'abord"); return; }
+  // ─── Open Test Mail Modal ───
+  const openTestModal = () => {
+    setTestEmail(senderEmail || '');
+    setTestModalOpen(true);
+  };
 
-    // For SMTP: if config fields are filled, test with direct credentials
-    // Otherwise, test using the saved provider
-    if (driver === 'smtp' && (!config.host && !config.username)) {
-      if (!existing) {
-        toast.error("Sauvegardez d'abord la configuration SMTP");
-        return;
-      }
+  // ─── Send Test Mail ───
+  const handleSendTest = async () => {
+    if (!testEmail) { toast.error("Entrez une adresse email"); return; }
+
+    if (driver === 'smtp' && !config.host && !config.username && !existing) {
+      toast.error("Sauvegardez d'abord la configuration SMTP");
+      return;
     }
 
     setTesting(true);
     try {
       if (driver === 'smtp') {
-        // Use smtp-relay for real SMTP test
         const body: any = {
-          to: senderEmail,
+          to: testEmail,
           subject: 'SMTP Test Email - Ventou',
         };
 
         if (config.host && config.username && config.password) {
-          // Direct test with unsaved credentials
           body.smtp_config = {
             host: config.host,
             port: config.port || '465',
@@ -159,27 +186,26 @@ export default function AdminEmailProviderConfig() {
             sender_email: senderEmail,
           };
         } else if (existing) {
-          // Test with saved (encrypted) credentials
           body.provider_id = existing.id;
         }
 
         const { error } = await supabase.functions.invoke('smtp-relay', { body });
         if (error) throw error;
       } else {
-        // For API providers, use send-email with a test template
         const { data, error } = await supabase.functions.invoke('send-email', {
           body: {
             slug: 'welcome_vendor',
             variables: { name: 'Test' },
-            to: senderEmail,
+            to: testEmail,
           },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
       }
       toast.success('✅ Email de test envoyé avec succès !');
+      setTestModalOpen(false);
     } catch (e: any) {
-      toast.error(e.message || 'Échec de l\'envoi');
+      toast.error(e.message || "Échec de l'envoi");
     } finally {
       setTesting(false);
     }
@@ -204,8 +230,15 @@ export default function AdminEmailProviderConfig() {
           {showFields[fieldKey] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
+      {fieldKey === 'password' && existing && (
+        <p className="text-xs text-muted-foreground">
+          🔒 Password already saved. Leave blank to keep existing.
+        </p>
+      )}
     </div>
   );
+
+  const canTest = driver === 'smtp' ? (config.host || existing) : existing;
 
   return (
     <AdminLayout>
@@ -240,9 +273,9 @@ export default function AdminEmailProviderConfig() {
                 )}
               </div>
               <div className="flex gap-2">
-                {isDefault && (
-                  <Button variant="outline" size="sm" onClick={handleTest} disabled={testing}>
-                    {testing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                {canTest && (
+                  <Button variant="outline" size="sm" onClick={openTestModal} disabled={testing}>
+                    <Send className="h-4 w-4 mr-1" />
                     Test Mail
                   </Button>
                 )}
@@ -257,18 +290,11 @@ export default function AdminEmailProviderConfig() {
                     Set As Default
                   </Button>
                 )}
-                {/* Always show Test Mail for SMTP if credentials are filled */}
-                {driver === 'smtp' && !isDefault && (config.host || existing) && (
-                  <Button variant="outline" size="sm" onClick={handleTest} disabled={testing}>
-                    {testing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-                    Test Mail
-                  </Button>
-                )}
               </div>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Common: Sender Email + Email Method */}
+              {/* Common: Sender Email + Sender Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Sender Email</Label>
@@ -280,9 +306,19 @@ export default function AdminEmailProviderConfig() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Email Method</Label>
-                  <Input value={meta.label} readOnly className="bg-muted cursor-not-allowed" />
+                  <Label className="text-sm font-medium">Sender Name</Label>
+                  <Input
+                    value={senderName}
+                    onChange={e => setSenderName(e.target.value)}
+                    placeholder="My App"
+                  />
                 </div>
+              </div>
+
+              {/* Email Method (readonly) */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Email Method</Label>
+                <Input value={meta.label} readOnly className="bg-muted cursor-not-allowed max-w-xs" />
               </div>
 
               {/* SMTP-specific fields */}
@@ -395,6 +431,40 @@ export default function AdminEmailProviderConfig() {
           </Card>
         </div>
       </div>
+
+      {/* ─── Test Mail Modal ─── */}
+      <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Test Email</DialogTitle>
+            <DialogDescription>
+              Enter the email address to send a test email to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="test-email">Email address</Label>
+              <Input
+                id="test-email"
+                type="email"
+                value={testEmail}
+                onChange={e => setTestEmail(e.target.value)}
+                placeholder="test@example.com"
+                onKeyDown={e => e.key === 'Enter' && handleSendTest()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setTestModalOpen(false)} disabled={testing}>
+              Close
+            </Button>
+            <Button onClick={handleSendTest} disabled={testing || !testEmail}>
+              {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
