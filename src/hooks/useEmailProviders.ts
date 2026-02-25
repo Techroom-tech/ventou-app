@@ -9,6 +9,8 @@ export interface EmailProvider {
   sender_email: string;
   sender_name: string | null;
   is_active: boolean;
+  email_notification_enabled: boolean;
+  email_verification_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -21,7 +23,7 @@ export function useEmailProviders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('email_providers')
-        .select('id, driver, name, sender_email, sender_name, is_active, created_at, updated_at')
+        .select('id, driver, name, sender_email, sender_name, is_active, email_notification_enabled, email_verification_enabled, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as EmailProvider[];

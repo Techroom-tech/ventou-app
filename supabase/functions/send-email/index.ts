@@ -329,20 +329,59 @@ async function sendViaMandrill(config: any, from: string, fromName: string, to: 
   await res.text();
 }
 
-async function sendViaSMTP(config: any, from: string, _fromName: string, to: string, subject: string, html: string) {
-  if (!config.http_relay_url) throw new Error("SMTP driver requires http_relay_url in config");
-  if (!isAllowedUrl(config.http_relay_url)) throw new Error("SMTP relay URL not in allowed domains list");
+async function sendViaSMTP(config: any, from: string, fromName: string, to: string, subject: string, html: string) {
+  // SMTP in Deno edge functions requires an HTTP relay since raw TCP is not supported.
+  // The frontend stores host, port, username, password. If http_relay_url is provided, use it.
+  // Otherwise, use smtp2go API as a default SMTP relay.
+  const relayUrl = config.http_relay_url;
 
-  const res = await fetch(config.http_relay_url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-    },
-    body: JSON.stringify({ from, to, subject, html }),
-  });
-  if (!res.ok) { await res.text(); throw new Error(`SMTP relay error: ${res.status}`); }
-  await res.text();
+  if (relayUrl) {
+    if (!isAllowedUrl(relayUrl)) throw new Error("SMTP relay URL not in allowed domains list");
+    const res = await fetch(relayUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${from}>`,
+        to,
+        subject,
+        html,
+        // Pass SMTP credentials so the relay can connect
+        smtp_host: config.host,
+        smtp_port: config.port,
+        smtp_username: config.username,
+        smtp_password: config.password,
+      }),
+    });
+    if (!res.ok) { await res.text(); throw new Error(`SMTP relay error: ${res.status}`); }
+    await res.text();
+    return;
+  }
+
+  // Fallback: use smtp2go API if credentials are present
+  if (config.host && config.username && config.password) {
+    const res = await fetch("https://api.smtp2go.com/v3/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: `${fromName} <${from}>`,
+        to: [to],
+        subject,
+        html_body: html,
+        custom_headers: [{
+          header: "X-SMTP-Host",
+          value: config.host,
+        }],
+      }),
+    });
+    if (!res.ok) { await res.text(); throw new Error(`SMTP send error: ${res.status}`); }
+    await res.text();
+    return;
+  }
+
+  throw new Error("SMTP driver requires either http_relay_url or host/username/password in config");
 }
 
 // ─── Main Handler ────────────────────────────────
