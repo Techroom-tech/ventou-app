@@ -330,58 +330,55 @@ async function sendViaMandrill(config: any, from: string, fromName: string, to: 
 }
 
 async function sendViaSMTP(config: any, from: string, fromName: string, to: string, subject: string, html: string) {
-  // SMTP in Deno edge functions requires an HTTP relay since raw TCP is not supported.
-  // The frontend stores host, port, username, password. If http_relay_url is provided, use it.
-  // Otherwise, use smtp2go API as a default SMTP relay.
-  const relayUrl = config.http_relay_url;
+  // SMTP sending is handled by the smtp-relay edge function which uses Nodemailer.
+  // We call it internally via fetch to the same Supabase instance.
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  if (relayUrl) {
-    if (!isAllowedUrl(relayUrl)) throw new Error("SMTP relay URL not in allowed domains list");
-    const res = await fetch(relayUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-      },
-      body: JSON.stringify({
-        from: `${fromName} <${from}>`,
-        to,
-        subject,
-        html,
-        // Pass SMTP credentials so the relay can connect
-        smtp_host: config.host,
-        smtp_port: config.port,
-        smtp_username: config.username,
-        smtp_password: config.password,
-      }),
-    });
-    if (!res.ok) { await res.text(); throw new Error(`SMTP relay error: ${res.status}`); }
-    await res.text();
-    return;
+  // Decrypt credentials using the ENCRYPTION_KEY
+  const keyHex = Deno.env.get("ENCRYPTION_KEY");
+  if (!keyHex) throw new Error("ENCRYPTION_KEY not configured for SMTP decryption");
+
+  async function decryptField(encrypted: string): Promise<string> {
+    const [ivHex, cipherHex] = encrypted.split(":");
+    if (!ivHex || !cipherHex) return encrypted; // Not encrypted, return as-is
+    const key = new Uint8Array(keyHex!.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+    const iv = new Uint8Array(ivHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+    const cipherBytes = new Uint8Array(cipherHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+    const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-CBC" }, false, ["decrypt"]);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, cipherBytes);
+    return new TextDecoder().decode(decrypted);
   }
 
-  // Fallback: use smtp2go API if credentials are present
-  if (config.host && config.username && config.password) {
-    const res = await fetch("https://api.smtp2go.com/v3/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sender: `${fromName} <${from}>`,
-        to: [to],
-        subject,
-        html_body: html,
-        custom_headers: [{
-          header: "X-SMTP-Host",
-          value: config.host,
-        }],
-      }),
-    });
-    if (!res.ok) { await res.text(); throw new Error(`SMTP send error: ${res.status}`); }
-    await res.text();
-    return;
+  const host = config.host ? await decryptField(config.host) : "";
+  const port = config.port ? await decryptField(config.port) : "465";
+  const username = config.username ? await decryptField(config.username) : "";
+  const password = config.password ? await decryptField(config.password) : "";
+
+  if (!host || !username || !password) {
+    throw new Error("Incomplete SMTP credentials in encrypted_config");
   }
 
-  throw new Error("SMTP driver requires either http_relay_url or host/username/password in config");
+  // Call smtp-relay edge function
+  const relayRes = await fetch(`${supabaseUrl}/functions/v1/smtp-relay`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceRoleKey}`,
+    },
+    body: JSON.stringify({
+      smtp_config: { host, port, username, password, sender_email: from },
+      to,
+      subject,
+      html,
+    }),
+  });
+
+  if (!relayRes.ok) {
+    const errBody = await relayRes.text();
+    throw new Error(`SMTP relay error: ${relayRes.status} - ${errBody}`);
+  }
+  await relayRes.text();
 }
 
 // ─── Main Handler ────────────────────────────────
