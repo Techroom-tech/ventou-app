@@ -43,13 +43,18 @@ export default function AdminEmailProviderConfig() {
 
   const [senderEmail, setSenderEmail] = useState('');
   const [senderName, setSenderName] = useState('');
-  const [config, setConfig] = useState<Record<string, string>>({});
+  const [mailHost, setMailHost] = useState('');
+  const [mailPort, setMailPort] = useState('');
+  const [mailUsername, setMailUsername] = useState('');
+  const [mailPassword, setMailPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [emailNotification, setEmailNotification] = useState(true);
   const [emailVerification, setEmailVerification] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [settingDefault, setSettingDefault] = useState(false);
-  const [showFields, setShowFields] = useState<Record<string, boolean>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Test Mail Modal state
   const [testModalOpen, setTestModalOpen] = useState(false);
@@ -59,8 +64,12 @@ export default function AdminEmailProviderConfig() {
     if (existing) {
       setSenderEmail(existing.sender_email || '');
       setSenderName(existing.sender_name || '');
+      setMailHost(existing.mail_host || '');
+      setMailPort(existing.mail_port ? String(existing.mail_port) : '');
+      setMailUsername(existing.mail_username || '');
       setEmailNotification(existing.email_notification_enabled ?? true);
       setEmailVerification(existing.email_verification_enabled ?? false);
+      // Don't prefill password for security
     }
   }, [existing]);
 
@@ -69,72 +78,51 @@ export default function AdminEmailProviderConfig() {
   }
 
   const isDefault = existing?.is_active === true;
-  const toggleShow = (key: string) => setShowFields(prev => ({ ...prev, [key]: !prev[key] }));
 
-  // ─── Validation ───
   const validateBeforeSave = (): boolean => {
     if (!senderEmail) {
       toast.error("Sender Email est requis");
       return false;
     }
-    if (driver === 'smtp') {
-      if (!existing) {
-        // New provider: all fields required
-        if (!config.host) { toast.error("Mail Host est requis"); return false; }
-        if (!config.port) { toast.error("Mail Port est requis"); return false; }
-        if (!config.username) { toast.error("Mail Username est requis"); return false; }
-        if (!config.password) { toast.error("Mail Password est requis"); return false; }
-      }
-      // Existing: fields optional (keep old values)
+    if (driver === 'smtp' && !existing) {
+      if (!mailHost) { toast.error("Mail Host est requis"); return false; }
+      if (!mailPort) { toast.error("Mail Port est requis"); return false; }
+      if (!mailUsername) { toast.error("Mail Username est requis"); return false; }
+      if (!mailPassword) { toast.error("Mail Password est requis"); return false; }
     }
     return true;
   };
 
-  // ─── Save ───
   const handleSave = async () => {
     if (!validateBeforeSave()) return;
     setSaving(true);
     try {
-      let providerId = existing?.id;
+      const payload: Record<string, any> = {
+        sender_email: senderEmail,
+        sender_name: senderName,
+        email_notification_enabled: emailNotification,
+        email_verification_enabled: emailVerification,
+      };
+
+      if (driver === 'smtp') {
+        if (mailHost) payload.mail_host = mailHost;
+        if (mailPort) payload.mail_port = parseInt(mailPort, 10);
+        if (mailUsername) payload.mail_username = mailUsername;
+        if (mailPassword) payload.mail_password = mailPassword;
+      }
 
       if (existing) {
-        await updateProvider.mutateAsync({
-          id: existing.id,
-          name: meta.label,
-          sender_email: senderEmail,
-          sender_name: senderName,
-          email_notification_enabled: emailNotification,
-          email_verification_enabled: emailVerification,
-        } as any);
+        await updateProvider.mutateAsync({ id: existing.id, ...payload });
       } else {
         await createProvider.mutateAsync({
           driver,
           name: meta.label,
-          config: {},
-          sender_email: senderEmail,
-          sender_name: senderName,
-          email_notification_enabled: emailNotification,
-          email_verification_enabled: emailVerification,
-        } as any);
-
-        const { data: newProviders } = await supabase
-          .from('email_providers')
-          .select('id')
-          .eq('driver', driver)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        providerId = newProviders?.[0]?.id;
-      }
-
-      if (providerId && Object.keys(config).length > 0) {
-        const { error } = await supabase.functions.invoke('encrypt-config', {
-          body: { provider_id: providerId, config },
+          ...payload,
         });
-        if (error) throw error;
       }
 
       toast.success('Configuration sauvegardée');
-      setConfig({});
+      setMailPassword(''); // Clear password field after save
     } catch (e: any) {
       toast.error(e.message || 'Erreur de sauvegarde');
     } finally {
@@ -154,21 +142,13 @@ export default function AdminEmailProviderConfig() {
     }
   };
 
-  // ─── Open Test Mail Modal ───
   const openTestModal = () => {
     setTestEmail(senderEmail || '');
     setTestModalOpen(true);
   };
 
-  // ─── Send Test Mail ───
   const handleSendTest = async () => {
     if (!testEmail) { toast.error("Entrez une adresse email"); return; }
-
-    if (driver === 'smtp' && !config.host && !config.username && !existing) {
-      toast.error("Sauvegardez d'abord la configuration SMTP");
-      return;
-    }
-
     setTesting(true);
     try {
       if (driver === 'smtp') {
@@ -177,15 +157,7 @@ export default function AdminEmailProviderConfig() {
           subject: 'SMTP Test Email - Ventou',
         };
 
-        if (config.host && config.username && config.password) {
-          body.smtp_config = {
-            host: config.host,
-            port: config.port || '465',
-            username: config.username,
-            password: config.password,
-            sender_email: senderEmail,
-          };
-        } else if (existing) {
+        if (existing) {
           body.provider_id = existing.id;
         }
 
@@ -211,39 +183,11 @@ export default function AdminEmailProviderConfig() {
     }
   };
 
-  const PasswordInput = ({ fieldKey, label, placeholder }: { fieldKey: string; label: string; placeholder?: string }) => (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium">{label}</Label>
-      <div className="relative">
-        <Input
-          type={showFields[fieldKey] ? 'text' : 'password'}
-          value={config[fieldKey] || ''}
-          onChange={e => setConfig(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-          placeholder={placeholder || (existing ? '••••••••' : label)}
-          className="pr-10"
-        />
-        <button
-          type="button"
-          onClick={() => toggleShow(fieldKey)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-        >
-          {showFields[fieldKey] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-      {fieldKey === 'password' && existing && (
-        <p className="text-xs text-muted-foreground">
-          🔒 Password already saved. Leave blank to keep existing.
-        </p>
-      )}
-    </div>
-  );
-
-  const canTest = driver === 'smtp' ? (config.host || existing) : existing;
+  const canTest = existing != null;
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <button onClick={() => navigate('/admin')} className="hover:text-foreground">Dashboard</button>
           <span>/</span>
@@ -327,80 +271,53 @@ export default function AdminEmailProviderConfig() {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Mail Host</Label>
                     <Input
-                      value={config.host || ''}
-                      onChange={e => setConfig(prev => ({ ...prev, host: e.target.value }))}
-                      placeholder={existing ? '••••••••' : 'smtp.example.com'}
+                      value={mailHost}
+                      onChange={e => setMailHost(e.target.value)}
+                      placeholder={existing ? '(saved)' : 'smtp.example.com'}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Mail Port</Label>
                     <Input
                       type="number"
-                      value={config.port || ''}
-                      onChange={e => setConfig(prev => ({ ...prev, port: e.target.value }))}
+                      value={mailPort}
+                      onChange={e => setMailPort(e.target.value)}
                       placeholder="465"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Mail Username</Label>
                     <Input
-                      value={config.username || ''}
-                      onChange={e => setConfig(prev => ({ ...prev, username: e.target.value }))}
-                      placeholder={existing ? '••••••••' : 'user@example.com'}
+                      value={mailUsername}
+                      onChange={e => setMailUsername(e.target.value)}
+                      placeholder={existing ? '(saved)' : 'user@example.com'}
                     />
                   </div>
-                  <PasswordInput fieldKey="password" label="Mail Password" />
-                </div>
-              )}
-
-              {/* API providers */}
-              {driver !== 'smtp' && (
-                <div className="space-y-4">
-                  {driver === 'postmark' ? (
-                    <PasswordInput fieldKey="server_token" label={`${meta.label} Server Token`} />
-                  ) : (
-                    <PasswordInput fieldKey="api_key" label={`${meta.label} Api Key`} />
-                  )}
-
-                  {driver === 'mailgun' && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Domain</Label>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Mail Password</Label>
+                    <div className="relative">
                       <Input
-                        value={config.domain || ''}
-                        onChange={e => setConfig(prev => ({ ...prev, domain: e.target.value }))}
-                        placeholder="mg.example.com"
+                        type={showPassword ? 'text' : 'password'}
+                        value={mailPassword}
+                        onChange={e => setMailPassword(e.target.value)}
+                        placeholder={existing ? '••••••••' : 'Password'}
+                        className="pr-10"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
-                  )}
-
-                  {driver === 'ses' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <PasswordInput fieldKey="secret_key" label="Secret Key" />
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Region</Label>
-                        <Input
-                          value={config.region || ''}
-                          onChange={e => setConfig(prev => ({ ...prev, region: e.target.value }))}
-                          placeholder="us-east-1"
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label className="text-sm font-medium">SMTP Relay URL</Label>
-                        <Input
-                          value={config.smtp_relay_url || ''}
-                          onChange={e => setConfig(prev => ({ ...prev, smtp_relay_url: e.target.value }))}
-                          placeholder="https://..."
-                        />
-                      </div>
-                    </div>
-                  )}
+                    {existing && (
+                      <p className="text-xs text-muted-foreground">
+                        🔒 Laissez vide pour garder le mot de passe existant.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              )}
-
-              {existing && Object.keys(config).length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  🔒 Les credentials actuels sont chiffrés et masqués. Remplissez les champs pour mettre à jour.
-                </p>
               )}
 
               <Separator />
@@ -410,7 +327,7 @@ export default function AdminEmailProviderConfig() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">Email Notification</p>
-                    <p className="text-xs text-muted-foreground">Enable or disable email notifications for this provider</p>
+                    <p className="text-xs text-muted-foreground">Enable or disable email notifications</p>
                   </div>
                   <Switch checked={emailNotification} onCheckedChange={setEmailNotification} />
                 </div>
@@ -432,7 +349,7 @@ export default function AdminEmailProviderConfig() {
         </div>
       </div>
 
-      {/* ─── Test Mail Modal ─── */}
+      {/* Test Mail Modal */}
       <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

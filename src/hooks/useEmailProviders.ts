@@ -4,10 +4,14 @@ import { toast } from 'sonner';
 
 export interface EmailProvider {
   id: string;
-  driver: 'smtp' | 'sendgrid' | 'mailersend' | 'resend' | 'mailchimp' | 'mailgun' | 'postmark' | 'sendinblue' | 'ses';
+  driver: string;
   name: string;
-  sender_email: string;
+  sender_email: string | null;
   sender_name: string | null;
+  mail_host: string | null;
+  mail_port: number | null;
+  mail_username: string | null;
+  mail_password: string | null;
   is_active: boolean;
   email_notification_enabled: boolean;
   email_verification_enabled: boolean;
@@ -23,7 +27,7 @@ export function useEmailProviders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('email_providers')
-        .select('id, driver, name, sender_email, sender_name, is_active, email_notification_enabled, email_verification_enabled, created_at, updated_at')
+        .select('id, driver, name, sender_email, sender_name, mail_host, mail_port, mail_username, mail_password, is_active, email_notification_enabled, email_verification_enabled, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as EmailProvider[];
@@ -31,8 +35,9 @@ export function useEmailProviders() {
   });
 
   const createProvider = useMutation({
-    mutationFn: async (provider: { driver: string; name: string; config?: Record<string, any>; sender_email?: string; sender_name?: string; [key: string]: any }) => {
-      const { config, ...rest } = provider;
+    mutationFn: async (provider: Record<string, any>) => {
+      // Remove any fields not in the table
+      const { config, encrypted_config, ...rest } = provider;
       const { error } = await supabase.from('email_providers').insert(rest);
       if (error) throw error;
     },
@@ -44,9 +49,10 @@ export function useEmailProviders() {
   });
 
   const updateProvider = useMutation({
-    mutationFn: async ({ id, config, ...updates }: { id: string; config?: Record<string, any>; [key: string]: any }) => {
-      const payload: any = { ...updates, updated_at: new Date().toISOString() };
-      // Never send config/encrypted_config directly — use encrypt-config edge function
+    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+      // Remove any fields not in the table
+      const { config, encrypted_config, ...rest } = updates;
+      const payload: any = { ...rest, updated_at: new Date().toISOString() };
       const { error } = await supabase.from('email_providers').update(payload).eq('id', id);
       if (error) throw error;
     },
