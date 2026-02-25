@@ -329,37 +329,20 @@ async function sendViaMandrill(config: any, from: string, fromName: string, to: 
   await res.text();
 }
 
-async function sendViaSMTP(config: any, from: string, fromName: string, to: string, subject: string, html: string) {
-  // SMTP sending is handled by the smtp-relay edge function which uses Nodemailer.
-  // We call it internally via fetch to the same Supabase instance.
+async function sendViaSMTP(provider: any, from: string, _fromName: string, to: string, subject: string, html: string) {
+  // SMTP sending via smtp-relay edge function using flat DB columns
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Decrypt credentials using the ENCRYPTION_KEY
-  const keyHex = Deno.env.get("ENCRYPTION_KEY");
-  if (!keyHex) throw new Error("ENCRYPTION_KEY not configured for SMTP decryption");
-
-  async function decryptField(encrypted: string): Promise<string> {
-    const [ivHex, cipherHex] = encrypted.split(":");
-    if (!ivHex || !cipherHex) return encrypted; // Not encrypted, return as-is
-    const key = new Uint8Array(keyHex!.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
-    const iv = new Uint8Array(ivHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
-    const cipherBytes = new Uint8Array(cipherHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
-    const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-CBC" }, false, ["decrypt"]);
-    const decrypted = await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, cipherBytes);
-    return new TextDecoder().decode(decrypted);
-  }
-
-  const host = config.host ? await decryptField(config.host) : "";
-  const port = config.port ? await decryptField(config.port) : "465";
-  const username = config.username ? await decryptField(config.username) : "";
-  const password = config.password ? await decryptField(config.password) : "";
+  const host = provider.mail_host || "";
+  const port = String(provider.mail_port || 465);
+  const username = provider.mail_username || "";
+  const password = provider.mail_password || "";
 
   if (!host || !username || !password) {
-    throw new Error("Incomplete SMTP credentials in encrypted_config");
+    throw new Error("Incomplete SMTP configuration. Please fill in all SMTP fields in provider settings.");
   }
 
-  // Call smtp-relay edge function
   const relayRes = await fetch(`${supabaseUrl}/functions/v1/smtp-relay`, {
     method: "POST",
     headers: {
@@ -632,38 +615,37 @@ Deno.serve(async (req) => {
     const html = wrapInLayout(bodyContent, allVars, headerHtml, footerHtml);
 
     // ─── Send via active driver ──────────────────
-    const config = provider.encrypted_config;
-    const senderEmail = provider.sender_email || config?.from_email || "noreply@ventou.shop";
-    const senderName = provider.sender_name || config?.from_name || "Ventou";
+    const senderEmail = provider.sender_email || "noreply@ventou.shop";
+    const senderName = provider.sender_name || "Ventou";
 
     try {
       switch (provider.driver) {
         case "sendgrid":
-          await sendViaSendGrid(config, senderEmail, senderName, to, subject, html);
+          await sendViaSendGrid(provider, senderEmail, senderName, to, subject, html);
           break;
         case "resend":
-          await sendViaResend(config, senderEmail, senderName, to, subject, html);
+          await sendViaResend(provider, senderEmail, senderName, to, subject, html);
           break;
         case "mailersend":
-          await sendViaMailerSend(config, senderEmail, senderName, to, subject, html);
+          await sendViaMailerSend(provider, senderEmail, senderName, to, subject, html);
           break;
         case "mailgun":
-          await sendViaMailgun(config, senderEmail, senderName, to, subject, html);
+          await sendViaMailgun(provider, senderEmail, senderName, to, subject, html);
           break;
         case "postmark":
-          await sendViaPostmark(config, senderEmail, senderName, to, subject, html);
+          await sendViaPostmark(provider, senderEmail, senderName, to, subject, html);
           break;
         case "sendinblue":
-          await sendViaSendinblue(config, senderEmail, senderName, to, subject, html);
+          await sendViaSendinblue(provider, senderEmail, senderName, to, subject, html);
           break;
         case "ses":
-          await sendViaSES(config, senderEmail, senderName, to, subject, html);
+          await sendViaSES(provider, senderEmail, senderName, to, subject, html);
           break;
         case "mailchimp":
-          await sendViaMandrill(config, senderEmail, senderName, to, subject, html);
+          await sendViaMandrill(provider, senderEmail, senderName, to, subject, html);
           break;
         case "smtp":
-          await sendViaSMTP(config, senderEmail, senderName, to, subject, html);
+          await sendViaSMTP(provider, senderEmail, senderName, to, subject, html);
           break;
         default:
           throw new Error(`Unknown driver: ${provider.driver}`);
