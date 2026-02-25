@@ -1,44 +1,58 @@
 
 
-# Refonte AdminEmailHub -- Fidèle à la maquette
+# Refonte AdminEmailProviders -- Email Configuration SaaS
 
-## Analyse de la maquette
+## Analyse
 
-La capture montre une page **avec le sidebar AdminLayout** (pas standalone), contenant :
+La page actuelle `AdminEmailProviders.tsx` utilise `AdminLayout` (sidebar + header). L'utilisateur veut la transformer en page avec :
+- AdminLayout conserve (sidebar visible)
+- Breadcrumb sous le header
+- Layout 2 colonnes : "Jump To" a gauche + table a droite
+- Table avec 8 providers (Mailchimp, Mailersend, Mailgun, Postmark, Sendgrid, Sendinblue, SES, SMTP)
+- Status badges (Active/Inactive) avec couleurs semantiques
+- Bouton Edit avec dropdown
+- Tout themise via les tokens Tailwind existants
 
-1. **Header** : titre "Système Email" avec icône Mail, breadcrumb "Dashboard / Settings / Email" en dessous
-2. **5 cartes** (pas 3) en grille 3+2 :
-   - Configuration Email -- "Fournisseurs et providers actifs"
-   - Template par défaut -- "Header, footer et wrapper global"
-   - Templates Email -- "28 templates transactionnels"
-   - Logs Email -- "Historique des envois et erreurs"
-   - Authentification Domaine -- "DKIM, SPF et vérification DNS"
-3. **Design des cartes** : minimaliste, icône carrée grise à gauche, titre + description courte, pas de "Change Setting →", bordure fine, hover subtil
+Les variables CSS demandees correspondent aux tokens Tailwind deja en place (`primary`, `background`, `card`, `foreground`, `muted-foreground`, `border`, `destructive` pour danger, `ventou-success` pour success).
 
-## Changements
+## Plan d'implementation
 
-### Fichier 1 : `src/pages/admin/AdminEmailHub.tsx` (réécriture)
+### Fichier 1 : `src/components/admin/EmailJumpToMenu.tsx` (NOUVEAU)
 
-- Réintégrer `AdminLayout` (sidebar visible comme dans la maquette)
-- Supprimer `EmailSettingsTopbar` (la topbar est celle de AdminLayout)
-- Titre "Système Email" avec icône `Mail` (lucide)
-- Breadcrumb texte simple en dessous du titre
-- 5 cartes avec descriptions courtes en français
-- Grille : `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5`
+Composant sidebar de navigation "Jump To" :
+- Card avec `bg-card border rounded-xl p-5`
+- Titre "Jump To" en `font-semibold`
+- 3 liens : Email Configuration (actif), Default Templates, Email Templates
+- Chaque lien avec icone Lucide (Server, LayoutTemplate, FileText)
+- Item actif : `bg-primary/10 text-primary border-l-[3px] border-primary`
+- Items inactifs : `text-muted-foreground hover:bg-muted`
+- Navigation via `useNavigate`
 
-### Fichier 2 : `src/components/admin/EmailSettingsCard.tsx` (simplification)
+### Fichier 2 : `src/pages/admin/AdminEmailProviders.tsx` (REECRIT)
 
-- Retirer le lien "Change Setting →"
-- Icône dans un carré `bg-muted` (gris neutre comme la maquette, pas bleu)
-- Titre en font-medium, description en text-muted-foreground text-sm
-- Hover : bordure primary subtile, léger shadow
-- Toute la carte est cliquable
+Structure :
+- `AdminLayout` conserve
+- Breadcrumb texte : "Dashboard / Settings / Email Configuration"
+- Titre "Email Configuration" en `text-xl font-semibold`
+- Grid 2 colonnes : `grid-cols-1 lg:grid-cols-[280px_1fr] gap-6`
+- Gauche : `EmailJumpToMenu`
+- Droite : Card avec table
 
-### Fichiers supprimés
-
-- `src/components/admin/EmailSettingsTopbar.tsx` -- plus nécessaire (AdminLayout fournit la topbar)
+Table :
+- 4 colonnes : SL | Email Method | Status | Action
+- 8 lignes exactes : Mailchimp, Mailersend, Mailgun, Postmark, Sendgrid, Sendinblue, SES, SMTP
+- Status badges :
+  - Active : `bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400` (arrondi pill)
+  - Inactive : `bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400` (arrondi pill)
+- Bouton Edit : `variant="outline"` avec icone Pencil + ChevronDown, navigue vers `/admin/settings/email/providers/{driver}`
+- Loading state avec `Loader2` spinner
+- Hover sur les lignes : `hover:bg-primary/5`
 
 ### Aucune modification de route
 
-Les routes dans `App.tsx` restent inchangées.
+La route `/admin/settings/email/providers` pointe deja vers `AdminEmailProviders`. Rien a changer dans `App.tsx`.
+
+### Aucune nouvelle variable CSS
+
+Tous les tokens Tailwind existants couvrent les besoins. Le dark mode est automatique.
 
