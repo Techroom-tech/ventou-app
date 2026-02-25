@@ -46,9 +46,7 @@ export function useEmailProviders() {
   const updateProvider = useMutation({
     mutationFn: async ({ id, config, ...updates }: { id: string; config?: Record<string, any>; [key: string]: any }) => {
       const payload: any = { ...updates, updated_at: new Date().toISOString() };
-      if (config && Object.keys(config).length > 0) {
-        payload.encrypted_config = config;
-      }
+      // Never send config/encrypted_config directly — use encrypt-config edge function
       const { error } = await supabase.from('email_providers').update(payload).eq('id', id);
       if (error) throw error;
     },
