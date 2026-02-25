@@ -1,121 +1,79 @@
 
 
-# Plan : Configuration SMTP reelle avec base de donnees
+# Plan : Ameliorer la page SMTP Configuration
 
-## Constat actuel
+## Constat
 
-Le projet utilise Supabase avec des credentials hardcodes dans `src/integrations/supabase/client.ts` (projet `chpplckgndznakuvcqbx`). Il n'y a pas d'integration Supabase native connectee via Lovable, donc je ne peux pas executer de migrations SQL automatiquement.
+La page existe deja a `/admin/settings/email/providers/smtp` avec :
+- AdminLayout (sidebar dark + header)
+- Breadcrumb
+- Jump To menu (2 colonnes)
+- Formulaire SMTP complet (6 champs + toggles)
+- Edge functions `smtp-relay` et `encrypt-config` operationnelles
+- Hook `useEmailProviders` fonctionnel
 
-La page `AdminEmailProviderConfig.tsx` existe deja avec le bon layout (breadcrumb, Jump To, formulaire SMTP avec les 6 champs, toggles, boutons). Le hook `useEmailProviders.ts` et l'edge function `send-email/index.ts` sont aussi en place.
+Ce qui manque par rapport a la demande :
 
-## Ce qui manque
+1. **Modal Test Mail** : actuellement le test envoie directement a `senderEmail`. Il faut une modal avec un champ email + boutons Close/Send
+2. **Message "Password already saved"** : informer l'utilisateur que le mot de passe est deja sauvegarde
+3. **Sender Name** manquant dans le formulaire (champ present dans le hook mais pas affiche)
+4. **Validation SMTP avant Save** : verifier la connexion SMTP avant de sauvegarder
 
-1. **Schema de base de donnees** : La table `email_providers` doit avoir les bonnes colonnes (dont `email_notification_enabled`, `email_verification_enabled`, `encrypted_config` pour stocker les credentials chiffres)
-2. **Edge function SMTP fonctionnelle** : L'envoi SMTP reel depuis Deno edge functions (pas de TCP brut disponible, donc on utilise une edge function dediee `smtp-relay` avec le module `npm:nodemailer` qui fonctionne dans Deno)
-3. **Chiffrement AES-256** des credentials sensibles cote edge function
-4. **Edge function test-email** dediee pour le bouton Test Mail
+## Modifications prevues
 
-## Plan d'implementation
+### Fichier 1 : `src/pages/admin/AdminEmailProviderConfig.tsx`
 
-### Etape 1 : SQL a executer dans Supabase Dashboard
+Modifications :
+- Ajouter une **modal Test Mail** (Dialog ShadCN) avec champ email, boutons Close et Send, et feedback toast
+- Ajouter le champ **Sender Name** dans le formulaire
+- Ajouter le message **"Password already saved. Leave blank to keep existing."** sous le champ password quand un provider existe deja
+- Ameliorer le bouton Test Mail pour qu'il ouvre la modal au lieu d'envoyer directement
+- Le Test Mail est toujours visible (pas seulement quand isDefault)
+- Ajouter validation des champs obligatoires avant Save (host, port, username requis pour SMTP)
 
-Vous devrez executer ce SQL dans votre Supabase SQL Editor (`https://supabase.com/dashboard/project/chpplckgndznakuvcqbx/sql`) :
+### Fichier 2 : aucun autre fichier modifie
 
-```sql
--- Table email_providers (si elle n'existe pas deja)
-CREATE TABLE IF NOT EXISTS email_providers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    driver VARCHAR(50) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    sender_email VARCHAR(255),
-    sender_name VARCHAR(255),
-    encrypted_config JSONB DEFAULT '{}',
-    is_active BOOLEAN DEFAULT FALSE,
-    email_notification_enabled BOOLEAN DEFAULT TRUE,
-    email_verification_enabled BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+Les edge functions, le hook, le layout et le routing sont deja corrects.
 
--- Ajout des colonnes si la table existe deja
-ALTER TABLE email_providers
-  ADD COLUMN IF NOT EXISTS email_notification_enabled BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS email_verification_enabled BOOLEAN DEFAULT FALSE;
+## Details techniques
 
--- RLS
-ALTER TABLE email_providers ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY IF NOT EXISTS "Admin full access on email_providers"
-  ON email_providers FOR ALL
-  USING (true)
-  WITH CHECK (true);
-
--- Table rate limits (si pas deja creee)
-CREATE TABLE IF NOT EXISTS email_rate_limits (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID,
-    count INTEGER DEFAULT 1,
-    window_start TIMESTAMPTZ DEFAULT NOW()
-);
+### Modal Test Mail
+```text
+┌──────────────────────────────────┐
+│  Send Test Email                 │
+│                                  │
+│  Email address                   │
+│  ┌─────────────────────────────┐ │
+│  │ test@example.com            │ │
+│  └─────────────────────────────┘ │
+│                                  │
+│              [Close]  [Send]     │
+└──────────────────────────────────┘
 ```
 
-### Etape 2 : Secret ENCRYPTION_KEY dans Supabase
+- Utilise `Dialog` de ShadCN
+- Pre-remplit avec senderEmail
+- Bouton Send appelle `smtp-relay` ou `send-email` selon le driver
+- Affiche toast succes/erreur avec le vrai message SMTP
 
-Pour le chiffrement AES-256 des mots de passe et API keys, il faut un secret `ENCRYPTION_KEY` (32 bytes hex = 64 caracteres).
+### Validation avant Save (SMTP)
+- Si nouveau provider : host, port, username, password sont obligatoires
+- Si provider existant : host, port, username optionnels (garder les anciens si vides)
+- Password vide = garder l'ancien chiffre
 
-Generer avec : `openssl rand -hex 32`
-
-Puis l'ajouter dans Supabase Dashboard > Project Settings > Edge Functions > Secrets.
-
-### Etape 3 : Nouvelle edge function `smtp-relay`
-
-Creer `supabase/functions/smtp-relay/index.ts` - une edge function dediee qui :
-- Recoit les parametres SMTP (host, port, username, password) + email details
-- Utilise `npm:nodemailer` (compatible Deno) pour envoyer le mail via SMTP reel
-- Authentifie l'appelant (JWT admin uniquement)
-- Dechiffre le mot de passe avec AES-256
-- Retourne succes/erreur
-
-### Etape 4 : Mise a jour `send-email/index.ts`
-
-Modifier `sendViaSMTP` pour appeler la nouvelle edge function `smtp-relay` au lieu d'un relay HTTP externe, en lui passant les credentials SMTP dechiffres.
-
-### Etape 5 : Mise a jour `useEmailProviders.ts`
-
-Le hook doit chiffrer les credentials sensibles AVANT de les envoyer a Supabase. Cependant, le chiffrement AES cote client n'est pas securise (la cle serait exposee). A la place, on cree une edge function `encrypt-config` qui recoit les credentials en clair et les chiffre cote serveur avant insertion en base.
-
-### Etape 6 : Edge function `encrypt-config`
-
-`supabase/functions/encrypt-config/index.ts` :
-- Recoit `{ provider_id, config }` avec les credentials en clair
-- Chiffre chaque valeur sensible avec AES-256 (password, api_key, etc.)
-- Met a jour `encrypted_config` dans la table `email_providers`
-- Admin only (JWT)
-
-### Etape 7 : Mise a jour `AdminEmailProviderConfig.tsx`
-
-Modifier `handleSave` pour :
-1. D'abord sauvegarder les champs non-sensibles (sender_email, toggles) via Supabase direct
-2. Puis appeler l'edge function `encrypt-config` pour les credentials sensibles
-3. Le bouton Test Mail appelle `smtp-relay` directement pour tester
-
-### Etape 8 : Mise a jour `sendPlatformEmail.ts`
-
-Ajouter un mode "test direct" qui appelle `smtp-relay` avec les credentials SMTP pour le bouton Test Mail.
-
-## Resume des fichiers modifies/crees
-
-| Fichier | Action |
+### Resume
+| Element | Status |
 |---------|--------|
-| `supabase/functions/smtp-relay/index.ts` | Nouveau - envoi SMTP reel via Nodemailer |
-| `supabase/functions/encrypt-config/index.ts` | Nouveau - chiffrement AES cote serveur |
-| `supabase/functions/send-email/index.ts` | Modifie - `sendViaSMTP` appelle `smtp-relay` |
-| `supabase/config.toml` | Modifie - ajout des 2 nouvelles functions |
-| `src/hooks/useEmailProviders.ts` | Modifie - sauvegarde via edge function pour les secrets |
-| `src/pages/admin/AdminEmailProviderConfig.tsx` | Modifie - handleSave et handleTest utilisent les edge functions |
-| `src/lib/sendPlatformEmail.ts` | Modifie - ajout mode test SMTP |
-
-## Action requise de votre part
-
-Avant que je puisse implementer, vous devez executer le SQL ci-dessus dans votre Supabase Dashboard et ajouter le secret `ENCRYPTION_KEY`. Confirmez quand c'est fait et je procede a l'implementation.
+| Sidebar dark | Deja present (AdminSidebar) |
+| Header admin | Deja present (AdminHeader) |
+| Breadcrumb | Deja present |
+| Jump To menu | Deja present |
+| Formulaire 6 champs | Deja present |
+| Badge Default | Deja present |
+| Toggles | Deja present |
+| Save Changes | Deja present |
+| Modal Test Mail | A ajouter |
+| Sender Name | A ajouter |
+| Message password saved | A ajouter |
+| Validation champs | A ameliorer |
 
