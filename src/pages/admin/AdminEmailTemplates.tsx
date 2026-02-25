@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { EmailJumpToMenu } from '@/components/admin/EmailJumpToMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useEmailTemplates, type EmailTemplate } from '@/hooks/useEmailTemplates';
-import { ArrowLeft, Pencil, Eye, Loader2, Save } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Pencil, Eye, Loader2, Save } from 'lucide-react';
 
 const CATEGORIES: Record<string, { label: string; slugs: string[] }> = {
   auth: {
@@ -102,7 +102,6 @@ function TemplateRow({ t, onUpdate, onToggle }: { t: EmailTemplate; onUpdate: an
 
 export default function AdminEmailTemplates() {
   const { data: templates = [], isLoading, updateTemplate, toggleTemplate } = useEmailTemplates();
-  const navigate = useNavigate();
 
   const getTemplatesByCategory = (slugs: string[]) =>
     slugs.map(s => templates.find(t => t.slug === s)).filter(Boolean) as EmailTemplate[];
@@ -110,44 +109,48 @@ export default function AdminEmailTemplates() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/settings/email')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Templates Email</h1>
-            <p className="text-sm text-muted-foreground">{templates.length} templates configurés</p>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Dashboard / Settings / <span className="text-foreground font-medium">Email Templates</span>
+          </p>
+          <h1 className="text-xl font-semibold text-foreground mt-2">Templates Email</h1>
+          <p className="text-sm text-muted-foreground">{templates.length} templates transactionnels</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+          <EmailJumpToMenu />
+
+          <div className="space-y-4">
+            <div className="text-xs text-muted-foreground">
+              Variables : <code className="bg-muted px-1 rounded">{'{{name}}'}</code> <code className="bg-muted px-1 rounded">{'{{platform_name}}'}</code> <code className="bg-muted px-1 rounded">{'{{store_name}}'}</code> <code className="bg-muted px-1 rounded">{'{{order_id}}'}</code> <code className="bg-muted px-1 rounded">{'{{reason}}'}</code> <code className="bg-muted px-1 rounded">{'{{amount}}'}</code>
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <Accordion type="multiple" defaultValue={Object.keys(CATEGORIES)} className="space-y-2">
+                {Object.entries(CATEGORIES).map(([key, cat]) => {
+                  const catTemplates = getTemplatesByCategory(cat.slugs);
+                  return (
+                    <AccordionItem key={key} value={key} className="border rounded-lg px-4">
+                      <AccordionTrigger className="text-sm font-semibold">
+                        {cat.label} <Badge variant="secondary" className="ml-2">{catTemplates.length}</Badge>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-2 pb-4">
+                        {catTemplates.map(t => (
+                          <TemplateRow key={t.id} t={t} onUpdate={updateTemplate} onToggle={toggleTemplate} />
+                        ))}
+                        {catTemplates.length === 0 && (
+                          <p className="text-xs text-muted-foreground">Aucun template. Exécutez le SQL de seed.</p>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )}
           </div>
         </div>
-
-        <div className="text-xs text-muted-foreground">
-          Variables : <code className="bg-muted px-1 rounded">{'{{name}}'}</code> <code className="bg-muted px-1 rounded">{'{{platform_name}}'}</code> <code className="bg-muted px-1 rounded">{'{{store_name}}'}</code> <code className="bg-muted px-1 rounded">{'{{order_id}}'}</code> <code className="bg-muted px-1 rounded">{'{{reason}}'}</code> <code className="bg-muted px-1 rounded">{'{{amount}}'}</code>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : (
-          <Accordion type="multiple" defaultValue={Object.keys(CATEGORIES)} className="space-y-2">
-            {Object.entries(CATEGORIES).map(([key, cat]) => {
-              const catTemplates = getTemplatesByCategory(cat.slugs);
-              return (
-                <AccordionItem key={key} value={key} className="border rounded-lg px-4">
-                  <AccordionTrigger className="text-sm font-semibold">
-                    {cat.label} <Badge variant="secondary" className="ml-2">{catTemplates.length}</Badge>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-2 pb-4">
-                    {catTemplates.map(t => (
-                      <TemplateRow key={t.id} t={t} onUpdate={updateTemplate} onToggle={toggleTemplate} />
-                    ))}
-                    {catTemplates.length === 0 && (
-                      <p className="text-xs text-muted-foreground">Aucun template. Exécutez le SQL de seed.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
-        )}
       </div>
     </AdminLayout>
   );

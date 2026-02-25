@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { EmailJumpToMenu } from '@/components/admin/EmailJumpToMenu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const SHORTCODES = ['{{name}}', '{{platform_name}}', '{{platform_url}}', '{{support_email}}', '{{current_year}}'];
 
 export default function AdminEmailDefaultTemplate() {
-  const navigate = useNavigate();
   const { data: settings = [], updateSetting } = usePlatformSettings();
 
   const getSetting = (key: string) => {
@@ -55,57 +54,64 @@ export default function AdminEmailDefaultTemplate() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-2xl">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/admin/settings/email')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold text-foreground">Template par défaut (Wrapper)</h1>
+      <div className="space-y-6">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Dashboard / Settings / <span className="text-foreground font-medium">Default Templates</span>
+          </p>
+          <h1 className="text-xl font-semibold text-foreground mt-2">Template par défaut</h1>
+          <p className="text-sm text-muted-foreground">Header, footer et wrapper global</p>
         </div>
 
-        <Card>
-          <CardHeader><CardTitle className="text-base">Expéditeur par défaut</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>From Email</Label>
-              <Input value={fromEmail} onChange={e => setFromEmail(e.target.value)} placeholder="noreply@ventou.shop" />
-            </div>
-            <div>
-              <Label>From Name</Label>
-              <Input value={fromName} onChange={e => setFromName(e.target.value)} placeholder="Ventou" />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+          <EmailJumpToMenu />
 
-        <Card>
-          <CardHeader><CardTitle className="text-base">Header HTML</CardTitle></CardHeader>
-          <CardContent>
-            <Textarea value={headerHtml} onChange={e => setHeaderHtml(e.target.value)} rows={6} className="font-mono text-xs" placeholder="<div style='...'>Mon header</div>" />
-          </CardContent>
-        </Card>
+          <div className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader><CardTitle className="text-base">Expéditeur par défaut</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>From Email</Label>
+                  <Input value={fromEmail} onChange={e => setFromEmail(e.target.value)} placeholder="noreply@ventou.shop" />
+                </div>
+                <div>
+                  <Label>From Name</Label>
+                  <Input value={fromName} onChange={e => setFromName(e.target.value)} placeholder="Ventou" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-base">Footer HTML</CardTitle></CardHeader>
-          <CardContent>
-            <Textarea value={footerHtml} onChange={e => setFooterHtml(e.target.value)} rows={6} className="font-mono text-xs" placeholder="<div style='...'>Mon footer</div>" />
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Header HTML</CardTitle></CardHeader>
+              <CardContent>
+                <Textarea value={headerHtml} onChange={e => setHeaderHtml(e.target.value)} rows={6} className="font-mono text-xs" placeholder="<div style='...'>Mon header</div>" />
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-base">Shortcodes disponibles</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {SHORTCODES.map(s => (
-                <code key={s} className="px-2 py-1 bg-muted rounded text-xs font-mono">{s}</code>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Footer HTML</CardTitle></CardHeader>
+              <CardContent>
+                <Textarea value={footerHtml} onChange={e => setFooterHtml(e.target.value)} rows={6} className="font-mono text-xs" placeholder="<div style='...'>Mon footer</div>" />
+              </CardContent>
+            </Card>
 
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-          Enregistrer
-        </Button>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Shortcodes disponibles</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {SHORTCODES.map(s => (
+                    <code key={s} className="px-2 py-1 bg-muted rounded text-xs font-mono">{s}</code>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+              Enregistrer
+            </Button>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );
