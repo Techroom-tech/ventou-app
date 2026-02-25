@@ -1,34 +1,38 @@
-import { Server, LayoutTemplate, FileText } from 'lucide-react';
+import { Mail, Server, LayoutTemplate, FileText, ScrollText, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { EmailSettingsTopbar } from '@/components/admin/EmailSettingsTopbar';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { EmailSettingsCard } from '@/components/admin/EmailSettingsCard';
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from '@/components/ui/breadcrumb';
 
 const cards = [
   {
     icon: Server,
-    title: 'Email Configuration',
-    description: 'Configure sender email, SMTP settings, and email delivery method.',
+    title: 'Configuration Email',
+    description: 'Fournisseurs et providers actifs',
     path: '/admin/settings/email/providers',
   },
   {
     icon: LayoutTemplate,
-    title: 'Default Templates',
-    description: 'Manage default system email templates used for authentication and notifications.',
+    title: 'Template par défaut',
+    description: 'Header, footer et wrapper global',
     path: '/admin/settings/email/default-template',
   },
   {
     icon: FileText,
-    title: 'Email Templates',
-    description: 'Create and customize email templates for different platform events.',
+    title: 'Templates Email',
+    description: '28 templates transactionnels',
     path: '/admin/settings/email/templates',
+  },
+  {
+    icon: ScrollText,
+    title: 'Logs Email',
+    description: 'Historique des envois et erreurs',
+    path: '/admin/settings/email/logs',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Authentification Domaine',
+    description: 'DKIM, SPF et vérification DNS',
+    path: '/admin/settings/email/domains',
   },
 ];
 
@@ -36,33 +40,17 @@ export default function AdminEmailHub() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
-      <EmailSettingsTopbar />
-
-      <div className="max-w-[1200px] mx-auto px-5 md:px-8">
-        <div className="mt-6">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/admin" className="text-muted-foreground hover:text-foreground">
-                  Dashboard
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/admin/settings" className="text-muted-foreground hover:text-foreground">
-                  Settings
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Email</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+    <AdminLayout>
+      <div>
+        <div className="flex items-center gap-3 mb-1">
+          <Mail className="h-6 w-6 text-foreground" />
+          <h1 className="text-2xl font-semibold text-foreground">Système Email</h1>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Dashboard / Settings / <span className="font-medium text-foreground">Email</span>
+        </p>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {cards.map((c) => (
             <EmailSettingsCard
               key={c.path}
@@ -74,6 +62,6 @@ export default function AdminEmailHub() {
           ))}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
