@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEmailProviders } from '@/hooks/useEmailProviders';
-import { sendPlatformEmail } from '@/lib/sendPlatformEmail';
+import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Save, Send, Loader2, Eye, EyeOff, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -57,13 +57,17 @@ export default function AdminEmailProviderConfig() {
   }
 
   const isDefault = existing?.is_active === true;
-
   const toggleShow = (key: string) => setShowFields(prev => ({ ...prev, [key]: !prev[key] }));
 
+  // ─── Save: non-sensitive fields via Supabase, then encrypt credentials via edge function ───
   const handleSave = async () => {
+    if (!senderEmail) { toast.error("Sender Email est requis"); return; }
     setSaving(true);
     try {
+      let providerId = existing?.id;
+
       if (existing) {
+        // Update non-sensitive fields
         await updateProvider.mutateAsync({
           id: existing.id,
           name: meta.label,
@@ -71,21 +75,41 @@ export default function AdminEmailProviderConfig() {
           sender_name: senderName,
           email_notification_enabled: emailNotification,
           email_verification_enabled: emailVerification,
-          ...(Object.keys(config).length > 0 ? { config } : {}),
         } as any);
       } else {
+        // Create provider first (without sensitive config)
         await createProvider.mutateAsync({
           driver,
           name: meta.label,
-          config,
+          config: {}, // empty - will encrypt separately
           sender_email: senderEmail,
           sender_name: senderName,
           email_notification_enabled: emailNotification,
           email_verification_enabled: emailVerification,
         } as any);
+
+        // Refetch to get the new provider ID
+        const { data: newProviders } = await supabase
+          .from('email_providers')
+          .select('id')
+          .eq('driver', driver)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        providerId = newProviders?.[0]?.id;
       }
+
+      // Encrypt sensitive config via edge function
+      if (providerId && Object.keys(config).length > 0) {
+        const { error } = await supabase.functions.invoke('encrypt-config', {
+          body: { provider_id: providerId, config },
+        });
+        if (error) throw error;
+      }
+
+      toast.success('Configuration sauvegardée');
+      setConfig({}); // Clear sensitive fields after save
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || 'Erreur de sauvegarde');
     } finally {
       setSaving(false);
     }
@@ -103,14 +127,59 @@ export default function AdminEmailProviderConfig() {
     }
   };
 
+  // ─── Test Mail: sends a real email via smtp-relay edge function ───
   const handleTest = async () => {
     if (!senderEmail) { toast.error("Entrez un Sender Email d'abord"); return; }
+
+    // For SMTP: if config fields are filled, test with direct credentials
+    // Otherwise, test using the saved provider
+    if (driver === 'smtp' && (!config.host && !config.username)) {
+      if (!existing) {
+        toast.error("Sauvegardez d'abord la configuration SMTP");
+        return;
+      }
+    }
+
     setTesting(true);
     try {
-      await sendPlatformEmail('welcome_vendor', { name: 'Test' }, senderEmail);
-      toast.success('Email de test envoyé !');
+      if (driver === 'smtp') {
+        // Use smtp-relay for real SMTP test
+        const body: any = {
+          to: senderEmail,
+          subject: 'SMTP Test Email - Ventou',
+        };
+
+        if (config.host && config.username && config.password) {
+          // Direct test with unsaved credentials
+          body.smtp_config = {
+            host: config.host,
+            port: config.port || '465',
+            username: config.username,
+            password: config.password,
+            sender_email: senderEmail,
+          };
+        } else if (existing) {
+          // Test with saved (encrypted) credentials
+          body.provider_id = existing.id;
+        }
+
+        const { error } = await supabase.functions.invoke('smtp-relay', { body });
+        if (error) throw error;
+      } else {
+        // For API providers, use send-email with a test template
+        const { data, error } = await supabase.functions.invoke('send-email', {
+          body: {
+            slug: 'welcome_vendor',
+            variables: { name: 'Test' },
+            to: senderEmail,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
+      toast.success('✅ Email de test envoyé avec succès !');
     } catch (e: any) {
-      toast.error(e.message || 'Erreur');
+      toast.error(e.message || 'Échec de l\'envoi');
     } finally {
       setTesting(false);
     }
@@ -124,7 +193,7 @@ export default function AdminEmailProviderConfig() {
           type={showFields[fieldKey] ? 'text' : 'password'}
           value={config[fieldKey] || ''}
           onChange={e => setConfig(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-          placeholder={placeholder || label}
+          placeholder={placeholder || (existing ? '••••••••' : label)}
           className="pr-10"
         />
         <button
@@ -170,13 +239,14 @@ export default function AdminEmailProviderConfig() {
                   </Badge>
                 )}
               </div>
-              <div>
-                {isDefault ? (
+              <div className="flex gap-2">
+                {isDefault && (
                   <Button variant="outline" size="sm" onClick={handleTest} disabled={testing}>
                     {testing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
                     Test Mail
                   </Button>
-                ) : existing ? (
+                )}
+                {!isDefault && existing && (
                   <Button
                     size="sm"
                     onClick={handleSetDefault}
@@ -186,7 +256,14 @@ export default function AdminEmailProviderConfig() {
                     {settingDefault ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Shield className="h-4 w-4 mr-1" />}
                     Set As Default
                   </Button>
-                ) : null}
+                )}
+                {/* Always show Test Mail for SMTP if credentials are filled */}
+                {driver === 'smtp' && !isDefault && (config.host || existing) && (
+                  <Button variant="outline" size="sm" onClick={handleTest} disabled={testing}>
+                    {testing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                    Test Mail
+                  </Button>
+                )}
               </div>
             </CardHeader>
 
@@ -196,6 +273,7 @@ export default function AdminEmailProviderConfig() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Sender Email</Label>
                   <Input
+                    type="email"
                     value={senderEmail}
                     onChange={e => setSenderEmail(e.target.value)}
                     placeholder="noreply@example.com"
@@ -215,7 +293,7 @@ export default function AdminEmailProviderConfig() {
                     <Input
                       value={config.host || ''}
                       onChange={e => setConfig(prev => ({ ...prev, host: e.target.value }))}
-                      placeholder="smtp.example.com"
+                      placeholder={existing ? '••••••••' : 'smtp.example.com'}
                     />
                   </div>
                   <div className="space-y-2">
@@ -232,7 +310,7 @@ export default function AdminEmailProviderConfig() {
                     <Input
                       value={config.username || ''}
                       onChange={e => setConfig(prev => ({ ...prev, username: e.target.value }))}
-                      placeholder="user@example.com"
+                      placeholder={existing ? '••••••••' : 'user@example.com'}
                     />
                   </div>
                   <PasswordInput fieldKey="password" label="Mail Password" />
@@ -242,14 +320,12 @@ export default function AdminEmailProviderConfig() {
               {/* API providers */}
               {driver !== 'smtp' && (
                 <div className="space-y-4">
-                  {/* Main API Key */}
                   {driver === 'postmark' ? (
                     <PasswordInput fieldKey="server_token" label={`${meta.label} Server Token`} />
                   ) : (
                     <PasswordInput fieldKey="api_key" label={`${meta.label} Api Key`} />
                   )}
 
-                  {/* Mailgun domain */}
                   {driver === 'mailgun' && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Domain</Label>
@@ -261,7 +337,6 @@ export default function AdminEmailProviderConfig() {
                     </div>
                   )}
 
-                  {/* SES extra fields */}
                   {driver === 'ses' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <PasswordInput fieldKey="secret_key" label="Secret Key" />
@@ -287,7 +362,9 @@ export default function AdminEmailProviderConfig() {
               )}
 
               {existing && Object.keys(config).length === 0 && (
-                <p className="text-xs text-muted-foreground">Les credentials actuels sont masqués. Remplissez pour mettre à jour.</p>
+                <p className="text-xs text-muted-foreground">
+                  🔒 Les credentials actuels sont chiffrés et masqués. Remplissez les champs pour mettre à jour.
+                </p>
               )}
 
               <Separator />

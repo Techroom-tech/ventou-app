@@ -3,3 +3,9 @@ verify_jwt = false
 
 [functions.send-email]
 verify_jwt = false
+
+[functions.smtp-relay]
+verify_jwt = false
+
+[functions.encrypt-config]
+verify_jwt = false

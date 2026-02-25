@@ -25,3 +25,31 @@ export async function sendPlatformEmail(
   if (data?.error) throw new Error(data.error);
   return data;
 }
+
+/**
+ * Send a test email directly via SMTP relay (bypasses templates).
+ * Used by AdminEmailProviderConfig for the "Test Mail" button.
+ */
+export async function sendSmtpTestEmail(
+  to: string,
+  smtpConfig?: { host: string; port: string; username: string; password: string; sender_email: string },
+  providerId?: string
+) {
+  const body: Record<string, any> = {
+    to,
+    subject: 'SMTP Test Email - Ventou',
+  };
+
+  if (smtpConfig) {
+    body.smtp_config = smtpConfig;
+  } else if (providerId) {
+    body.provider_id = providerId;
+  } else {
+    throw new Error('Either smtpConfig or providerId is required');
+  }
+
+  const { data, error } = await supabase.functions.invoke('smtp-relay', { body });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
