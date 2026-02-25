@@ -16,6 +16,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Fallback for components rendered outside AuthProvider (e.g. storefront)
+const AUTH_FALLBACK: AuthContextType = {
+  user: null,
+  session: null,
+  profile: null,
+  isLoading: true,
+  signUp: async () => ({ error: new Error('No AuthProvider') }),
+  signIn: async () => ({ error: new Error('No AuthProvider') }),
+  signOut: async () => {},
+  resetPassword: async () => ({ error: new Error('No AuthProvider') }),
+  updatePassword: async () => ({ error: new Error('No AuthProvider') }),
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -192,7 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Graceful fallback instead of crash — allows storefront/public pages to render
+    console.warn('useAuth called outside AuthProvider — returning fallback');
+    return AUTH_FALLBACK;
   }
   return context;
 }
