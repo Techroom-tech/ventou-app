@@ -1,11 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Server, LayoutTemplate, FileText } from 'lucide-react';
+import { Server, LayoutTemplate, FileText, ScrollText, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const items = [
   { label: 'Email Configuration', path: '/admin/settings/email/providers', icon: Server },
   { label: 'Default Templates', path: '/admin/settings/email/default-template', icon: LayoutTemplate },
   { label: 'Email Templates', path: '/admin/settings/email/templates', icon: FileText },
+  { label: 'Logs Email', path: '/admin/settings/email/logs', icon: ScrollText },
+  { label: 'Authentification Domaine', path: '/admin/settings/email/domains', icon: ShieldCheck },
 ];
 
 export function EmailJumpToMenu() {
