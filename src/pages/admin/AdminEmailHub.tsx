@@ -1,54 +1,79 @@
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Server, FileText, ScrollText, Globe, LayoutTemplate } from 'lucide-react';
+import { Server, LayoutTemplate, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { EmailSettingsTopbar } from '@/components/admin/EmailSettingsTopbar';
+import { EmailSettingsCard } from '@/components/admin/EmailSettingsCard';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
 
 const cards = [
-  { title: 'Configuration Email', desc: 'Fournisseurs et providers actifs', icon: Server, path: '/admin/settings/email/providers' },
-  { title: 'Template par défaut', desc: 'Header, footer et wrapper global', icon: LayoutTemplate, path: '/admin/settings/email/default-template' },
-  { title: 'Templates Email', desc: '28 templates transactionnels', icon: FileText, path: '/admin/settings/email/templates' },
-  { title: 'Logs Email', desc: 'Historique des envois et erreurs', icon: ScrollText, path: '/admin/settings/email/logs' },
-  { title: 'Authentification Domaine', desc: 'DKIM, SPF et vérification DNS', icon: Globe, path: '/admin/settings/email/domains' },
+  {
+    icon: Server,
+    title: 'Email Configuration',
+    description: 'Configure sender email, SMTP settings, and email delivery method.',
+    path: '/admin/settings/email/providers',
+  },
+  {
+    icon: LayoutTemplate,
+    title: 'Default Templates',
+    description: 'Manage default system email templates used for authentication and notifications.',
+    path: '/admin/settings/email/default-template',
+  },
+  {
+    icon: FileText,
+    title: 'Email Templates',
+    description: 'Create and customize email templates for different platform events.',
+    path: '/admin/settings/email/templates',
+  },
 ];
 
 export default function AdminEmailHub() {
   const navigate = useNavigate();
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Mail className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Système Email</h1>
-            <p className="text-sm text-muted-foreground">Dashboard / Settings / Email</p>
-          </div>
+    <div className="min-h-screen bg-background">
+      <EmailSettingsTopbar />
+
+      <div className="max-w-[1200px] mx-auto px-5 md:px-8">
+        <div className="mt-6">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/admin" className="text-muted-foreground hover:text-foreground">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/admin/settings" className="text-muted-foreground hover:text-foreground">
+                  Settings
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Email</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {cards.map(c => (
-            <Card
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
+          {cards.map((c) => (
+            <EmailSettingsCard
               key={c.path}
-              className="cursor-pointer hover:border-primary/50 transition-colors"
+              icon={c.icon}
+              title={c.title}
+              description={c.description}
               onClick={() => navigate(c.path)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center">
-                    <c.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">{c.title}</CardTitle>
-                    <CardDescription className="text-xs">{c.desc}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
+            />
           ))}
         </div>
       </div>
-    </AdminLayout>
+    </div>
   );
 }
