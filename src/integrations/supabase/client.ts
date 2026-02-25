@@ -5,10 +5,32 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://chpplckgndznakuvcqbx.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocHBsY2tnbmR6bmFrdXZjcWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1ODEyMTAsImV4cCI6MjA4NjE1NzIxMH0.oimHRR-gDoli9w26pif2pcurnrZQlN7mR51rBc_-gek";
 
+export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type CurrencyCode = string;
+
+export const CURRENCIES: Array<{ code: CurrencyCode; name: string }> = [
+  { code: 'XOF', name: 'Franc CFA (BCEAO)' },
+  { code: 'XAF', name: 'Franc CFA (BEAC)' },
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' },
+  { code: 'NGN', name: 'Naira nigérian' },
+  { code: 'GHS', name: 'Cedi ghanéen' },
+];
+
+export const formatCurrency = (amount: number, currency: CurrencyCode = 'XOF') => {
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: currency === 'XOF' || currency === 'XAF' ? 0 : 2,
+  }).format(safeAmount);
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<any>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
