@@ -1,127 +1,121 @@
 
 
-# Refonte AdminEmailProviderConfig -- Layouts fidèles aux maquettes
+# Plan : Configuration SMTP reelle avec base de donnees
 
-## Analyse des maquettes
+## Constat actuel
 
-**Image 1 (SMTP)** : Layout 2 colonnes avec Jump To a gauche. A droite, une carte "SMTP Configuration" avec badge "Default" vert + bouton "Test Mail" en haut a droite. Champs en grille 2 colonnes : Sender Email / Email Method (readonly), Mail Host / Mail Port, Mail Username / Mail Password (avec eye toggle). Puis 2 toggles (Email Notification, Email Verification) avec descriptions. Bouton "Save changes" bleu en bas.
+Le projet utilise Supabase avec des credentials hardcodes dans `src/integrations/supabase/client.ts` (projet `chpplckgndznakuvcqbx`). Il n'y a pas d'integration Supabase native connectee via Lovable, donc je ne peux pas executer de migrations SQL automatiquement.
 
-**Image 2 (API providers)** : Carte similaire mais avec le nom du provider (ex: "Mailchimp Configuration") + bouton "Set As Default" vert en haut a droite. Champs : Sender Email / Email Method (readonly), API Key (avec eye toggle). Memes toggles. Bouton "Save changes" bleu.
+La page `AdminEmailProviderConfig.tsx` existe deja avec le bon layout (breadcrumb, Jump To, formulaire SMTP avec les 6 champs, toggles, boutons). Le hook `useEmailProviders.ts` et l'edge function `send-email/index.ts` sont aussi en place.
 
-## Ecart avec le code actuel
+## Ce qui manque
 
-Le fichier `AdminEmailProviderConfig.tsx` actuel :
-- N'utilise PAS le layout 2 colonnes avec Jump To
-- N'a pas de breadcrumb
-- SMTP a les mauvais champs (http_relay_url au lieu de host/port/username/password)
-- Pas de badge "Default" ni bouton "Set As Default"
-- Pas de toggles Email Notification / Email Verification
-- Pas de grille 2 colonnes pour les champs
-
-Le backend (`send-email/index.ts`) traite SMTP via un `http_relay_url` relay, pas en connexion SMTP directe. Deno edge functions ne supportent pas de connexion TCP brute (pas de Nodemailer). Pour un vrai SMTP fonctionnel, il faut une edge function dediee qui utilise un relay HTTP SMTP.
+1. **Schema de base de donnees** : La table `email_providers` doit avoir les bonnes colonnes (dont `email_notification_enabled`, `email_verification_enabled`, `encrypted_config` pour stocker les credentials chiffres)
+2. **Edge function SMTP fonctionnelle** : L'envoi SMTP reel depuis Deno edge functions (pas de TCP brut disponible, donc on utilise une edge function dediee `smtp-relay` avec le module `npm:nodemailer` qui fonctionne dans Deno)
+3. **Chiffrement AES-256** des credentials sensibles cote edge function
+4. **Edge function test-email** dediee pour le bouton Test Mail
 
 ## Plan d'implementation
 
-### Fichier 1 : `src/pages/admin/AdminEmailProviderConfig.tsx` (reecrit)
+### Etape 1 : SQL a executer dans Supabase Dashboard
 
-Structure identique aux maquettes :
-- `AdminLayout` + breadcrumb "Dashboard / Settings / Email Configuration"
-- Grid 2 colonnes : `EmailJumpToMenu` a gauche, carte config a droite
-- Active path detection dans le Jump To : highlight "Email Configuration"
+Vous devrez executer ce SQL dans votre Supabase SQL Editor (`https://supabase.com/dashboard/project/chpplckgndznakuvcqbx/sql`) :
 
-**Carte header** :
-- Titre : `{Driver} Configuration` (ex: "SMTP Configuration", "Mailchimp Configuration")
-- Si provider actif/default : badge vert "Default" a cote du titre
-- Si PAS actif : bouton "Set As Default" (vert, `bg-emerald-500`) en haut a droite
-- Si actif : bouton "Test Mail" en haut a droite a la place
+```sql
+-- Table email_providers (si elle n'existe pas deja)
+CREATE TABLE IF NOT EXISTS email_providers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver VARCHAR(50) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    sender_email VARCHAR(255),
+    sender_name VARCHAR(255),
+    encrypted_config JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT FALSE,
+    email_notification_enabled BOOLEAN DEFAULT TRUE,
+    email_verification_enabled BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-**Formulaire SMTP** (quand `driver === 'smtp'`) -- comme Image 1 :
-- Grille 2 colonnes :
-  - Sender Email (input) | Email Method (input readonly = "SMTP")
-  - Mail Host (input) | Mail Port (input number)
-  - Mail Username (input) | Mail Password (input password avec toggle eye)
-- Separator
-- Toggle "Email Notification" avec description
-- Toggle "Email Verification" avec description
-- Bouton "Save changes" (primary)
+-- Ajout des colonnes si la table existe deja
+ALTER TABLE email_providers
+  ADD COLUMN IF NOT EXISTS email_notification_enabled BOOLEAN DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS email_verification_enabled BOOLEAN DEFAULT FALSE;
 
-**Formulaire API providers** (tous les autres) -- comme Image 2 :
-- Grille 2 colonnes :
-  - Sender Email (input) | Email Method (input readonly = driver name)
-- Section API Key :
-  - Label colore en primary (ex: "Mailchimp Api Key")
-  - Input password avec toggle eye
-- Pour Mailgun : champ "Domain" supplementaire
-- Pour SES : champs Access Key, Secret Key, Region
-- Pour Postmark : "Server Token" au lieu de "API Key"
-- Separator
-- Memes toggles
-- Bouton "Save changes"
+-- RLS
+ALTER TABLE email_providers ENABLE ROW LEVEL SECURITY;
 
-**Logique** :
-- `handleSave` : sauvegarde config + sender_email + toggles (email_notification_enabled, email_verification_enabled) en base via `useEmailProviders.updateProvider/createProvider`
-- `handleSetDefault` : appelle `activateProvider` pour rendre ce provider actif
-- `handleTest` : appelle `sendPlatformEmail` pour envoyer un email test
-- Eye toggle pour les champs password : state local `showPassword` par champ
+CREATE POLICY IF NOT EXISTS "Admin full access on email_providers"
+  ON email_providers FOR ALL
+  USING (true)
+  WITH CHECK (true);
 
-### Fichier 2 : `src/hooks/useEmailProviders.ts` (mise a jour)
-
-Ajouter les champs `email_notification_enabled` et `email_verification_enabled` a l'interface `EmailProvider` et au select query. Mettre a jour `createProvider` et `updateProvider` pour supporter ces champs.
-
-### Fichier 3 : `supabase/functions/send-email/index.ts` (SMTP config)
-
-Mise a jour du `DRIVER_CONFIG` pour SMTP : les champs backend restent `http_relay_url` (car Deno ne supporte pas TCP/Nodemailer), mais le frontend stocke `host`, `port`, `username`, `password` dans `encrypted_config`. L'edge function construira l'URL relay ou utilisera ces champs si un relay SMTP-to-HTTP est configure.
-
-> Note technique : Deno edge functions ne peuvent pas ouvrir de connexions TCP brutes. Le vrai envoi SMTP necessite un service intermediaire (relay HTTP-to-SMTP). Le formulaire collecte les vrais parametres SMTP (host, port, username, password) et les stocke. L'edge function les transmet a un relay configurable.
-
-### Pas de modification de routes
-
-La route `/admin/settings/email/providers/:driver` existe deja dans `App.tsx`.
-
-## Details techniques
-
-### Structure du formulaire SMTP (Image 1)
-```text
-+--------------------------------------------------+
-| SMTP Configuration  ● Default     [Test Mail]    |
-+--------------------------------------------------+
-| Sender Email          | Email Method             |
-| [input]               | [SMTP] (readonly)        |
-|                       |                          |
-| Mail Host             | Mail Port                |
-| [input]               | [input number]           |
-|                       |                          |
-| Mail Username         | Mail Password            |
-| [input]               | [input password] 👁      |
-+--------------------------------------------------+
-| Email Notification                        [toggle]|
-| description text                                  |
-+--------------------------------------------------+
-| Email Verification                        [toggle]|
-| description text                                  |
-+--------------------------------------------------+
-| [Save changes]                                    |
-+--------------------------------------------------+
+-- Table rate limits (si pas deja creee)
+CREATE TABLE IF NOT EXISTS email_rate_limits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID,
+    count INTEGER DEFAULT 1,
+    window_start TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
-### Structure des providers API (Image 2)
-```text
-+--------------------------------------------------+
-| Mailchimp Configuration       [Set As Default]   |
-+--------------------------------------------------+
-| Sender Email          | Email Method             |
-| [input]               | [mailchimp] (readonly)   |
-|                       |                          |
-| Mailchimp Api Key                                |
-| [input password] 👁                               |
-+--------------------------------------------------+
-| Email Notification                        [toggle]|
-| description text                                  |
-+--------------------------------------------------+
-| Email Verification                        [toggle]|
-| description text                                  |
-+--------------------------------------------------+
-| [Save changes]                                    |
-+--------------------------------------------------+
-```
+### Etape 2 : Secret ENCRYPTION_KEY dans Supabase
+
+Pour le chiffrement AES-256 des mots de passe et API keys, il faut un secret `ENCRYPTION_KEY` (32 bytes hex = 64 caracteres).
+
+Generer avec : `openssl rand -hex 32`
+
+Puis l'ajouter dans Supabase Dashboard > Project Settings > Edge Functions > Secrets.
+
+### Etape 3 : Nouvelle edge function `smtp-relay`
+
+Creer `supabase/functions/smtp-relay/index.ts` - une edge function dediee qui :
+- Recoit les parametres SMTP (host, port, username, password) + email details
+- Utilise `npm:nodemailer` (compatible Deno) pour envoyer le mail via SMTP reel
+- Authentifie l'appelant (JWT admin uniquement)
+- Dechiffre le mot de passe avec AES-256
+- Retourne succes/erreur
+
+### Etape 4 : Mise a jour `send-email/index.ts`
+
+Modifier `sendViaSMTP` pour appeler la nouvelle edge function `smtp-relay` au lieu d'un relay HTTP externe, en lui passant les credentials SMTP dechiffres.
+
+### Etape 5 : Mise a jour `useEmailProviders.ts`
+
+Le hook doit chiffrer les credentials sensibles AVANT de les envoyer a Supabase. Cependant, le chiffrement AES cote client n'est pas securise (la cle serait exposee). A la place, on cree une edge function `encrypt-config` qui recoit les credentials en clair et les chiffre cote serveur avant insertion en base.
+
+### Etape 6 : Edge function `encrypt-config`
+
+`supabase/functions/encrypt-config/index.ts` :
+- Recoit `{ provider_id, config }` avec les credentials en clair
+- Chiffre chaque valeur sensible avec AES-256 (password, api_key, etc.)
+- Met a jour `encrypted_config` dans la table `email_providers`
+- Admin only (JWT)
+
+### Etape 7 : Mise a jour `AdminEmailProviderConfig.tsx`
+
+Modifier `handleSave` pour :
+1. D'abord sauvegarder les champs non-sensibles (sender_email, toggles) via Supabase direct
+2. Puis appeler l'edge function `encrypt-config` pour les credentials sensibles
+3. Le bouton Test Mail appelle `smtp-relay` directement pour tester
+
+### Etape 8 : Mise a jour `sendPlatformEmail.ts`
+
+Ajouter un mode "test direct" qui appelle `smtp-relay` avec les credentials SMTP pour le bouton Test Mail.
+
+## Resume des fichiers modifies/crees
+
+| Fichier | Action |
+|---------|--------|
+| `supabase/functions/smtp-relay/index.ts` | Nouveau - envoi SMTP reel via Nodemailer |
+| `supabase/functions/encrypt-config/index.ts` | Nouveau - chiffrement AES cote serveur |
+| `supabase/functions/send-email/index.ts` | Modifie - `sendViaSMTP` appelle `smtp-relay` |
+| `supabase/config.toml` | Modifie - ajout des 2 nouvelles functions |
+| `src/hooks/useEmailProviders.ts` | Modifie - sauvegarde via edge function pour les secrets |
+| `src/pages/admin/AdminEmailProviderConfig.tsx` | Modifie - handleSave et handleTest utilisent les edge functions |
+| `src/lib/sendPlatformEmail.ts` | Modifie - ajout mode test SMTP |
+
+## Action requise de votre part
+
+Avant que je puisse implementer, vous devez executer le SQL ci-dessus dans votre Supabase Dashboard et ajouter le secret `ENCRYPTION_KEY`. Confirmez quand c'est fait et je procede a l'implementation.
 
