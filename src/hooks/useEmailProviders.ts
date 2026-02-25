@@ -31,12 +31,9 @@ export function useEmailProviders() {
   });
 
   const createProvider = useMutation({
-    mutationFn: async (provider: { driver: string; name: string; config: Record<string, any>; sender_email?: string; sender_name?: string }) => {
+    mutationFn: async (provider: { driver: string; name: string; config?: Record<string, any>; sender_email?: string; sender_name?: string; [key: string]: any }) => {
       const { config, ...rest } = provider;
-      const { error } = await supabase.from('email_providers').insert({
-        ...rest,
-        encrypted_config: config,
-      });
+      const { error } = await supabase.from('email_providers').insert(rest);
       if (error) throw error;
     },
     onSuccess: () => {
