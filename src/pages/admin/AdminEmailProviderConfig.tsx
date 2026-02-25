@@ -79,9 +79,15 @@ export default function AdminEmailProviderConfig() {
 
   const isDefault = existing?.is_active === true;
 
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
   const validateBeforeSave = (): boolean => {
     if (!senderEmail) {
       toast.error("Sender Email est requis");
+      return false;
+    }
+    if (!isValidEmail(senderEmail)) {
+      toast.error("Sender Email invalide");
       return false;
     }
     if (driver === 'smtp' && !existing) {
@@ -148,33 +154,89 @@ export default function AdminEmailProviderConfig() {
   };
 
   const handleSendTest = async () => {
-    if (!testEmail) { toast.error("Entrez une adresse email"); return; }
+    if (!testEmail) {
+      toast.error('Entrez une adresse email');
+      return;
+    }
+    if (!isValidEmail(testEmail)) {
+      toast.error('Adresse email de test invalide');
+      return;
+    }
+
     setTesting(true);
     try {
       if (driver === 'smtp') {
-        const body: any = {
-          to: testEmail,
-          subject: 'SMTP Test Email - Ventou',
-        };
+        const hasUnsavedSmtpChanges = !!existing && (
+          senderEmail !== (existing.sender_email || '') ||
+          senderName !== (existing.sender_name || '') ||
+          mailHost !== (existing.mail_host || '') ||
+          mailPort !== (existing.mail_port ? String(existing.mail_port) : '') ||
+          mailUsername !== (existing.mail_username || '') ||
+          !!mailPassword
+        );
 
-        if (existing) {
-          body.provider_id = existing.id;
+        const shouldUseInlineConfig = !existing || hasUnsavedSmtpChanges;
+
+        if (shouldUseInlineConfig) {
+          const host = mailHost.trim();
+          const port = Number(mailPort);
+          const username = mailUsername.trim();
+          const password = mailPassword;
+
+          if (!host || !port || !username || !password || !senderEmail) {
+            throw new Error('Pour tester la configuration en cours, remplissez Host, Port, Username, Password et Sender Email.');
+          }
+
+          const { data, error } = await supabase.functions.invoke('smtp-relay', {
+            body: {
+              to: testEmail.trim(),
+              subject: 'SMTP Test Email - Ventou',
+              smtp_config: {
+                host,
+                port: String(port),
+                username,
+                password,
+                sender_email: senderEmail.trim(),
+                sender_name: senderName.trim() || undefined,
+              },
+            },
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          const acceptedCount = Array.isArray(data?.delivery?.accepted) ? data.delivery.accepted.length : 0;
+          const msgId = data?.delivery?.messageId ? ` | ID: ${data.delivery.messageId}` : '';
+          toast.success(`✅ Email de test envoyé (${acceptedCount} destinataire accepté)${msgId}`);
+          setTestModalOpen(false);
+          return;
         }
 
-        const { error } = await supabase.functions.invoke('smtp-relay', { body });
+        const { data, error } = await supabase.functions.invoke('smtp-relay', {
+          body: {
+            provider_id: existing.id,
+            to: testEmail.trim(),
+            subject: 'SMTP Test Email - Ventou',
+          },
+        });
+
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const acceptedCount = Array.isArray(data?.delivery?.accepted) ? data.delivery.accepted.length : 0;
+        const msgId = data?.delivery?.messageId ? ` | ID: ${data.delivery.messageId}` : '';
+        toast.success(`✅ Email de test envoyé (${acceptedCount} destinataire accepté)${msgId}`);
       } else {
+        if (!existing) throw new Error('Sauvegardez d\'abord le provider avant le test');
         const { data, error } = await supabase.functions.invoke('send-email', {
           body: {
             slug: 'welcome_vendor',
             variables: { name: 'Test' },
-            to: testEmail,
+            to: testEmail.trim(),
           },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
+        toast.success('✅ Email de test envoyé avec succès !');
       }
-      toast.success('✅ Email de test envoyé avec succès !');
       setTestModalOpen(false);
     } catch (e: any) {
       toast.error(e.message || "Échec de l'envoi");
@@ -183,7 +245,7 @@ export default function AdminEmailProviderConfig() {
     }
   };
 
-  const canTest = existing != null;
+  const canTest = driver === 'smtp' ? true : existing != null;
 
   return (
     <AdminLayout>
