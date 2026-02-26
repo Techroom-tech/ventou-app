@@ -2,6 +2,27 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6";
 
+// ─── AES-256-CBC Decrypt using Web Crypto API ────
+async function decryptValue(encrypted: string): Promise<string> {
+  const keyHex = Deno.env.get("ENCRYPTION_KEY");
+  if (!keyHex) throw new Error("ENCRYPTION_KEY not configured");
+
+  const [ivHex, cipherHex] = encrypted.split(":");
+  if (!ivHex || !cipherHex) throw new Error("Invalid encrypted format");
+
+  const key = new Uint8Array(keyHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+  const iv = new Uint8Array(ivHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+  const cipherData = new Uint8Array(cipherHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+
+  const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-CBC" }, false, ["decrypt"]);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, cipherData);
+
+  // Remove PKCS7 padding
+  const bytes = new Uint8Array(decrypted);
+  const padLen = bytes[bytes.length - 1];
+  return new TextDecoder().decode(bytes.slice(0, bytes.length - padLen));
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -98,10 +119,10 @@ Deno.serve(async (req) => {
       senderName = String(smtp_config.sender_name || "").trim();
       console.log("[smtp-relay] Using direct smtp_config");
     } else if (provider_id) {
-      // Mode 2: Load from DB flat columns
+      // Mode 2: Load from DB — prefer encrypted_config over plaintext
       const { data: provider, error: provErr } = await supabaseAdmin
         .from("email_providers")
-        .select("mail_host, mail_port, mail_username, mail_password, sender_email, sender_name")
+        .select("mail_host, mail_port, mail_username, mail_password, encrypted_config, sender_email, sender_name")
         .eq("id", provider_id)
         .maybeSingle();
 
@@ -117,9 +138,23 @@ Deno.serve(async (req) => {
       host = String(provider.mail_host || "").trim();
       port = provider.mail_port || 465;
       username = String(provider.mail_username || "").trim();
-      password = String(provider.mail_password || "");
       senderEmail = String(provider.sender_email || username).trim();
       senderName = String(provider.sender_name || "").trim();
+
+      // Decrypt password from encrypted_config if available, fallback to plaintext
+      const enc = provider.encrypted_config as Record<string, string> | null;
+      if (enc?.mail_password) {
+        try {
+          password = await decryptValue(enc.mail_password);
+          console.log("[smtp-relay] Using encrypted credentials");
+        } catch (decErr: any) {
+          console.error("[smtp-relay] Decrypt failed, falling back to plaintext:", decErr.message);
+          password = String(provider.mail_password || "");
+        }
+      } else {
+        password = String(provider.mail_password || "");
+        console.log("[smtp-relay] Using plaintext credentials (no encrypted_config)");
+      }
 
       console.log("[smtp-relay] Provider config loaded:", { host, port, username: username ? "***" : "(empty)", senderEmail });
     } else {
