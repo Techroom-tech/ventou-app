@@ -1,79 +1,64 @@
 
 
-# Plan : Ameliorer la page SMTP Configuration
+## Analysis
 
-## Constat
+The current codebase **already has most of the subdomain multi-tenancy infrastructure**:
 
-La page existe deja a `/admin/settings/email/providers/smtp` avec :
-- AdminLayout (sidebar dark + header)
-- Breadcrumb
-- Jump To menu (2 colonnes)
-- Formulaire SMTP complet (6 champs + toggles)
-- Edge functions `smtp-relay` et `encrypt-config` operationnelles
-- Hook `useEmailProviders` fonctionnel
+- `src/lib/subdomain.ts` → `getSubdomain()` extracts slug from `*.ventou.shop`
+- `src/App.tsx` → renders `<ShopStorefront slug={subdomain} />` directly when subdomain detected (no redirect, no Router needed)
+- Fallback routes `/boutique/:slug` and `/shop/:slug` exist
 
-Ce qui manque par rapport a la demande :
+### Gaps to fix
 
-1. **Modal Test Mail** : actuellement le test envoie directement a `senderEmail`. Il faut une modal avec un champ email + boutons Close/Send
-2. **Message "Password already saved"** : informer l'utilisateur que le mot de passe est deja sauvegarde
-3. **Sender Name** manquant dans le formulaire (champ present dans le hook mais pas affiche)
-4. **Validation SMTP avant Save** : verifier la connexion SMTP avant de sauvegarder
+1. **Hardcoded domain** — `getSubdomain()` only supports `ventou.shop`. Should support any custom domain pattern for future scalability.
+2. **No BrowserRouter in subdomain branch** — storefront rendered via subdomain has no Router, so any internal links or `useNavigate` will crash.
+3. **No dedicated StoreNotFound component** — the 404 is inline JSX inside `ShopStorefront`, not a reusable component.
+4. **No store context** — slug resolution is ad-hoc; no shared context for "current storefront slug" that prioritizes hostname > route param.
+5. **Hardcoded `https://ventou.shop`** in the storefront "back" button — should use relative path or configurable origin.
 
-## Modifications prevues
+---
 
-### Fichier 1 : `src/pages/admin/AdminEmailProviderConfig.tsx`
+## Implementation Plan
 
-Modifications :
-- Ajouter une **modal Test Mail** (Dialog ShadCN) avec champ email, boutons Close et Send, et feedback toast
-- Ajouter le champ **Sender Name** dans le formulaire
-- Ajouter le message **"Password already saved. Leave blank to keep existing."** sous le champ password quand un provider existe deja
-- Ameliorer le bouton Test Mail pour qu'il ouvre la modal au lieu d'envoyer directement
-- Le Test Mail est toujours visible (pas seulement quand isDefault)
-- Ajouter validation des champs obligatoires avant Save (host, port, username requis pour SMTP)
+### 1. Refactor `src/lib/subdomain.ts`
+- Rename function to `getStoreSlugFromHostname()` (keep `getSubdomain` as alias for backward compat)
+- Use generic hostname splitting: split by `.`, if 3+ parts and first part is not `www`, return first part
+- Skip localhost, IPs, `*.lovable.app`, and configurable main domains
+- Export a `MAIN_DOMAINS` constant for easy future updates
 
-### Fichier 2 : aucun autre fichier modifie
+### 2. Create `src/contexts/StorefrontContext.tsx`
+- New context providing `{ slug: string; source: 'hostname' | 'route' }`
+- Resolves slug with priority: hostname first, then route param fallback
+- Wraps the storefront rendering in both App.tsx branches
 
-Les edge functions, le hook, le layout et le routing sont deja corrects.
+### 3. Create `src/components/storefront/StoreNotFound.tsx`
+- Dedicated production-quality 404 page for stores not found
+- No hardcoded URLs — uses relative paths
+- Translatable via i18next
 
-## Details techniques
+### 4. Update `src/App.tsx`
+- Wrap subdomain branch in `<BrowserRouter>` so storefront internal routing works
+- Use `StorefrontProvider` in both subdomain and route-based storefront rendering
+- Ensure catch-all `*` route exists (already present)
 
-### Modal Test Mail
-```text
-┌──────────────────────────────────┐
-│  Send Test Email                 │
-│                                  │
-│  Email address                   │
-│  ┌─────────────────────────────┐ │
-│  │ test@example.com            │ │
-│  └─────────────────────────────┘ │
-│                                  │
-│              [Close]  [Send]     │
-└──────────────────────────────────┘
-```
+### 5. Update `src/pages/ShopStorefront.tsx`
+- Replace inline "not found" JSX with `<StoreNotFound />` component
+- Remove hardcoded `https://ventou.shop` link
+- Ensure all asset/API paths are relative (audit `src=` and `href=` attributes)
 
-- Utilise `Dialog` de ShadCN
-- Pre-remplit avec senderEmail
-- Bouton Send appelle `smtp-relay` ou `send-email` selon le driver
-- Affiche toast succes/erreur avec le vrai message SMTP
+### 6. Update `src/pages/ShopStorefrontRoute.tsx`
+- Wrap with `StorefrontProvider` using route param as slug source
 
-### Validation avant Save (SMTP)
-- Si nouveau provider : host, port, username, password sont obligatoires
-- Si provider existant : host, port, username optionnels (garder les anciens si vides)
-- Password vide = garder l'ancien chiffre
+---
 
-### Resume
-| Element | Status |
-|---------|--------|
-| Sidebar dark | Deja present (AdminSidebar) |
-| Header admin | Deja present (AdminHeader) |
-| Breadcrumb | Deja present |
-| Jump To menu | Deja present |
-| Formulaire 6 champs | Deja present |
-| Badge Default | Deja present |
-| Toggles | Deja present |
-| Save Changes | Deja present |
-| Modal Test Mail | A ajouter |
-| Sender Name | A ajouter |
-| Message password saved | A ajouter |
-| Validation champs | A ameliorer |
+## Files Changed
+
+| File | Action |
+|------|--------|
+| `src/lib/subdomain.ts` | Refactor to generic hostname logic |
+| `src/contexts/StorefrontContext.tsx` | **New** — storefront slug context |
+| `src/components/storefront/StoreNotFound.tsx` | **New** — 404 store page |
+| `src/App.tsx` | Add BrowserRouter to subdomain branch, integrate context |
+| `src/pages/ShopStorefront.tsx` | Use StoreNotFound component, remove hardcoded URLs |
+| `src/pages/ShopStorefrontRoute.tsx` | Integrate StorefrontProvider |
 
