@@ -39,6 +39,26 @@ const SLUG_REGEX = /^[a-z0-9_]{2,64}$/;
 const MAX_VARIABLES = 30;
 const MAX_VARIABLE_LENGTH = 2000;
 
+// ─── AES-256-CBC Decrypt using Web Crypto API ────
+async function decryptValue(encrypted: string): Promise<string> {
+  const keyHex = Deno.env.get("ENCRYPTION_KEY");
+  if (!keyHex) throw new Error("ENCRYPTION_KEY not configured");
+
+  const [ivHex, cipherHex] = encrypted.split(":");
+  if (!ivHex || !cipherHex) throw new Error("Invalid encrypted format");
+
+  const key = new Uint8Array(keyHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+  const iv = new Uint8Array(ivHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+  const cipherData = new Uint8Array(cipherHex.match(/.{2}/g)!.map((b: string) => parseInt(b, 16)));
+
+  const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-CBC" }, false, ["decrypt"]);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, cipherData);
+
+  const bytes = new Uint8Array(decrypted);
+  const padLen = bytes[bytes.length - 1];
+  return new TextDecoder().decode(bytes.slice(0, bytes.length - padLen));
+}
+
 function sanitizeHtml(text: string): string {
   return text
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
@@ -330,14 +350,26 @@ async function sendViaMandrill(config: any, from: string, fromName: string, to: 
 }
 
 async function sendViaSMTP(provider: any, from: string, _fromName: string, to: string, subject: string, html: string) {
-  // SMTP sending via smtp-relay edge function using flat DB columns
+  // SMTP sending via smtp-relay edge function
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   const host = provider.mail_host || "";
   const port = String(provider.mail_port || 465);
   const username = provider.mail_username || "";
-  const password = provider.mail_password || "";
+
+  // Prefer encrypted credentials, fallback to plaintext
+  let password = "";
+  const enc = provider.encrypted_config as Record<string, string> | null;
+  if (enc?.mail_password) {
+    try {
+      password = await decryptValue(enc.mail_password);
+    } catch {
+      password = provider.mail_password || "";
+    }
+  } else {
+    password = provider.mail_password || "";
+  }
 
   if (!host || !username || !password) {
     throw new Error("Incomplete SMTP configuration. Please fill in all SMTP fields in provider settings.");
