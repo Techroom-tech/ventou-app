@@ -59,7 +59,7 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
         const compressed = await compressImage(file);
         const path = `${shopId}/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
 
-        console.log('[ImageUploader] Uploading to path:', path);
+        if (import.meta.env.DEV) console.log('[ImageUploader] Uploading to path:', path);
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('product-images')
@@ -71,13 +71,13 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
           continue;
         }
 
-        console.log('[ImageUploader] Upload success:', uploadData);
+        if (import.meta.env.DEV) console.log('[ImageUploader] Upload success:', uploadData);
 
         const { data: urlData } = supabase.storage
           .from('product-images')
           .getPublicUrl(path);
 
-        console.log('[ImageUploader] Public URL:', urlData.publicUrl);
+        if (import.meta.env.DEV) console.log('[ImageUploader] Public URL:', urlData.publicUrl);
 
         newImages.push({
           url: urlData.publicUrl,
@@ -93,7 +93,7 @@ export function ImageUploader({ images, onChange, shopId }: ImageUploaderProps) 
 
     if (newImages.length > 0) {
       const updated = [...images, ...newImages];
-      console.log('[ImageUploader] Updated images state:', updated);
+      if (import.meta.env.DEV) console.log('[ImageUploader] Updated images state:', updated);
       onChange(updated);
     }
     setUploading(false);
