@@ -1,4 +1,5 @@
 import { useEffect, lazy, Suspense } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -84,6 +85,13 @@ const LoadingSpinner = () => (
 const App = () => {
   const hostnameSlug = getStoreSlugFromHostname();
 
+  // Debug logging for production troubleshooting
+  useEffect(() => {
+    console.log('[Ventou] hostname:', window.location.hostname);
+    console.log('[Ventou] hostnameSlug:', hostnameSlug);
+    console.log('[Ventou] pathname:', window.location.pathname);
+  }, [hostnameSlug]);
+
   if (hostnameSlug) {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
@@ -94,7 +102,9 @@ const App = () => {
             <BrowserRouter>
               <StorefrontProvider routeSlug={hostnameSlug}>
                 <Suspense fallback={<LoadingSpinner />}>
-                  <ShopStorefront slug={hostnameSlug} />
+                  <ErrorBoundary fallbackMessage={`Erreur lors du chargement de la boutique "${hostnameSlug}"`}>
+                    <ShopStorefront slug={hostnameSlug} />
+                  </ErrorBoundary>
                 </Suspense>
               </StorefrontProvider>
             </BrowserRouter>
