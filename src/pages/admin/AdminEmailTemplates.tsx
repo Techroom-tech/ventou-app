@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { EmailJumpToMenu } from '@/components/admin/EmailJumpToMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -53,7 +54,7 @@ function TemplatePreview({ body }: { body: string }) {
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader><DialogTitle>Aperçu du template</DialogTitle></DialogHeader>
-        <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }} />
       </DialogContent>
     </Dialog>
   );
