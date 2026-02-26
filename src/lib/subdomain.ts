@@ -1,9 +1,23 @@
 /**
- * Extract shop slug from the current hostname.
- * Returns the slug if on a subdomain (e.g. "tuk" from "tuk.ventou.shop"),
- * or null if on the main domain / localhost / preview.
+ * Configurable list of main domains that should NOT be treated as subdomains.
+ * Add any future production domains here.
  */
-export function getSubdomain(): string | null {
+export const MAIN_DOMAINS = ['ventou.shop', 'www.ventou.shop'];
+
+/** Hostname suffixes to always ignore (previews, local dev) */
+const IGNORED_SUFFIXES = ['.lovable.app', '.lovableproject.com'];
+
+/**
+ * Extract store slug from the current hostname using generic splitting.
+ *
+ * Examples:
+ *   "tuk.ventou.shop"   → "tuk"
+ *   "ventou.shop"       → null
+ *   "www.ventou.shop"   → null
+ *   "localhost"          → null
+ *   "my-store.example.com" → "my-store"  (future custom domains)
+ */
+export function getStoreSlugFromHostname(): string | null {
   const hostname = window.location.hostname;
 
   // Localhost or IP → no subdomain
@@ -11,21 +25,20 @@ export function getSubdomain(): string | null {
     return null;
   }
 
-  // Lovable preview domains (*.lovable.app) → no subdomain
-  if (hostname.endsWith('.lovable.app')) {
+  // Preview / dev domains → no subdomain
+  if (IGNORED_SUFFIXES.some(suffix => hostname.endsWith(suffix))) {
     return null;
   }
 
-  // Main domain patterns to ignore
-  const mainDomains = ['ventou.shop', 'www.ventou.shop'];
-  if (mainDomains.includes(hostname)) {
+  // Exact main domains → no subdomain
+  if (MAIN_DOMAINS.includes(hostname)) {
     return null;
   }
 
-  // Extract subdomain: "tuk.ventou.shop" → "tuk"
-  if (hostname.endsWith('.ventou.shop')) {
-    const sub = hostname.replace('.ventou.shop', '');
-    // Ignore "www" or empty
+  // Generic splitting: "sub.domain.tld" → parts.length >= 3 → first part
+  const parts = hostname.split('.');
+  if (parts.length >= 3) {
+    const sub = parts[0];
     if (sub && sub !== 'www') {
       return sub;
     }
@@ -33,3 +46,6 @@ export function getSubdomain(): string | null {
 
   return null;
 }
+
+/** @deprecated Use getStoreSlugFromHostname() instead */
+export const getSubdomain = getStoreSlugFromHostname;
