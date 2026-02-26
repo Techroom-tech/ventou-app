@@ -16,6 +16,7 @@ import CartDrawer from '@/components/storefront/CartDrawer';
 import CheckoutDrawer from '@/components/storefront/CheckoutDrawer';
 import ProductDetailSheet from '@/components/storefront/ProductDetailSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import StoreNotFound from '@/components/storefront/StoreNotFound';
 import { CountryProvider, useCountry } from '@/contexts/CountryContext';
 import CountrySelector from '@/components/storefront/CountrySelector';
 
@@ -240,18 +241,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   }
 
   if (!shop || shopError) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Store className="h-16 w-16 mx-auto text-muted-foreground" />
-          <h1 className="text-2xl font-bold">{t('storefront.notFound')}</h1>
-          <p className="text-muted-foreground">{t('storefront.notFoundDescription')}</p>
-          <Button variant="outline" onClick={() => window.location.href = 'https://ventou.shop'}>
-            {t('common.back')}
-          </Button>
-        </div>
-      </div>
-    );
+    return <StoreNotFound />;
   }
 
   const primaryColor = shop.primary_color || '#1E3A5F';

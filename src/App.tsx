@@ -12,7 +12,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardGuard } from "@/components/DashboardGuard";
-import { getSubdomain } from "@/lib/subdomain";
+import { getStoreSlugFromHostname } from "@/lib/subdomain";
+import { StorefrontProvider } from "@/contexts/StorefrontContext";
 
 // Vendor pages
 const Index = lazy(() => import("./pages/Index"));
@@ -81,28 +82,22 @@ const LoadingSpinner = () => (
 );
 
 const App = () => {
-  const subdomain = getSubdomain();
+  const hostnameSlug = getStoreSlugFromHostname();
 
-  useEffect(() => {
-    const handler = (event: PromiseRejectionEvent) => {
-      console.error("Unhandled promise rejection:", event.reason);
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
-      event.preventDefault();
-    };
-    window.addEventListener("unhandledrejection", handler);
-    return () => window.removeEventListener("unhandledrejection", handler);
-  }, []);
-
-  if (subdomain) {
+  if (hostnameSlug) {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Suspense fallback={<LoadingSpinner />}>
-              <ShopStorefront slug={subdomain} />
-            </Suspense>
+            <BrowserRouter>
+              <StorefrontProvider routeSlug={hostnameSlug}>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ShopStorefront slug={hostnameSlug} />
+                </Suspense>
+              </StorefrontProvider>
+            </BrowserRouter>
           </TooltipProvider>
         </QueryClientProvider>
       </ThemeProvider>
