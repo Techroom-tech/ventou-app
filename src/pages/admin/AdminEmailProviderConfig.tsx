@@ -117,6 +117,8 @@ export default function AdminEmailProviderConfig() {
         if (mailPassword) payload.mail_password = mailPassword;
       }
 
+      let providerId = existing?.id;
+
       if (existing) {
         await updateProvider.mutateAsync({ id: existing.id, ...payload });
       } else {
@@ -127,8 +129,22 @@ export default function AdminEmailProviderConfig() {
         });
       }
 
+      // Encrypt SMTP credentials after save
+      if (driver === 'smtp' && mailPassword && providerId) {
+        try {
+          await supabase.functions.invoke('encrypt-config', {
+            body: {
+              provider_id: providerId,
+              config: { mail_password: mailPassword },
+            },
+          });
+        } catch (encErr: any) {
+          console.warn('[encrypt] Failed to encrypt credentials:', encErr.message);
+        }
+      }
+
       toast.success('Configuration sauvegardée');
-      setMailPassword(''); // Clear password field after save
+      setMailPassword('');
     } catch (e: any) {
       toast.error(e.message || 'Erreur de sauvegarde');
     } finally {

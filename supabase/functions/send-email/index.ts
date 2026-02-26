@@ -61,9 +61,23 @@ async function decryptValue(encrypted: string): Promise<string> {
 
 function sanitizeHtml(text: string): string {
   return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
-    .replace(/javascript:/gi, "");
+    // Remove dangerous tags entirely (script, iframe, embed, object, svg, math, base, form)
+    .replace(/<(script|iframe|embed|object|svg|math|base|form)\b[^]*?<\/\1>/gi, "")
+    .replace(/<(script|iframe|embed|object|svg|math|base|form)\b[^>]*\/?>/gi, "")
+    // Remove all event handlers (quoted and unquoted)
+    .replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    // Remove javascript:, vbscript:, data: URLs (including encoded variants)
+    .replace(/(?:java|vb)script\s*:/gi, "")
+    .replace(/&#\d+;?|&#x[\da-f]+;?/gi, (match) => {
+      // Decode HTML entities and re-check for script URIs
+      const decoded = match;
+      if (/javascript|vbscript/i.test(decoded)) return "";
+      return match;
+    })
+    // Remove data: URIs in src/href attributes (potential XSS vector)
+    .replace(/(src|href)\s*=\s*(?:"data:[^"]*"|'data:[^']*'|data:[^\s>]+)/gi, "")
+    // Remove style attributes containing expression() or url(javascript:)
+    .replace(/style\s*=\s*(?:"[^"]*expression\s*\([^"]*"|'[^']*expression\s*\([^']*')/gi, "");
 }
 
 function validateEmail(email: string): boolean {
