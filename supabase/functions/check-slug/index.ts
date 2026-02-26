@@ -5,17 +5,50 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Simple in-memory rate limiter (per isolate lifetime)
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 15; // max requests per window per IP
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    // Rate limiting by client IP
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (isRateLimited(clientIp)) {
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { slug } = await req.json()
 
     if (!slug || typeof slug !== 'string') {
       return new Response(
         JSON.stringify({ error: 'slug is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Basic slug format validation
+    if (slug.length > 63 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(slug)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid slug format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -33,7 +66,7 @@ Deno.serve(async (req) => {
 
     if (error) {
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: 'Unable to check slug availability' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -51,7 +84,6 @@ Deno.serve(async (req) => {
         `${slug}-online`,
       ]
 
-      // Check which suggestions are available
       const { data: existing } = await supabase
         .from('shops')
         .select('slug')
@@ -65,7 +97,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ available, suggestions }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (err) {
+  } catch (_err) {
     return new Response(
       JSON.stringify({ error: 'Invalid request' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

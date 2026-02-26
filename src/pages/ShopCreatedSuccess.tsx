@@ -21,7 +21,7 @@ export default function ShopCreatedSuccess() {
   const shopUrl = slug ? `${slug}.ventou.shop` : '';
   const fullUrl = slug ? `https://${shopUrl}` : '';
 
-  console.log('[ShopCreatedSuccess] isLoading:', isLoading, 'stateSlug:', stateSlug, 'shop?.slug:', shop?.slug, 'final slug:', slug);
+  if (import.meta.env.DEV) console.log('[ShopCreatedSuccess] isLoading:', isLoading, 'stateSlug:', stateSlug, 'shop?.slug:', shop?.slug, 'final slug:', slug);
 
   // Guard ensures shop exists or we're on an allowed page — no redirect needed here
 

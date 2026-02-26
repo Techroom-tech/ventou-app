@@ -57,8 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log('[Auth] onAuthStateChange:', event, currentSession?.user?.id ?? 'no user');
-        console.log('[Auth] Session:', currentSession ? 'exists' : 'null');
+        if (import.meta.env.DEV) {
+          console.log('[Auth] onAuthStateChange:', event, currentSession?.user?.id ?? 'no user');
+          console.log('[Auth] Session:', currentSession ? 'exists' : 'null');
+        }
 
         if (!mounted) return;
         initialSessionHandled = true;
@@ -70,12 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_OUT' && !currentSession) {
           const storedSession = localStorage.getItem('ventou-auth-token');
           if (storedSession) {
-            console.log('[Auth] SIGNED_OUT fired but storage still has token — ignoring');
+            if (import.meta.env.DEV) console.log('[Auth] SIGNED_OUT fired but storage still has token — ignoring');
             // Don't clear state, don't logout — the token may still be valid
             return;
           }
           // Genuine logout
-          console.log('[Auth] Genuine logout');
+          if (import.meta.env.DEV) console.log('[Auth] Genuine logout');
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -94,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               const profileData = await fetchProfile(currentSession.user.id);
               if (mounted) {
-                console.log('[Auth] Profile:', profileData);
+                if (import.meta.env.DEV) console.log('[Auth] Profile:', profileData);
                 setProfile(profileData);
               }
             } catch (e) {
@@ -110,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      console.log('[Auth] getSession:', initialSession?.user?.id ?? 'no session');
+      if (import.meta.env.DEV) console.log('[Auth] getSession:', initialSession?.user?.id ?? 'no session');
 
       if (!mounted) return;
       if (!initialSessionHandled) {
