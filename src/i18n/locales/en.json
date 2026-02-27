@@ -186,7 +186,26 @@
     },
     "stats": {
       "totalSales": "Total Sales",
-      "ordersToday": "Orders Today"
+      "ordersToday": "Orders Today",
+      "revenueTotal": "Total Revenue",
+      "revenue7days": "Last 7 days",
+      "totalClients": "Total Clients"
+    },
+    "hero": {
+      "subtitle": "It's peak time - launch that campaign you've been planning!"
+    },
+    "header": {
+      "search": "Search anything: ⌘K",
+      "visitShop": "Visit my shop",
+      "maskData": "Mask data"
+    },
+    "sidebar": {
+      "helpCenter": "Help Center",
+      "collapse": "Collapse menu"
+    },
+    "shopSwitcher": {
+      "title": "Switch shop",
+      "create": "Create a shop"
     },
     "summary": {
       "todayRevenue": "Today your store generated {{amount}} from {{count}} order(s)",
@@ -232,9 +251,10 @@
       "noData": "No data for this period"
     },
     "topProducts": {
-      "title": "Top Products",
+      "title": "Most Sold Products",
       "units": "units",
-      "noData": "Insufficient data"
+      "noData": "Insufficient data",
+      "empty": "No data available"
     },
     "orders": {
       "recent": "Recent Orders",
@@ -257,7 +277,8 @@
       "settings": "Settings",
       "wallet": "Wallet",
       "plus": "More",
-      "account": "My account"
+      "account": "My account",
+      "menu": "Menu"
     },
     "notifications": {
       "title": "Notifications",

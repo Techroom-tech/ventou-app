@@ -1,0 +1,1 @@
+UPDATE subscription_plans SET max_stores = 4 WHERE id IN ('free', 'pro', 'business');

@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   DollarSign, ShoppingCart, Package, TrendingUp,
-  Plus, Share2, BarChart2, Tag,
+  Plus, Share2, BarChart2, Tag, Info,
   AlertTriangle, AlertCircle, ArrowUpRight, ArrowDownRight,
-  Monitor, Clock,
+  Clock,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -22,49 +22,44 @@ import { useRevenueChart } from '@/hooks/useRevenueChart';
 import { useDashboardKPIs } from '@/hooks/useDashboardKPIs';
 import { useDashboardAlerts, DashboardAlert } from '@/hooks/useDashboardAlerts';
 import { useTopProducts } from '@/hooks/useTopProducts';
+import { useDataMask, maskValue } from '@/contexts/DataMaskContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getStorefrontUrl } from '@/lib/domain';
+import { getTimeGreeting } from '@/lib/greeting';
 
-// ─── KPI Card ───────────────────────────────────────────────────────────────
-interface KpiCardProps {
+// ─── Stat Card (Premium) ─────────────────────────────────────────────────────
+interface StatCardProps {
   title: string;
-  value: string | number;
-  change: number | null;
+  value: string;
   icon: React.ElementType;
   loading?: boolean;
+  large?: boolean;
 }
 
-function KpiCard({ title, value, change, icon: Icon, loading }: KpiCardProps) {
-  const isPositive = change !== null && change >= 0;
-
+function StatCard({ title, value, icon: Icon, loading, large }: StatCardProps) {
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground font-medium truncate mb-1">{title}</p>
-          {loading ? (
-            <Skeleton className="h-7 w-24" />
-          ) : (
-            <p className="text-xl font-bold text-foreground truncate">{value}</p>
-          )}
-          {change !== null && !loading && (
-            <div className={cn(
-              'flex items-center gap-0.5 mt-1 text-xs font-medium',
-              isPositive ? 'text-[hsl(142,76%,36%)]' : 'text-destructive'
-            )}>
-              {isPositive
-                ? <ArrowUpRight className="h-3 w-3" />
-                : <ArrowDownRight className="h-3 w-3" />}
-              <span>{isPositive ? '+' : ''}{change}%</span>
-            </div>
-          )}
+    <Card className={cn('rounded-2xl border-0 bg-muted/60', large && 'col-span-2 sm:col-span-1')}>
+      <CardContent className={cn('p-5', large && 'p-6')}>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            {loading ? (
+              <Skeleton className={cn('h-8 w-32', large && 'h-10 w-40')} />
+            ) : (
+              <p className={cn('font-bold text-foreground', large ? 'text-2xl sm:text-3xl' : 'text-xl')}>
+                {value}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground font-medium">{title}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Icon className="h-4 w-4 text-muted-foreground/60" />
+            <Info className="h-3.5 w-3.5 text-muted-foreground/40" />
+          </div>
         </div>
-        <div className="p-2 rounded-lg bg-muted shrink-0">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }
@@ -107,30 +102,6 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
   );
 }
 
-// ─── Quick Action Button ──────────────────────────────────────────────────────
-interface QuickActionBtnProps {
-  icon: React.ElementType;
-  label: string;
-  sub: string;
-  to?: string;
-  onClick?: () => void;
-}
-
-function QuickActionBtn({ icon: Icon, label, sub, to, onClick }: QuickActionBtnProps) {
-  const inner = (
-    <Card className="p-4 h-full flex flex-col items-start gap-1.5 rounded-xl border hover:bg-muted/50 transition-colors cursor-pointer">
-      <div className="p-1.5 rounded-md bg-muted">
-        <Icon className="h-4 w-4 text-foreground" />
-      </div>
-      <p className="text-sm font-semibold text-foreground leading-tight">{label}</p>
-      <p className="text-xs text-muted-foreground leading-tight">{sub}</p>
-    </Card>
-  );
-
-  if (to) return <Link to={to} className="block h-full">{inner}</Link>;
-  return <button onClick={onClick} className="text-left h-full w-full">{inner}</button>;
-}
-
 // ─── Revenue Chart ────────────────────────────────────────────────────────────
 function RevenueChart({ shopId, currency }: { shopId: string; currency: string }) {
   const { t } = useTranslation();
@@ -141,7 +112,7 @@ function RevenueChart({ shopId, currency }: { shopId: string; currency: string }
   const totalOrders = chartData?.reduce((s, d) => s + d.orders, 0) ?? 0;
 
   return (
-    <Card className="p-4 sm:p-5">
+    <Card className="p-4 sm:p-5 rounded-2xl">
       <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className="text-sm font-semibold text-foreground">{t('dashboard.chart.title')}</h3>
@@ -234,7 +205,7 @@ function RecentOrdersSection({ shopId, currency }: { shopId: string; currency: s
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl">
       <CardHeader className="pb-3 px-4 pt-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">{t('dashboard.orders.recent')}</CardTitle>
@@ -287,20 +258,38 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
   const { t } = useTranslation();
   const { data: topProducts, isLoading } = useTopProducts(shopId);
 
-  if (!isLoading && (!topProducts || topProducts.length === 0)) return null;
-
   return (
-    <Card>
+    <Card className="rounded-2xl">
       <CardHeader className="pb-3 px-4 pt-4">
-        <CardTitle className="text-sm font-semibold">{t('dashboard.topProducts.title')}</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold">
+            {t('dashboard.topProducts.title')}
+          </CardTitle>
+          <Link to="/dashboard/products" className="text-xs text-primary hover:underline font-medium">
+            {t('dashboard.orders.viewAll')} →
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
           <div className="px-4 pb-4 space-y-3">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
           </div>
+        ) : (!topProducts || topProducts.length === 0) ? (
+          <div className="px-4 pb-6 text-center">
+            <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground mb-3">
+              {t('dashboard.topProducts.empty', 'Aucune donnée disponible')}
+            </p>
+            <Link to="/dashboard/products/new">
+              <Button size="sm" className="rounded-full text-xs">
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                {t('dashboard.actions.addProduct')}
+              </Button>
+            </Link>
+          </div>
         ) : (
-          topProducts!.map((p, i) => (
+          topProducts.map((p, i) => (
             <div key={p.name} className="flex items-center gap-3 px-4 py-3 border-b last:border-0">
               <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}</span>
               <div className="flex-1 min-w-0">
@@ -320,14 +309,20 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { shop } = useShop();
+  const { profile } = useAuth();
+  const { isMasked } = useDataMask();
   const shopId = shop?.id;
   const currency = shop?.currency ?? 'XOF';
 
   const { data: kpi, isLoading: kpiLoading } = useDashboardKPIs(shopId);
   const { data: alerts } = useDashboardAlerts(shopId);
+
+  const greeting = getTimeGreeting();
+  const firstName = profile?.first_name || 'Vendeur';
+  const isFr = i18n.language?.startsWith('fr');
 
   function handleShare() {
     if (!shop?.slug) return;
@@ -337,73 +332,68 @@ export default function Dashboard() {
     });
   }
 
-  const hasActivity = (kpi?.ordersToday ?? 0) > 0;
+  // Format values with mask support
+  const fmtCurrency = (val: number) => maskValue(formatCurrency(val, currency as 'XOF'), isMasked);
+  const fmtNumber = (val: number) => maskValue(String(val), isMasked);
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto space-y-4">
+      <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* ── Section 1: Smart Summary Banner ── */}
-        <div className="bg-muted/40 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-foreground leading-relaxed">
-            {kpiLoading ? (
-              <Skeleton className="h-4 w-72 inline-block" />
-            ) : hasActivity ? (
-              t('dashboard.summary.todayRevenue', {
-                amount: formatCurrency(kpi!.revenueToday, currency as 'XOF'),
-                count: kpi!.ordersToday,
-              })
-            ) : (
-              t('dashboard.summary.noActivity')
-            )}
+        {/* ── Hero Greeting ── */}
+        <div className="pt-2 sm:pt-4">
+          <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-medium text-foreground leading-tight">
+            {isFr ? greeting.text : greeting.textEn} {firstName} ! {greeting.emoji}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-lg">
+            {t('dashboard.hero.subtitle', "C'est l'heure de pointe - lancez cette campagne que vous planifiez !")}
           </p>
-          {!kpiLoading && kpi?.revenueChange !== null && (
-            <Badge
-              className={cn(
-                'shrink-0 text-xs font-semibold border-0',
-                (kpi!.revenueChange ?? 0) >= 0
-                  ? 'bg-[hsl(142,76%,36%)]/15 text-[hsl(142,76%,30%)] dark:text-[hsl(142,76%,60%)]'
-                  : 'bg-destructive/10 text-destructive'
-              )}
-            >
-              {(kpi!.revenueChange ?? 0) >= 0 ? '+' : ''}{kpi!.revenueChange}% {t('dashboard.summary.vsYesterday')}
-            </Badge>
-          )}
         </div>
 
-        {/* ── Section 2: KPI Cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard
-            title={t('dashboard.kpis.revenueToday')}
-            value={formatCurrency(kpi?.revenueToday ?? 0, currency as 'XOF')}
-            change={kpi?.revenueChange ?? null}
+        {/* ── Action Buttons (Pills) ── */}
+        <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
+          <Link to="/dashboard/products/new">
+            <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground">
+              <Plus className="h-4 w-4" />
+              {t('dashboard.actions.addProduct')}
+            </Button>
+          </Link>
+          <Link to="/dashboard/parametres/codes-promo">
+            <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2">
+              <Tag className="h-4 w-4" />
+              {t('dashboard.actions.createPromo')}
+            </Button>
+          </Link>
+          <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2" onClick={handleShare}>
+            <Share2 className="h-4 w-4" />
+            {t('dashboard.actions.shareShop')}
+          </Button>
+        </div>
+
+        {/* ── Stat Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <StatCard
+            title={t('dashboard.stats.revenueTotal', 'Revenu total')}
+            value={fmtCurrency(kpi?.revenueToday ?? 0)}
             icon={DollarSign}
             loading={kpiLoading}
+            large
           />
-          <KpiCard
-            title={t('dashboard.kpis.ordersToday')}
-            value={kpi?.ordersToday ?? 0}
-            change={kpi?.ordersChange ?? null}
-            icon={ShoppingCart}
-            loading={kpiLoading}
-          />
-          <KpiCard
-            title={t('dashboard.kpis.productsSold')}
-            value={kpi?.productsSoldToday ?? 0}
-            change={null}
-            icon={Package}
-            loading={kpiLoading}
-          />
-          <KpiCard
-            title={t('dashboard.kpis.avgOrder')}
-            value={formatCurrency(kpi?.avgOrderValue ?? 0, currency as 'XOF')}
-            change={null}
+          <StatCard
+            title={t('dashboard.stats.revenue7days', '7 derniers jours')}
+            value={fmtCurrency(kpi?.avgOrderValue ?? 0)}
             icon={TrendingUp}
             loading={kpiLoading}
           />
+          <StatCard
+            title={t('dashboard.stats.totalClients', 'Nombre total de clients')}
+            value={fmtNumber(kpi?.ordersToday ?? 0)}
+            icon={ShoppingCart}
+            loading={kpiLoading}
+          />
         </div>
 
-        {/* ── Section 3: Smart Alerts (conditional) ── */}
+        {/* ── Smart Alerts ── */}
         {(alerts ?? []).length > 0 && (
           <div className="space-y-2">
             {alerts!.map(alert => (
@@ -412,38 +402,10 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Section 4: Quick Actions ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <QuickActionBtn
-            icon={Plus}
-            label={t('dashboard.actions.addProduct')}
-            sub={t('dashboard.actions.addProductSub')}
-            to="/dashboard/products/new"
-          />
-          <QuickActionBtn
-            icon={Share2}
-            label={t('dashboard.actions.shareShop')}
-            sub={t('dashboard.actions.shareSub')}
-            onClick={handleShare}
-          />
-          <QuickActionBtn
-            icon={BarChart2}
-            label={t('dashboard.actions.viewAnalytics')}
-            sub={t('dashboard.actions.analyticsSub')}
-            to="/dashboard/orders"
-          />
-          <QuickActionBtn
-            icon={Tag}
-            label={t('dashboard.actions.createPromo')}
-            sub={t('dashboard.actions.promoSub')}
-            to="/dashboard/parametres/codes-promo"
-          />
-        </div>
-
-        {/* ── Section 5: Revenue Chart ── */}
+        {/* ── Revenue Chart ── */}
         {shopId && <RevenueChart shopId={shopId} currency={currency} />}
 
-        {/* ── Sections 6 & 7: Recent Orders + Top Products ── */}
+        {/* ── Top Products + Recent Orders ── */}
         {shopId && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">

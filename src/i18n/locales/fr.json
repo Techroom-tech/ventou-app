@@ -186,7 +186,26 @@
     },
     "stats": {
       "totalSales": "Ventes totales",
-      "ordersToday": "Commandes aujourd'hui"
+      "ordersToday": "Commandes aujourd'hui",
+      "revenueTotal": "Revenu total",
+      "revenue7days": "7 derniers jours",
+      "totalClients": "Nombre total de clients"
+    },
+    "hero": {
+      "subtitle": "C'est l'heure de pointe - lancez cette campagne que vous planifiez !"
+    },
+    "header": {
+      "search": "Trouvez n'importe quoi : ⌘K",
+      "visitShop": "Visiter ma boutique",
+      "maskData": "Masquer les données"
+    },
+    "sidebar": {
+      "helpCenter": "Centre d'aide",
+      "collapse": "Réduire le menu"
+    },
+    "shopSwitcher": {
+      "title": "Changer de boutique",
+      "create": "Créer une boutique"
     },
     "summary": {
       "todayRevenue": "Aujourd'hui votre boutique a généré {{amount}} grâce à {{count}} commande(s)",
@@ -232,9 +251,10 @@
       "noData": "Aucune donnée pour cette période"
     },
     "topProducts": {
-      "title": "Top produits",
+      "title": "Produits les plus vendus",
       "units": "unités",
-      "noData": "Données insuffisantes"
+      "noData": "Données insuffisantes",
+      "empty": "Aucune donnée disponible"
     },
     "products": {
       "title": "Catalogue Produits",
@@ -318,7 +338,8 @@
       "settings": "Paramètres",
       "wallet": "Portefeuille",
       "plus": "Plus",
-      "account": "Mon compte"
+      "account": "Mon compte",
+      "menu": "Menu"
     },
     "notifications": {
       "title": "Notifications",
