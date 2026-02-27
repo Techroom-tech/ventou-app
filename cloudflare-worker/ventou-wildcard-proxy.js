@@ -133,19 +133,11 @@ export default {
       });
     }
 
-    // ── Non-proxied paths: pass through with X-User-Country ──
-    if (!shouldProxy(pathname)) {
-      const response = await fetch(request);
-      const newHeaders = new Headers(response.headers);
-      newHeaders.set('X-User-Country', country);
-      return new Response(response.body, {
-        status: response.status,
-        headers: newHeaders,
-      });
-    }
-
-    // ── Build origin request for assets/analytics ──
+    // ── ALL requests must be proxied to the real origin ──
+    // Because the wildcard DNS points to a dummy IP (192.0.2.1),
+    // we must rewrite every request to the actual origin (ventou.shop).
     const originUrl = `${ORIGIN_URL}${pathname}${url.search}`;
+    const isAssetPath = shouldProxy(pathname);
 
     const originHeaders = new Headers(request.headers);
     // Critical: set Host to the registered custom domain so Lovable serves the correct assets
@@ -180,8 +172,8 @@ export default {
       }
     }
 
-    // Set proper caching
-    if (response.ok) {
+    // Set proper caching (only for asset paths)
+    if (response.ok && isAssetPath) {
       responseHeaders.set('Cache-Control', getCacheControl(pathname));
     }
 
