@@ -1,64 +1,58 @@
 
+1) Corriger immédiatement la cause du blocage cross-origin des assets  
+- Modifier `vite.config.ts` pour supprimer la base absolue (`https://ventou.shop/`) et revenir à une base relative (`/`) en production.  
+- Vérifier qu’aucune autre config Vite n’impose un host absolu pour les chunks/assets.
 
-## Analysis
+2) Rendre la génération d’URLs 100% agnostique au domaine  
+- Ajouter un helper central (ex: `src/lib/domain.ts`) pour construire les URLs storefront depuis `window.location` + slug, sans hardcode `ventou.shop`.  
+- Remplacer les hardcodes dans:  
+  - `src/pages/ShopCreatedSuccess.tsx`  
+  - `src/pages/Dashboard.tsx`  
+  - `src/pages/CreateShop.tsx` (affichage preview domaine)  
+  - `src/pages/EditProduct.tsx` (liens produit)  
+  - textes/UI dépendants si nécessaire (`SettingsSeo`, i18n labels dynamiques).
 
-The current codebase **already has most of the subdomain multi-tenancy infrastructure**:
+3) Uniformiser la stratégie CORS côté Edge Functions (durcie mais compatible multi-tenant)  
+- Créer une util CORS partagée pour fonctions Supabase avec:  
+  - `Access-Control-Allow-Origin` dynamique (origin exact si `https://ventou.shop` ou pattern `https://*.ventou.shop`)  
+  - `Vary: Origin`  
+  - `Access-Control-Allow-Headers` complet (incluant headers Supabase client)  
+  - gestion `OPTIONS` systématique + headers sur toutes les réponses d’erreur/succès.  
+- Appliquer à:  
+  - `supabase/functions/check-slug/index.ts`  
+  - `supabase/functions/send-email/index.ts`  
+  - `supabase/functions/smtp-relay/index.ts`  
+  - `supabase/functions/encrypt-config/index.ts`.
 
-- `src/lib/subdomain.ts` → `getSubdomain()` extracts slug from `*.ventou.shop`
-- `src/App.tsx` → renders `<ShopStorefront slug={subdomain} />` directly when subdomain detected (no redirect, no Router needed)
-- Fallback routes `/boutique/:slug` and `/shop/:slug` exist
+4) Ajuster l’architecture de routage multi-tenant  
+- Conserver `getStoreSlugFromHostname()` (déjà compatible wildcard) et vérifier qu’aucune redirection/URL interne ne force `ventou.shop`.  
+- Vérifier que les providers/contextes storefront restent isolés par hostname et ne dépendent pas d’un domaine fixe.
 
-### Gaps to fix
+5) Validation de compatibilité production (obligatoire avant go-live)  
+- Publier frontend après correction Vite.  
+- Tests E2E à exécuter:  
+  - `https://ventou.shop`  
+  - `https://www.ventou.shop`  
+  - `https://test.ventou.shop`  
+  - `https://slug.ventou.shop` réel en DB.  
+- Vérifications réseau:  
+  - assets JS/CSS chargés depuis le même origin de la page (pas `ventou.shop` forcé depuis un sous-domaine)  
+  - absence d’erreurs MIME/CORS sur assets  
+  - requête `~api/analytics` envoyée vers l’origin courant, sans preflight bloqué  
+  - appels Supabase Edge Functions OK depuis sous-domaines.
 
-1. **Hardcoded domain** — `getSubdomain()` only supports `ventou.shop`. Should support any custom domain pattern for future scalability.
-2. **No BrowserRouter in subdomain branch** — storefront rendered via subdomain has no Router, so any internal links or `useNavigate` will crash.
-3. **No dedicated StoreNotFound component** — the 404 is inline JSX inside `ShopStorefront`, not a reusable component.
-4. **No store context** — slug resolution is ad-hoc; no shared context for "current storefront slug" that prioritizes hostname > route param.
-5. **Hardcoded `https://ventou.shop`** in the storefront "back" button — should use relative path or configurable origin.
-
----
-
-## Implementation Plan
-
-### 1. Refactor `src/lib/subdomain.ts`
-- Rename function to `getStoreSlugFromHostname()` (keep `getSubdomain` as alias for backward compat)
-- Use generic hostname splitting: split by `.`, if 3+ parts and first part is not `www`, return first part
-- Skip localhost, IPs, `*.lovable.app`, and configurable main domains
-- Export a `MAIN_DOMAINS` constant for easy future updates
-
-### 2. Create `src/contexts/StorefrontContext.tsx`
-- New context providing `{ slug: string; source: 'hostname' | 'route' }`
-- Resolves slug with priority: hostname first, then route param fallback
-- Wraps the storefront rendering in both App.tsx branches
-
-### 3. Create `src/components/storefront/StoreNotFound.tsx`
-- Dedicated production-quality 404 page for stores not found
-- No hardcoded URLs — uses relative paths
-- Translatable via i18next
-
-### 4. Update `src/App.tsx`
-- Wrap subdomain branch in `<BrowserRouter>` so storefront internal routing works
-- Use `StorefrontProvider` in both subdomain and route-based storefront rendering
-- Ensure catch-all `*` route exists (already present)
-
-### 5. Update `src/pages/ShopStorefront.tsx`
-- Replace inline "not found" JSX with `<StoreNotFound />` component
-- Remove hardcoded `https://ventou.shop` link
-- Ensure all asset/API paths are relative (audit `src=` and `href=` attributes)
-
-### 6. Update `src/pages/ShopStorefrontRoute.tsx`
-- Wrap with `StorefrontProvider` using route param as slug source
-
----
-
-## Files Changed
-
-| File | Action |
-|------|--------|
-| `src/lib/subdomain.ts` | Refactor to generic hostname logic |
-| `src/contexts/StorefrontContext.tsx` | **New** — storefront slug context |
-| `src/components/storefront/StoreNotFound.tsx` | **New** — 404 store page |
-| `src/App.tsx` | Add BrowserRouter to subdomain branch, integrate context |
-| `src/pages/ShopStorefront.tsx` | Use StoreNotFound component, remove hardcoded URLs |
-| `src/pages/ShopStorefrontRoute.tsx` | Integrate StorefrontProvider |
-
+6) Détails techniques (implémentation ciblée)  
+- Fichiers principaux à modifier:  
+  - `vite.config.ts`  
+  - `src/lib/domain.ts` (nouveau)  
+  - `src/pages/ShopCreatedSuccess.tsx`  
+  - `src/pages/Dashboard.tsx`  
+  - `src/pages/CreateShop.tsx`  
+  - `src/pages/EditProduct.tsx`  
+  - `supabase/functions/check-slug/index.ts`  
+  - `supabase/functions/send-email/index.ts`  
+  - `supabase/functions/smtp-relay/index.ts`  
+  - `supabase/functions/encrypt-config/index.ts`  
+- Déploiements:  
+  - frontend: bouton Publish/Update  
+  - edge functions: déploiement immédiat après modifications.
