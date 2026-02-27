@@ -3,12 +3,20 @@
  * Supports wildcard subdomains for multi-tenant architecture.
  */
 
-const ALLOWED_ORIGIN_PATTERN = /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*ventou\.shop$/i;
+const ALLOWED_PATTERNS = [
+  /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*ventou\.shop$/i,
+  /^https:\/\/[a-z0-9-]+\.lovable\.app$/i,
+  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/i,
+];
+
+function isAllowedOrigin(origin: string): boolean {
+  return ALLOWED_PATTERNS.some((p) => p.test(origin));
+}
 
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
   const requestOrigin = new URL(req.url).origin;
-  const allowedOrigin = ALLOWED_ORIGIN_PATTERN.test(origin) ? origin : requestOrigin;
+  const allowedOrigin = isAllowedOrigin(origin) ? origin : requestOrigin;
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
