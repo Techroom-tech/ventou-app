@@ -19,7 +19,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import StoreNotFound from '@/components/storefront/StoreNotFound';
 import { CountryProvider, useCountry } from '@/contexts/CountryContext';
 import CountrySelector from '@/components/storefront/CountrySelector';
-
+import { getPlatformUrl } from '@/lib/domain';
 interface ShopStorefrontProps {
   slug: string;
 }
@@ -568,7 +568,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
             </p>
             <p className="text-xs text-muted-foreground">
               {t('storefront.poweredBy')}{' '}
-              <a href="https://ventou.shop" className="font-semibold hover:underline" style={{ color: primaryColor }}>
+              <a href={getPlatformUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>
                 Ventou
               </a>
             </p>
