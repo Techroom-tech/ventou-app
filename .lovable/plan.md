@@ -1,58 +1,86 @@
 
-1) Corriger immédiatement la cause du blocage cross-origin des assets  
-- Modifier `vite.config.ts` pour supprimer la base absolue (`https://ventou.shop/`) et revenir à une base relative (`/`) en production.  
-- Vérifier qu’aucune autre config Vite n’impose un host absolu pour les chunks/assets.
 
-2) Rendre la génération d’URLs 100% agnostique au domaine  
-- Ajouter un helper central (ex: `src/lib/domain.ts`) pour construire les URLs storefront depuis `window.location` + slug, sans hardcode `ventou.shop`.  
-- Remplacer les hardcodes dans:  
-  - `src/pages/ShopCreatedSuccess.tsx`  
-  - `src/pages/Dashboard.tsx`  
-  - `src/pages/CreateShop.tsx` (affichage preview domaine)  
-  - `src/pages/EditProduct.tsx` (liens produit)  
-  - textes/UI dépendants si nécessaire (`SettingsSeo`, i18n labels dynamiques).
+# Refonte Dashboard Vendeur Premium — Plan Final
 
-3) Uniformiser la stratégie CORS côté Edge Functions (durcie mais compatible multi-tenant)  
-- Créer une util CORS partagée pour fonctions Supabase avec:  
-  - `Access-Control-Allow-Origin` dynamique (origin exact si `https://ventou.shop` ou pattern `https://*.ventou.shop`)  
-  - `Vary: Origin`  
-  - `Access-Control-Allow-Headers` complet (incluant headers Supabase client)  
-  - gestion `OPTIONS` systématique + headers sur toutes les réponses d’erreur/succès.  
-- Appliquer à:  
-  - `supabase/functions/check-slug/index.ts`  
-  - `supabase/functions/send-email/index.ts`  
-  - `supabase/functions/smtp-relay/index.ts`  
-  - `supabase/functions/encrypt-config/index.ts`.
+## Contexte
 
-4) Ajuster l’architecture de routage multi-tenant  
-- Conserver `getStoreSlugFromHostname()` (déjà compatible wildcard) et vérifier qu’aucune redirection/URL interne ne force `ventou.shop`.  
-- Vérifier que les providers/contextes storefront restent isolés par hostname et ne dépendent pas d’un domaine fixe.
+Le dashboard vendeur doit être refondu en style premium Shopify-like avec : greeting dynamique, nouveau header, sidebar avec sélecteur boutique, stats cards, section produits populaires, chat flottant intégré, et mise à jour de la limite boutiques à 4 pour tous les plans.
 
-5) Validation de compatibilité production (obligatoire avant go-live)  
-- Publier frontend après correction Vite.  
-- Tests E2E à exécuter:  
-  - `https://ventou.shop`  
-  - `https://www.ventou.shop`  
-  - `https://test.ventou.shop`  
-  - `https://slug.ventou.shop` réel en DB.  
-- Vérifications réseau:  
-  - assets JS/CSS chargés depuis le même origin de la page (pas `ventou.shop` forcé depuis un sous-domaine)  
-  - absence d’erreurs MIME/CORS sur assets  
-  - requête `~api/analytics` envoyée vers l’origin courant, sans preflight bloqué  
-  - appels Supabase Edge Functions OK depuis sous-domaines.
+## Résumé des décisions utilisateur
 
-6) Détails techniques (implémentation ciblée)  
-- Fichiers principaux à modifier:  
-  - `vite.config.ts`  
-  - `src/lib/domain.ts` (nouveau)  
-  - `src/pages/ShopCreatedSuccess.tsx`  
-  - `src/pages/Dashboard.tsx`  
-  - `src/pages/CreateShop.tsx`  
-  - `src/pages/EditProduct.tsx`  
-  - `supabase/functions/check-slug/index.ts`  
-  - `supabase/functions/send-email/index.ts`  
-  - `supabase/functions/smtp-relay/index.ts`  
-  - `supabase/functions/encrypt-config/index.ts`  
-- Déploiements:  
-  - frontend: bouton Publish/Update  
-  - edge functions: déploiement immédiat après modifications.
+- **Section vide "Produits les plus vendus"** : Garder la section, afficher illustration + CTA "Ajouter un produit" quand pas de données
+- **Section Communauté** : Retirée
+- **Actions rapides** : Ajouter un produit + Créer une réduction + Partager la boutique (existant déjà)
+- **Bouton chat flottant** : Chat intégré (widget type Crisp/Tawk — pour v1, lien vers support ou placeholder)
+- **Limite boutiques** : 4 pour tous les vendeurs (modifier `max_stores` dans `subscription_plans`)
+
+---
+
+## Tâches d'implémentation
+
+### 1. Mise à jour `subscription_plans.max_stores` → 4 pour tous
+- UPDATE les 3 plans (free, pro, business) pour `max_stores = 4`
+
+### 2. Helper `getTimeGreeting()`
+- Créer `src/lib/greeting.ts`
+- Retourne `{ text: string, emoji: string }` basé sur `new Date().getHours()`
+- 5-12h: "Bonjour" 🌅 / 12-14h: "Bon midi" ☀️ / 14-18h: "Bon après-midi" 🌤 / 18-22h: "Bonsoir" 🌙 / 22-5h: "Bonne nuit" 🌜
+
+### 3. Refonte DashboardHeader (Top Bar)
+- Logo VENTOU à gauche
+- Barre de recherche centrale (placeholder "Trouvez n'importe quoi : ⌘K") — UI only pour v1
+- À droite : bouton "Visiter ma boutique" (ouvre storefront), icône copier lien, toggle masquer données (œil barré), notifications, avatar
+- State `dataMasked` propagé via context ou prop
+
+### 4. Refonte DashboardSidebar
+- Bloc profil boutique en haut : logo boutique + nom + chevron → ouvre modal "Changer de boutique"
+- Navigation : Dashboard, Produits, Commandes, Clients, Marketing, Paramètres
+- Bas : Centre d'aide + bouton réduire sidebar (toggle collapsed 60px ↔ 250px)
+- Style : icônes outline, item actif fond gris clair, border-radius 8px
+
+### 5. Modal "Changer de boutique"
+- Composant `ShopSwitcherModal` avec Radix Dialog
+- Liste des boutiques (`useShop().shops`) avec logo, nom, flèche
+- Boutique active = indicateur visuel
+- Bouton "Créer une boutique +" (max 4, désactivé si atteint) → `/dashboard/create-shop`
+- `selectShop(id)` au clic + refresh page
+
+### 6. Refonte page Dashboard principale
+- **Hero** : Greeting dynamique + prénom (police serif via `font-serif` class) + emoji
+- **Sous-titre** : message contextuel motivant
+- **3 boutons action pill** : Ajouter un produit (accent), Créer une réduction, Partager boutique
+- **3 cards stats** : Revenu total, 7 derniers jours, Nombre total de clients — border-radius 16px, icône info
+- **Support `dataMasked`** : remplacer valeurs par `••••` quand activé
+- **Section "Produits les plus vendus"** : garder existante, améliorer état vide avec illustration + CTA
+- **Retirer section Communauté**
+- Conserver graphique revenus + commandes récentes
+
+### 7. Refonte MobileBottomNav
+- 5 items : Dashboard, Produits, Commandes, Clients, Menu
+- Style iOS-like : fond blanc, shadow top, coins arrondis haut
+- "Menu" → drawer slide droite avec nav complète + "Visiter ma boutique" en bas
+
+### 8. Bouton chat flottant
+- Composant `FloatingChatButton` : bouton rond 56px, fond accent, icône MessageCircle, position fixed bottom-right
+- V1 : ouvre lien vers page support (`/support`) ou WhatsApp
+- Future : intégration Crisp/Tawk
+
+### 9. Context `DataMaskContext`
+- Provider autour du dashboard layout
+- State `isMasked` + toggle
+- Utilisé dans les cards stats et hero pour remplacer les valeurs par `••••`
+
+### 10. Traductions i18n
+- Ajouter clés greeting, nouveaux labels header, modal boutique, masquage données dans `en.json` et `fr.json`
+
+---
+
+## Détails techniques
+
+- `max_stores` passe à 4 via UPDATE SQL sur `subscription_plans`
+- La sidebar collapsed utilise un state local + CSS transition `w-[60px]` ↔ `w-[250px]`
+- Le search bar est cosmétique v1 (pas de logique de recherche backend)
+- Police serif : utiliser `font-serif` Tailwind (Georgia fallback) — Playfair Display ajouté si demandé
+- Le modal boutique affiche un spinner pendant le chargement puis la liste
+- Le bouton "Créer une boutique" vérifie `shops.length < 4` avant de permettre la navigation
+
