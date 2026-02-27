@@ -118,6 +118,9 @@ export default {
     const origin = request.headers.get('Origin') || '';
     const pathname = url.pathname;
 
+    // Detect country from Cloudflare (preserves your old Worker's feature)
+    const country = request.cf?.country || 'BF';
+
     // ── CORS Preflight ──
     if (request.method === 'OPTIONS') {
       const corsHeaders = getCorsHeaders(origin);
@@ -130,19 +133,23 @@ export default {
       });
     }
 
-    // ── Only proxy specific paths ──
+    // ── Non-proxied paths: pass through with X-User-Country ──
     if (!shouldProxy(pathname)) {
-      // Let Cloudflare handle normally (serves HTML from origin)
-      return fetch(request);
+      const response = await fetch(request);
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set('X-User-Country', country);
+      return new Response(response.body, {
+        status: response.status,
+        headers: newHeaders,
+      });
     }
 
-    // ── Build origin request ──
+    // ── Build origin request for assets/analytics ──
     const originUrl = `${ORIGIN_URL}${pathname}${url.search}`;
 
     const originHeaders = new Headers(request.headers);
     // Critical: set Host to the registered custom domain so Lovable serves the correct assets
     originHeaders.set('Host', ORIGIN_HOST);
-    // Remove headers that might confuse the origin
     originHeaders.delete('CF-Connecting-IP');
     originHeaders.delete('CF-RAY');
 
@@ -168,7 +175,6 @@ export default {
     const correctMime = getMimeType(pathname);
     if (correctMime) {
       const currentType = responseHeaders.get('Content-Type') || '';
-      // Only override if origin returned a generic/wrong type
       if (!currentType || currentType.includes('text/plain') || currentType.includes('application/octet-stream')) {
         responseHeaders.set('Content-Type', correctMime);
       }
@@ -185,7 +191,8 @@ export default {
       responseHeaders.set(key, value);
     }
 
-    // Security headers
+    // Inject country header + security
+    responseHeaders.set('X-User-Country', country);
     responseHeaders.set('X-Content-Type-Options', 'nosniff');
 
     return new Response(response.body, {
