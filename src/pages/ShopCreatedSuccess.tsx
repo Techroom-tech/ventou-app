@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useShop } from '@/hooks/useShop';
 import Confetti from '@/components/Confetti';
+import { getStorefrontUrl, getStorefrontDomain } from '@/lib/domain';
 
 export default function ShopCreatedSuccess() {
   const { t } = useTranslation();
@@ -18,8 +19,8 @@ export default function ShopCreatedSuccess() {
   // Priority: slug from navigation state (immediate), fallback to cached shop
   const stateSlug = (location.state as any)?.slug;
   const slug = stateSlug || shop?.slug || '';
-  const shopUrl = slug ? `${slug}.ventou.shop` : '';
-  const fullUrl = slug ? `https://${shopUrl}` : '';
+  const shopUrl = slug ? getStorefrontDomain(slug) : '';
+  const fullUrl = slug ? getStorefrontUrl(slug) : '';
 
   if (import.meta.env.DEV) console.log('[ShopCreatedSuccess] isLoading:', isLoading, 'stateSlug:', stateSlug, 'shop?.slug:', shop?.slug, 'final slug:', slug);
 

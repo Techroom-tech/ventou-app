@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useShop } from '@/hooks/useShop';
+import { getStorefrontDomain, BASE_DOMAIN } from '@/lib/domain';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 // ─── Constants ───────────────────────────────────────────────
@@ -117,7 +118,7 @@ function ShopPreview({
         {values.slug && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
             <Globe className="h-3.5 w-3.5" />
-            <span className="font-mono">{values.slug}.ventou.shop</span>
+            <span className="font-mono">{getStorefrontDomain(values.slug)}</span>
           </div>
         )}
 
@@ -648,7 +649,7 @@ export default function CreateShop() {
                                 <Input {...field} className="font-mono" />
                               </FormControl>
                               <span className="text-sm text-muted-foreground whitespace-nowrap font-mono">
-                                .ventou.shop
+                                .{BASE_DOMAIN}
                               </span>
                               {slugStatus === 'checking' && (
                                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />

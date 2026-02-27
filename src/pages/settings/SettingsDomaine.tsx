@@ -7,12 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useShop } from '@/hooks/useShop';
+import { getStorefrontUrl } from '@/lib/domain';
 
 export default function SettingsDomaine() {
   const { shop } = useShop();
   const [copied, setCopied] = useState(false);
 
-  const shopUrl = shop?.slug ? `https://${shop.slug}.ventou.shop` : '';
+  const shopUrl = shop?.slug ? getStorefrontUrl(shop.slug) : '';
 
   const handleCopy = () => {
     if (!shopUrl) return;

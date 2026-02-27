@@ -25,6 +25,7 @@ import { useTopProducts } from '@/hooks/useTopProducts';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getStorefrontUrl } from '@/lib/domain';
 
 // ─── KPI Card ───────────────────────────────────────────────────────────────
 interface KpiCardProps {
@@ -330,7 +331,7 @@ export default function Dashboard() {
 
   function handleShare() {
     if (!shop?.slug) return;
-    const url = `https://${shop.slug}.ventou.shop`;
+    const url = getStorefrontUrl(shop.slug);
     navigator.clipboard.writeText(url).then(() => {
       toast.success(t('dashboard.actions.shareCopied'));
     });
