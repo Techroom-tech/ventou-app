@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShop } from '@/hooks/useShop';
+import { useDataMask } from '@/contexts/DataMaskContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { NotificationsPopover } from './NotificationsPopover';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +16,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Search, ExternalLink, Copy, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { getStorefrontUrl } from '@/lib/domain';
 
 export function DashboardHeader() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile, user, signOut } = useAuth();
   const { shop } = useShop();
+  const { isMasked, toggleMask } = useDataMask();
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -28,27 +34,86 @@ export function DashboardHeader() {
     return user?.email?.[0]?.toUpperCase() || 'U';
   };
 
-  const firstName = profile?.first_name || 'Vendeur';
-
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
 
+  const handleVisitShop = () => {
+    if (!shop?.slug) return;
+    window.open(getStorefrontUrl(shop.slug), '_blank');
+  };
+
+  const handleCopyLink = () => {
+    if (!shop?.slug) return;
+    navigator.clipboard.writeText(getStorefrontUrl(shop.slug)).then(() => {
+      toast.success(t('dashboard.actions.shareCopied'));
+    });
+  };
+
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 sm:px-6">
-      <div>
-        <h1 className="text-lg font-bold text-foreground">
-          {t('dashboard.welcome')} {firstName} 👋
-        </h1>
-        <p className="text-sm text-muted-foreground hidden sm:block">
-          {shop?.name || 'Ventou'} — {t('dashboard.overviewSubtitle')}
-        </p>
+    <header className="h-16 bg-card border-b border-border flex items-center gap-3 px-4 sm:px-6">
+      {/* Logo - mobile only */}
+      <div className="lg:hidden flex items-center gap-2 shrink-0">
+        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+          <span className="text-primary-foreground font-bold text-sm">V</span>
+        </div>
+        <span className="text-lg font-bold text-foreground">VENTOU</span>
       </div>
 
-      <div className="flex items-center gap-3">
-        <LanguageToggle />
+      {/* Search bar - desktop */}
+      <div className="hidden lg:flex flex-1 max-w-xl">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            readOnly
+            placeholder={t('dashboard.header.search', 'Trouvez n\'importe quoi : ⌘K')}
+            className="w-full h-10 pl-10 pr-4 rounded-xl bg-muted border-0 text-sm text-muted-foreground cursor-pointer focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Right actions */}
+      <div className="flex items-center gap-2 ml-auto">
+        {/* Visit shop - desktop */}
+        {shop?.slug && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleVisitShop}
+            className="hidden sm:flex rounded-full text-xs gap-1.5"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            {t('dashboard.header.visitShop', 'Visiter ma boutique')}
+          </Button>
+        )}
+
+        {/* Copy link */}
+        {shop?.slug && (
+          <button
+            onClick={handleCopyLink}
+            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+            title={t('dashboard.actions.shareSub')}
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+        )}
+
+        {/* Mask toggle */}
+        <button
+          onClick={toggleMask}
+          className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          title={t('dashboard.header.maskData', 'Masquer les données')}
+        >
+          {isMasked ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+
+        <div className="hidden sm:block">
+          <LanguageToggle />
+        </div>
         <NotificationsPopover />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="h-9 w-9 cursor-pointer">
