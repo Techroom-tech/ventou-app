@@ -71,7 +71,7 @@ const PROXY_PATH_PREFIXES = [
 ];
 
 // CORS: allowed origin pattern for *.ventou.shop
-const ALLOWED_ORIGIN_RE = /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)?ventou\.shop$/;
+const ALLOWED_ORIGIN_RE = /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*ventou\.shop$/i;
 
 // ─── Helpers ─────────────────────────────────────────────────
 
