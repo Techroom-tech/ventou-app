@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsPreflightOrMethod } from '../_shared/cors.ts'
 
 // Simple in-memory rate limiter (per isolate lifetime)
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
@@ -22,9 +18,9 @@ function isRateLimited(ip: string): boolean {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
+  const methodResponse = handleCorsPreflightOrMethod(req, 'POST');
+  if (methodResponse) return methodResponse;
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // Rate limiting by client IP

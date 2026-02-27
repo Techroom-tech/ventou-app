@@ -25,6 +25,7 @@ import { TagsInput } from '@/components/addproduct/TagsInput';
 import { CategoryPicker, type Category } from '@/components/addproduct/CategoryPicker';
 import { cn } from '@/lib/utils';
 import type { ProductStatus, ProductType } from '@/types/shop';
+import { getProductUrl } from '@/lib/domain';
 
 const productSchema = z.object({
   name: z.string().trim().min(1, 'Le nom est obligatoire').max(200),
@@ -452,7 +453,7 @@ export default function EditProduct() {
                 />
                 {shop && slug && (
                   <p className="text-xs text-muted-foreground">
-                    https://{shop.slug}.ventou.shop/produit/{slug}
+                    {getProductUrl(shop.slug, slug)}
                   </p>
                 )}
               </div>
@@ -652,7 +653,7 @@ export default function EditProduct() {
                       <div className="p-3 rounded-md bg-muted/50 space-y-1">
                         <p className="text-xs font-medium text-muted-foreground">Aperçu URL :</p>
                         <p className="text-sm text-primary font-mono break-all">
-                          https://{shop.slug}.ventou.shop/produit/{slug}
+                          {getProductUrl(shop.slug, slug)}
                         </p>
                       </div>
                     )}

@@ -10,6 +10,7 @@ import { useShop } from '@/hooks/useShop';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getSeoBasePath } from '@/lib/domain';
 
 export default function SettingsSeo() {
   const { shop, isLoading } = useShop();
@@ -118,7 +119,7 @@ export default function SettingsSeo() {
           <CardContent>
             <div className="space-y-1">
               <p className="text-base font-medium text-blue-600 truncate">{form.meta_title || shop?.name}</p>
-              <p className="text-xs text-green-700">ventou.shop/{shop?.slug}</p>
+              <p className="text-xs text-green-700">{shop?.slug ? getSeoBasePath(shop.slug) : ''}</p>
               <p className="text-sm text-muted-foreground line-clamp-2">{form.meta_description}</p>
             </div>
           </CardContent>
