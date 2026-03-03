@@ -695,5 +695,64 @@
       "submit": "Continuer",
       "error": "Identifiants invalides"
     }
+  },
+  "marketing": {
+    "hub": {
+      "title": "Marketing",
+      "subtitle": "Gérez vos campagnes, promotions et analytics",
+      "analytics": "Analytics",
+      "analyticsDesc": "Performance produits et heures de pointe",
+      "coupons": "Codes promo",
+      "couponsDesc": "Créer et gérer vos codes de réduction",
+      "promos": "Promotions Flash",
+      "promosDesc": "Offres limitées dans le temps sur vos produits",
+      "links": "Liens Trackés",
+      "linksDesc": "Suivez les clics de vos campagnes",
+      "pixels": "Pixels & Tracking",
+      "pixelsDesc": "Facebook Pixel, TikTok, Google Tag Manager"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "subtitle": "Performance basée sur vos commandes réelles",
+      "pixelPlaceholder": "Activez vos pixels Facebook/TikTok dans la section Pixels pour suivre vos sources de trafic.",
+      "productPerformance": "Performance produits",
+      "product": "Produit",
+      "orders": "Commandes",
+      "delivered": "Livrées",
+      "cancelled": "Annulées",
+      "revenue": "Revenus",
+      "hourlyTitle": "Activité par heure",
+      "noData": "Aucune donnée pour cette période"
+    },
+    "coupons": {
+      "create": "Nouveau code",
+      "list": "Vos codes promo",
+      "empty": "Aucun code promo créé",
+      "value": "Valeur",
+      "usageLimit": "Limite d'utilisation",
+      "used": "Utilisé",
+      "active": "Actif",
+      "paused": "Pausé",
+      "expired": "Expiré"
+    },
+    "promos": {
+      "create": "Nouvelle promo",
+      "list": "Promotions flash",
+      "empty": "Aucune promotion flash créée",
+      "selectProduct": "Sélectionner un produit",
+      "startsAt": "Début",
+      "endsAt": "Fin"
+    },
+    "links": {
+      "create": "Nouveau lien",
+      "list": "Vos liens trackés",
+      "empty": "Aucun lien tracké créé",
+      "name": "Nom de la campagne",
+      "clicks": "clics",
+      "other": "Autre"
+    },
+    "pixels": {
+      "customScripts": "Scripts personnalisés"
+    }
   }
 }

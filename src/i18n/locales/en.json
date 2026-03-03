@@ -695,5 +695,64 @@
       "submit": "Continue",
       "error": "Invalid credentials"
     }
+  },
+  "marketing": {
+    "hub": {
+      "title": "Marketing",
+      "subtitle": "Manage your campaigns, promotions and analytics",
+      "analytics": "Analytics",
+      "analyticsDesc": "Product performance and peak hours",
+      "coupons": "Discount Codes",
+      "couponsDesc": "Create and manage your discount codes",
+      "promos": "Flash Promotions",
+      "promosDesc": "Time-limited offers on your products",
+      "links": "Tracked Links",
+      "linksDesc": "Track clicks from your campaigns",
+      "pixels": "Pixels & Tracking",
+      "pixelsDesc": "Facebook Pixel, TikTok, Google Tag Manager"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "subtitle": "Performance based on your real orders",
+      "pixelPlaceholder": "Enable your Facebook/TikTok pixels in the Pixels section to track your traffic sources.",
+      "productPerformance": "Product performance",
+      "product": "Product",
+      "orders": "Orders",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "revenue": "Revenue",
+      "hourlyTitle": "Activity by hour",
+      "noData": "No data for this period"
+    },
+    "coupons": {
+      "create": "New code",
+      "list": "Your discount codes",
+      "empty": "No discount codes created",
+      "value": "Value",
+      "usageLimit": "Usage limit",
+      "used": "Used",
+      "active": "Active",
+      "paused": "Paused",
+      "expired": "Expired"
+    },
+    "promos": {
+      "create": "New promo",
+      "list": "Flash promotions",
+      "empty": "No flash promotions created",
+      "selectProduct": "Select a product",
+      "startsAt": "Starts",
+      "endsAt": "Ends"
+    },
+    "links": {
+      "create": "New link",
+      "list": "Your tracked links",
+      "empty": "No tracked links created",
+      "name": "Campaign name",
+      "clicks": "clicks",
+      "other": "Other"
+    },
+    "pixels": {
+      "customScripts": "Custom scripts"
+    }
   }
 }

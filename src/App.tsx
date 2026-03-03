@@ -53,6 +53,14 @@ const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 const Customers = lazy(() => import("./pages/Customers"));
 
+// Marketing pages
+const MarketingHub = lazy(() => import("./pages/marketing/MarketingHub"));
+const MarketingAnalytics = lazy(() => import("./pages/marketing/MarketingAnalytics"));
+const MarketingCoupons = lazy(() => import("./pages/marketing/MarketingCoupons"));
+const MarketingPromos = lazy(() => import("./pages/marketing/MarketingPromos"));
+const MarketingLinks = lazy(() => import("./pages/marketing/MarketingLinks"));
+const MarketingPixels = lazy(() => import("./pages/marketing/MarketingPixels"));
+
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminVendors = lazy(() => import("./pages/admin/AdminVendors"));
@@ -146,6 +154,14 @@ const App = () => {
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardGuard><Settings /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/commandes/:orderId" element={<ProtectedRoute><DashboardGuard><OrderDetail /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/customers" element={<ProtectedRoute><DashboardGuard><Customers /></DashboardGuard></ProtectedRoute>} />
+
+            {/* Marketing */}
+            <Route path="/dashboard/marketing" element={<ProtectedRoute><DashboardGuard><MarketingHub /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/marketing/analytics" element={<ProtectedRoute><DashboardGuard><MarketingAnalytics /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/marketing/coupons" element={<ProtectedRoute><DashboardGuard><MarketingCoupons /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/marketing/promos" element={<ProtectedRoute><DashboardGuard><MarketingPromos /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/marketing/liens" element={<ProtectedRoute><DashboardGuard><MarketingLinks /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/marketing/pixels" element={<ProtectedRoute><DashboardGuard><MarketingPixels /></DashboardGuard></ProtectedRoute>} />
 
             {/* Settings V6 */}
             <Route path="/dashboard/parametres" element={<ProtectedRoute><DashboardGuard><SettingsHub /></DashboardGuard></ProtectedRoute>} />
