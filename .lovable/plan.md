@@ -1,123 +1,73 @@
 
 
-# Plan: Marketing Center Ventou
+# Plan: Refonte Marketing Center — Hub Premium + Pixels Structurés
 
-## Analyse de faisabilité
+## Résumé
 
-**Ce qui existe déjà** : Coupons (table `discount_codes` + hook + page), Pixels (table `tracking_settings` + hook + page) — actuellement dans Settings.
+Réécrire les 6 pages marketing avec un design SaaS premium (cartes 16px radius, hover shadows, icônes 32px, chevrons). La page Pixels passe d'un formulaire basique à un formulaire structuré par bloc (Facebook, TikTok, GTM, Custom) avec toggles d'activation par section. Le tracking_settings DB reste inchangé — les toggles sont dérivés de la présence d'un ID non-vide.
 
-**Ce qui n'existe PAS en DB** : Analytics de trafic (pas de page views, pas de sources), Flash promotions, Liens trackés. Il n'y a aucune instrumentation storefront pour capturer des events (ViewContent, AddToCart, etc.).
+## Fichiers à modifier
 
-**Décision réaliste** : On crée le Marketing Hub avec 5 sections. Analytics sera basé uniquement sur les données `orders` disponibles (performance produits par commandes, performance horaire par commandes). Les métriques de trafic/visiteurs/sources ne peuvent pas être affichées car aucune donnée n'existe — on affiche un placeholder "Connectez vos pixels pour activer le suivi" au lieu de données fictives. Flash Promotions et Liens Trackés nécessitent de nouvelles tables.
+### 1. `src/pages/marketing/MarketingHub.tsx` — Refonte complète
 
----
+- Header : titre 28px SemiBold "Marketing", sous-texte 14px "Boostez vos ventes avec des outils marketing avancés"
+- Grid 2 colonnes desktop / 1 mobile, gap 16px
+- Cartes : min-height 120px, border-radius 16px, bg white, border #E5E7EB, hover shadow-md
+- Icône 32px dans cercle coloré à gauche, titre 16px SemiBold, description 14px, ChevronRight à droite
+- Max-width 1200px, padding 32px desktop / 16px mobile
 
-## 1. Navigation — Marketing Hub
+### 2. `src/pages/marketing/MarketingPixels.tsx` — Refonte structurée (style formulaire sérieux)
 
-Remplacer le lien sidebar unique `/dashboard/marketing` par un hub avec sous-routes :
+- Max-width 960px centered
+- Header : "Pixels & Tracking" 28px, sous-texte "Configurez vos outils de suivi publicitaire"
+- **Bloc Facebook Pixel** : Card avec header (icône FB + titre + toggle ON/OFF). Quand ON : champs Pixel ID + Conversion API Token. Bouton "Tester connexion". Quand OFF : champs disabled/grisés.
+- **Bloc TikTok Pixel** : Même structure. Toggle + Pixel ID + Bouton "Tester pixel".
+- **Bloc Google Tag Manager** : Toggle + Input GTM ID.
+- **Bloc Scripts personnalisés** : Textarea + select injection head/body.
+- Bouton "Enregistrer" en bas, style orange #FF6B00.
+- Les toggles sont dérivés : ON si le champ correspondant est non-vide. Passer OFF vide le champ.
+- Section "Événements auto" : liste informative ViewContent, AddToCart, InitiateCheckout, Purchase — texte informatif, pas de config.
+- Note : Le "Tester connexion" et "Tester pixel" valident juste le format de l'ID (regex) côté client, pas d'appel API réel (pas de secret FB/TikTok stocké).
 
-```
-/dashboard/marketing           → Hub (grid de cartes)
-/dashboard/marketing/analytics → Analytics
-/dashboard/marketing/coupons   → Coupons (migré depuis Settings)
-/dashboard/marketing/promos    → Promotions Flash
-/dashboard/marketing/liens     → Liens Trackés
-/dashboard/marketing/pixels    → Pixels (migré depuis Settings)
-```
+### 3. `src/pages/marketing/MarketingAnalytics.tsx` — Améliorations UI
 
-Fichier : `src/pages/marketing/MarketingHub.tsx` — Grid de 5 cartes cliquables (même pattern que SettingsHub).
+- Max-width 1200px
+- Header 28px "Analytics", sous-texte, filtre date à droite
+- Bloc sources trafic : placeholder informatif (pas de données — message clair)
+- Bloc performance produits : table desktop, cards mobile, pagination 20
+- Bloc heatmap : inchangé mais responsive amélioré
 
-## 2. Migrations DB — 2 nouvelles tables
+### 4. `src/pages/marketing/MarketingCoupons.tsx` — UI Premium
 
-### `flash_promotions`
-```sql
-CREATE TABLE public.flash_promotions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  shop_id uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
-  product_id uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  discount_type text NOT NULL DEFAULT 'percentage', -- percentage | fixed
-  discount_value numeric NOT NULL DEFAULT 0,
-  starts_at timestamptz NOT NULL,
-  ends_at timestamptz NOT NULL,
-  show_badge boolean DEFAULT true,
-  show_countdown boolean DEFAULT true,
-  featured boolean DEFAULT false,
-  is_active boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
-);
--- RLS: owner via shops.owner_id
-```
+- Bouton "Créer un coupon" orange #FF6B00
+- Table desktop avec colonnes Code, Type, Statut (badge coloré), Usages, Date fin
+- Cards mobile compactes
+- Modal création 600px desktop / full mobile
 
-### `tracked_links`
-```sql
-CREATE TABLE public.tracked_links (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  shop_id uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  target_url text NOT NULL,
-  source text NOT NULL DEFAULT 'other',
-  ref_code text NOT NULL,
-  clicks integer DEFAULT 0,
-  created_at timestamptz DEFAULT now()
-);
--- RLS: owner via shops.owner_id
-```
+### 5. `src/pages/marketing/MarketingPromos.tsx` — UI Premium
 
-## 3. Pages à créer
+- Même traitement : bouton orange, cards/table, badges statut
+- Ajout checkboxes : Afficher badge, Afficher countdown
 
-| Fichier | Description |
-|---|---|
-| `src/pages/marketing/MarketingHub.tsx` | Grid hub 5 cartes |
-| `src/pages/marketing/MarketingAnalytics.tsx` | Analytics basé sur orders (performance produits, heatmap horaire) |
-| `src/pages/marketing/MarketingCoupons.tsx` | Coupons (réutilise hooks existants, UI améliorée avec stats commandes) |
-| `src/pages/marketing/MarketingPromos.tsx` | Flash promotions CRUD |
-| `src/pages/marketing/MarketingLinks.tsx` | Liens trackés CRUD |
-| `src/pages/marketing/MarketingPixels.tsx` | Pixels (réutilise hooks existants) |
+### 6. `src/pages/marketing/MarketingLinks.tsx` — UI Premium
 
-## 4. Hooks à créer
+- Table desktop : Nom, Source, Clics, ref_code
+- Cards mobile
+- Bouton copier lien
 
-| Hook | Description |
-|---|---|
-| `useFlashPromotions(shopId)` | CRUD flash_promotions |
-| `useTrackedLinks(shopId)` | CRUD tracked_links |
-| `useProductAnalytics(shopId, days)` | Agrège orders.items par produit (commandes, livrées, annulées) |
-| `useHourlyAnalytics(shopId, days)` | Agrège orders par heure de création |
+### 7. `src/i18n/locales/fr.json` + `en.json`
 
-## 5. Analytics — Données réelles uniquement
+Ajouter clés manquantes : `marketing.pixels.facebook`, `marketing.pixels.tiktok`, `marketing.pixels.gtm`, `marketing.pixels.testConnection`, `marketing.pixels.autoEvents`, `marketing.pixels.enabled`, `marketing.pixels.disabled`, etc.
 
-**Bloc "Sources de trafic"** : Placeholder informatif → "Activez vos pixels Facebook/TikTok pour suivre vos sources de trafic". Pas de données fictives.
+## Ce qui ne change PAS
 
-**Bloc "Performance produits"** : Table basée sur `orders.items` JSONB — extraction produit par produit avec count commandes, livrées, annulées. Pas de "vues" ni "ajouts panier" (pas de données).
+- Tables DB : `tracking_settings`, `discount_codes`, `flash_promotions`, `tracked_links` — inchangées
+- Hooks : tous réutilisés tels quels
+- Routes App.tsx : inchangées
+- Aucune donnée fictive ajoutée
 
-**Bloc "Performance horaire"** : Heatmap simple basé sur `orders.created_at` — heures 0-23 × jours de la semaine, coloré par nombre de commandes.
+## Performance
 
-**Filtre date** : 7j / 30j / 90j dropdown.
-
-## 6. Coupons — Améliorations
-
-Réutiliser `useDiscountCodes` existant. Ajouter une colonne "Commandes générées" en cross-référençant `orders` qui ont un discount appliqué (si le champ existe — sinon juste `used_count`).
-
-## 7. Routes (App.tsx)
-
-Ajouter 6 routes sous `/dashboard/marketing/*`.
-
-## 8. i18n
-
-Ajouter clés `marketing.hub.*`, `marketing.analytics.*`, `marketing.promos.*`, `marketing.links.*` dans fr.json et en.json.
-
-## Fichiers impactés
-
-| Fichier | Action |
-|---|---|
-| Migration SQL | 2 tables + RLS |
-| `src/pages/marketing/*.tsx` | 6 nouvelles pages |
-| `src/hooks/useFlashPromotions.ts` | Nouveau |
-| `src/hooks/useTrackedLinks.ts` | Nouveau |
-| `src/hooks/useProductAnalytics.ts` | Nouveau |
-| `src/hooks/useHourlyAnalytics.ts` | Nouveau |
-| `src/App.tsx` | 6 routes |
-| `src/i18n/locales/fr.json` | Clés marketing |
-| `src/i18n/locales/en.json` | Clés marketing |
-
-Pas de données fictives. ~1200 lignes de code nouveau.
+- Lazy load déjà en place via App.tsx
+- Pagination 20 lignes sur tables produits/coupons/promos/liens
 
