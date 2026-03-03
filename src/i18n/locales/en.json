@@ -608,10 +608,17 @@
   },
   "orders": {
     "title": "Orders",
-    "search": "Search by name or phone...",
+    "search": "Search by name, phone or ID...",
     "noOrders": "No orders found",
     "noOrdersHint": "Your shop orders will appear here.",
     "viewDetail": "View",
+    "todayCount": "{{count}} order(s) today",
+    "newOrder": "New order",
+    "bulkActions": {
+      "confirm": "Confirm",
+      "deliver": "Mark delivered",
+      "cancel": "Cancel"
+    },
     "status": {
       "all": "All",
       "pending": "Pending",

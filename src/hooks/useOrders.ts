@@ -25,7 +25,6 @@ export function useOrders({ shopId, status, search, page = 0, includeArchived = 
         .order('created_at', { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
-      // Hide archived orders by default unless explicitly requested
       if (!includeArchived) {
         query = query.eq('is_archived', false);
       }
@@ -36,8 +35,9 @@ export function useOrders({ shopId, status, search, page = 0, includeArchived = 
 
       if (search && search.trim()) {
         const term = search.trim();
+        // Search by name, phone, or order ID
         query = query.or(
-          `customer_name.ilike.%${term}%,phone.ilike.%${term}%`
+          `customer_name.ilike.%${term}%,phone.ilike.%${term}%,id.ilike.%${term}%`
         );
       }
 
@@ -78,6 +78,30 @@ export function useOrderCounts(shopId: string | undefined) {
   });
 }
 
+// Count orders created today
+export function useOrdersToday(shopId: string | undefined) {
+  return useQuery({
+    queryKey: ['orders-today', shopId],
+    queryFn: async () => {
+      if (!shopId) return 0;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { count, error } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('shop_id', shopId)
+        .gte('created_at', today.toISOString());
+
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!shopId,
+    staleTime: 30_000,
+  });
+}
+
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
 
@@ -98,7 +122,6 @@ export function useUpdateOrderStatus() {
         throw new Error(`Transition invalide: ${currentStatus} → ${newStatus}`);
       }
 
-      // Update the order status — use .select() so we can detect 0-row updates
       const { data: updatedRows, error: updateError } = await supabase
         .from('orders')
         .update({
@@ -114,16 +137,13 @@ export function useUpdateOrderStatus() {
         throw updateError;
       }
 
-      // Guard: if 0 rows were updated the RLS blocked the write
       if (!updatedRows || updatedRows.length === 0) {
         throw new Error(
           'Mise à jour impossible. Vérifiez vos permissions dans Supabase (politique RLS owner_update_orders).'
         );
       }
 
-      console.log('[useUpdateOrderStatus] success:', updatedRows[0]);
-
-      // Insert status log (best-effort, don't block on failure)
+      // Insert status log (best-effort)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         await supabase.from('order_status_logs').insert({
@@ -139,14 +159,56 @@ export function useUpdateOrderStatus() {
       return updatedRows[0];
     },
     onSuccess: (_data, { shopId, orderId }) => {
-      // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
       queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['orders-today', shopId] });
       queryClient.invalidateQueries({ queryKey: ['order-detail', orderId] });
-      queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] });
     },
     onError: (error) => {
       console.error('[useUpdateOrderStatus] mutation error:', error);
+    },
+  });
+}
+
+// Batch update multiple orders' status
+export function useBatchUpdateOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderIds,
+      shopId,
+      newStatus,
+    }: {
+      orderIds: string[];
+      shopId: string;
+      newStatus: OrderStatus;
+    }) => {
+      const results = await Promise.allSettled(
+        orderIds.map(async (orderId) => {
+          const { data, error } = await supabase
+            .from('orders')
+            .update({
+              status: newStatus,
+              ...(newStatus === 'archived' ? { is_archived: true } : {}),
+            })
+            .eq('id', orderId)
+            .eq('shop_id', shopId)
+            .select('id');
+
+          if (error) throw error;
+          return data;
+        })
+      );
+
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      return { succeeded, failed, total: orderIds.length };
+    },
+    onSuccess: (_data, { shopId }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['orders-today', shopId] });
     },
   });
 }
@@ -266,6 +328,7 @@ export function useCreateOrder() {
     onSuccess: (_data, { shopId }) => {
       queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
       queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['orders-today', shopId] });
     },
     onError: (error) => {
       console.error('[useCreateOrder] error:', error);

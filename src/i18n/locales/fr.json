@@ -608,10 +608,17 @@
   },
   "orders": {
     "title": "Commandes",
-    "search": "Rechercher par nom ou téléphone...",
+    "search": "Rechercher par nom, téléphone ou ID...",
     "noOrders": "Aucune commande trouvée",
     "noOrdersHint": "Les commandes de votre boutique apparaîtront ici.",
     "viewDetail": "Voir",
+    "todayCount": "{{count}} commande(s) aujourd'hui",
+    "newOrder": "Nouvelle commande",
+    "bulkActions": {
+      "confirm": "Confirmer",
+      "deliver": "Marquer livrées",
+      "cancel": "Annuler"
+    },
     "status": {
       "all": "Toutes",
       "pending": "En attente",
