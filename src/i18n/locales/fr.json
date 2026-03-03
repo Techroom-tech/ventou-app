@@ -194,6 +194,10 @@
     "hero": {
       "subtitle": "C'est l'heure de pointe - lancez cette campagne que vous planifiez !"
     },
+    "completeProfile": {
+      "title": "Complétez votre profil pour personnaliser votre expérience",
+      "cta": "Compléter"
+    },
     "header": {
       "search": "Trouvez n'importe quoi : ⌘K",
       "visitShop": "Visiter ma boutique",

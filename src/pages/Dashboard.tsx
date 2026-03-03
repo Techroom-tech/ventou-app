@@ -5,7 +5,7 @@ import {
   DollarSign, ShoppingCart, Package, TrendingUp,
   Plus, Share2, BarChart2, Tag, Info,
   AlertTriangle, AlertCircle, ArrowUpRight, ArrowDownRight,
-  Clock,
+  Clock, UserCircle,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -350,6 +350,21 @@ export default function Dashboard() {
             {t('dashboard.hero.subtitle', "C'est l'heure de pointe - lancez cette campagne que vous planifiez !")}
           </p>
         </div>
+
+        {/* ── Complete Profile Banner ── */}
+        {!profile?.first_name && (
+          <Link to="/dashboard/parametres/profil" className="block">
+            <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 transition-colors hover:bg-accent/10">
+              <UserCircle className="h-5 w-5 text-accent shrink-0" />
+              <span className="text-sm text-muted-foreground flex-1">
+                {t('dashboard.completeProfile.title', 'Complétez votre profil pour personnaliser votre expérience')}
+              </span>
+              <span className="text-sm font-medium text-accent whitespace-nowrap">
+                {t('dashboard.completeProfile.cta', 'Compléter')}
+              </span>
+            </div>
+          </Link>
+        )}
 
         {/* ── Action Buttons (Pills) ── */}
         <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
