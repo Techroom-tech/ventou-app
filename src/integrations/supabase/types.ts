@@ -272,6 +272,66 @@ export type Database = {
         }
         Relationships: []
       }
+      flash_promotions: {
+        Row: {
+          created_at: string | null
+          discount_type: string
+          discount_value: number
+          ends_at: string
+          featured: boolean | null
+          id: string
+          is_active: boolean | null
+          product_id: string
+          shop_id: string
+          show_badge: boolean | null
+          show_countdown: boolean | null
+          starts_at: string
+        }
+        Insert: {
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          ends_at: string
+          featured?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          product_id: string
+          shop_id: string
+          show_badge?: boolean | null
+          show_countdown?: boolean | null
+          starts_at: string
+        }
+        Update: {
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          ends_at?: string
+          featured?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          product_id?: string
+          shop_id?: string
+          show_badge?: boolean | null
+          show_countdown?: boolean | null
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_promotions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flash_promotions_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_settings: {
         Row: {
           created_at: string | null
@@ -962,6 +1022,47 @@ export type Database = {
           requires_approval?: boolean | null
         }
         Relationships: []
+      }
+      tracked_links: {
+        Row: {
+          clicks: number | null
+          created_at: string | null
+          id: string
+          name: string
+          ref_code: string
+          shop_id: string
+          source: string
+          target_url: string
+        }
+        Insert: {
+          clicks?: number | null
+          created_at?: string | null
+          id?: string
+          name: string
+          ref_code: string
+          shop_id: string
+          source?: string
+          target_url: string
+        }
+        Update: {
+          clicks?: number | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          ref_code?: string
+          shop_id?: string
+          source?: string
+          target_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracked_links_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tracking_settings: {
         Row: {
