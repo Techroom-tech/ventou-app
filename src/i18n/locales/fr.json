@@ -657,6 +657,28 @@
       "viewMap": "Voir sur Maps"
     }
   },
+  "customers": {
+    "title": "Clients",
+    "count": "{{count}} client(s) enregistré(s)",
+    "searchPlaceholder": "Rechercher par nom ou téléphone…",
+    "name": "Nom",
+    "phone": "Téléphone",
+    "city": "Ville",
+    "badge": "Statut",
+    "totalOrders": "Total",
+    "delivered": "Livrées",
+    "cancelled": "Annulées",
+    "loyal": "Fidèle",
+    "new": "Nouveau",
+    "atRisk": "À risque",
+    "firstOrder": "1ère commande",
+    "orderHistory": "Historique des commandes",
+    "call": "Appeler",
+    "orders": "commandes",
+    "deliveredShort": "livrées",
+    "cancelledShort": "annulées",
+    "empty": "Aucun client enregistré. Les clients apparaîtront ici après votre première commande."
+  },
   "admin": {
     "nav": {
       "dashboard": "Tableau de bord",

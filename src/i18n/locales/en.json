@@ -657,6 +657,28 @@
       "viewMap": "View on Maps"
     }
   },
+  "customers": {
+    "title": "Customers",
+    "count": "{{count}} registered customer(s)",
+    "searchPlaceholder": "Search by name or phone…",
+    "name": "Name",
+    "phone": "Phone",
+    "city": "City",
+    "badge": "Status",
+    "totalOrders": "Total",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "loyal": "Loyal",
+    "new": "New",
+    "atRisk": "At risk",
+    "firstOrder": "First order",
+    "orderHistory": "Order history",
+    "call": "Call",
+    "orders": "orders",
+    "deliveredShort": "delivered",
+    "cancelledShort": "cancelled",
+    "empty": "No customers yet. Customers will appear here after your first order."
+  },
   "admin": {
     "nav": {
       "dashboard": "Dashboard",

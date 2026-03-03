@@ -51,6 +51,7 @@ const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
 const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
 const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
+const Customers = lazy(() => import("./pages/Customers"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -144,6 +145,7 @@ const App = () => {
             <Route path="/dashboard/products/:id/edit" element={<ProtectedRoute><DashboardGuard><EditProduct /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardGuard><Settings /></DashboardGuard></ProtectedRoute>} />
             <Route path="/dashboard/commandes/:orderId" element={<ProtectedRoute><DashboardGuard><OrderDetail /></DashboardGuard></ProtectedRoute>} />
+            <Route path="/dashboard/customers" element={<ProtectedRoute><DashboardGuard><Customers /></DashboardGuard></ProtectedRoute>} />
 
             {/* Settings V6 */}
             <Route path="/dashboard/parametres" element={<ProtectedRoute><DashboardGuard><SettingsHub /></DashboardGuard></ProtectedRoute>} />
