@@ -1,53 +1,123 @@
 
 
-# Plan: Page Clients Ventou
+# Plan: Marketing Center Ventou
 
-## Contexte
+## Analyse de faisabilité
 
-La route `/dashboard/customers` existe dans la navigation mais aucune page n'est implémentée. Les données clients seront extraites de la table `orders` (agrégation par `phone`). Pas de table `customers` dédiée — on regroupe par numéro de téléphone.
+**Ce qui existe déjà** : Coupons (table `discount_codes` + hook + page), Pixels (table `tracking_settings` + hook + page) — actuellement dans Settings.
 
-## Fichiers à créer/modifier
+**Ce qui n'existe PAS en DB** : Analytics de trafic (pas de page views, pas de sources), Flash promotions, Liens trackés. Il n'y a aucune instrumentation storefront pour capturer des events (ViewContent, AddToCart, etc.).
 
-### 1. `src/hooks/useCustomers.ts` (nouveau)
+**Décision réaliste** : On crée le Marketing Hub avec 5 sections. Analytics sera basé uniquement sur les données `orders` disponibles (performance produits par commandes, performance horaire par commandes). Les métriques de trafic/visiteurs/sources ne peuvent pas être affichées car aucune donnée n'existe — on affiche un placeholder "Connectez vos pixels pour activer le suivi" au lieu de données fictives. Flash Promotions et Liens Trackés nécessitent de nouvelles tables.
 
-Hook `useCustomers(shopId)` qui :
-- Récupère toutes les commandes du shop (`customer_name`, `phone`, `city`, `quartier`, `status`, `total`, `created_at`, `id`)
-- Agrège côté client par `phone` : nom, ville, total commandes, livrées, annulées, date première commande, montant total
-- Calcule le badge automatique (fidèle ≥3 livrées, nouveau = 1 commande, à risque ≥2 annulées)
-- Supporte recherche par nom/téléphone et pagination (20/page)
-- Retourne aussi le count total
+---
 
-### 2. `src/pages/Customers.tsx` (nouveau)
+## 1. Navigation — Marketing Hub
 
-Page complète avec `DashboardLayout` :
+Remplacer le lien sidebar unique `/dashboard/marketing` par un hub avec sous-routes :
 
-**Header** : "Clients" + "X clients enregistrés" + barre recherche
+```
+/dashboard/marketing           → Hub (grid de cartes)
+/dashboard/marketing/analytics → Analytics
+/dashboard/marketing/coupons   → Coupons (migré depuis Settings)
+/dashboard/marketing/promos    → Promotions Flash
+/dashboard/marketing/liens     → Liens Trackés
+/dashboard/marketing/pixels    → Pixels (migré depuis Settings)
+```
 
-**Desktop** : Table avec colonnes Avatar (initiales), Nom, Téléphone (lien `tel:`), Ville, Total cmd, Livrées, Annulées, Badge, Voir →
+Fichier : `src/pages/marketing/MarketingHub.tsx` — Grid de 5 cartes cliquables (même pattern que SettingsHub).
 
-**Mobile** : Cartes compactes avec nom, téléphone, ville, résumé "X commandes • Y livrées • Z annulées", badge, boutons Appeler/WhatsApp
+## 2. Migrations DB — 2 nouvelles tables
 
-**Drawer détail client** (Sheet droite desktop 420px, full mobile) :
-- Bloc Contact : nom, téléphone, boutons Appeler/WhatsApp, ville/quartier, date 1re commande
-- Bloc Résumé : 3 mini-cards (Total, Livrées, Annulées)
-- Bloc Historique : liste compacte des commandes (ID, date, montant, badge statut), cliquable vers `/dashboard/commandes/:id`, pagination 20
+### `flash_promotions`
+```sql
+CREATE TABLE public.flash_promotions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  product_id uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  discount_type text NOT NULL DEFAULT 'percentage', -- percentage | fixed
+  discount_value numeric NOT NULL DEFAULT 0,
+  starts_at timestamptz NOT NULL,
+  ends_at timestamptz NOT NULL,
+  show_badge boolean DEFAULT true,
+  show_countdown boolean DEFAULT true,
+  featured boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+-- RLS: owner via shops.owner_id
+```
 
-### 3. `src/App.tsx`
+### `tracked_links`
+```sql
+CREATE TABLE public.tracked_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  target_url text NOT NULL,
+  source text NOT NULL DEFAULT 'other',
+  ref_code text NOT NULL,
+  clicks integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+-- RLS: owner via shops.owner_id
+```
 
-Ajouter la route `/dashboard/customers` → `Customers` (lazy import)
+## 3. Pages à créer
 
-### 4. `src/i18n/locales/fr.json` + `en.json`
+| Fichier | Description |
+|---|---|
+| `src/pages/marketing/MarketingHub.tsx` | Grid hub 5 cartes |
+| `src/pages/marketing/MarketingAnalytics.tsx` | Analytics basé sur orders (performance produits, heatmap horaire) |
+| `src/pages/marketing/MarketingCoupons.tsx` | Coupons (réutilise hooks existants, UI améliorée avec stats commandes) |
+| `src/pages/marketing/MarketingPromos.tsx` | Flash promotions CRUD |
+| `src/pages/marketing/MarketingLinks.tsx` | Liens trackés CRUD |
+| `src/pages/marketing/MarketingPixels.tsx` | Pixels (réutilise hooks existants) |
 
-Clés : `customers.title`, `customers.count`, `customers.loyal`, `customers.new`, `customers.atRisk`, `customers.totalOrders`, `customers.delivered`, `customers.cancelled`, `customers.firstOrder`, `customers.orderHistory`
+## 4. Hooks à créer
 
-## Données
+| Hook | Description |
+|---|---|
+| `useFlashPromotions(shopId)` | CRUD flash_promotions |
+| `useTrackedLinks(shopId)` | CRUD tracked_links |
+| `useProductAnalytics(shopId, days)` | Agrège orders.items par produit (commandes, livrées, annulées) |
+| `useHourlyAnalytics(shopId, days)` | Agrège orders par heure de création |
 
-Pas de nouvelle table DB. Tout est agrégé depuis `orders` existante. La clé de regroupement est le `phone` (identifiant unique du client dans un contexte COD).
+## 5. Analytics — Données réelles uniquement
 
-## Performance
+**Bloc "Sources de trafic"** : Placeholder informatif → "Activez vos pixels Facebook/TikTok pour suivre vos sources de trafic". Pas de données fictives.
 
-- Requête unique `orders` avec `select` limité aux colonnes nécessaires
-- Agrégation côté client (acceptable pour 200 commandes/jour max)
-- Pagination 20 clients/page côté affichage
-- Debounce recherche 300ms
+**Bloc "Performance produits"** : Table basée sur `orders.items` JSONB — extraction produit par produit avec count commandes, livrées, annulées. Pas de "vues" ni "ajouts panier" (pas de données).
+
+**Bloc "Performance horaire"** : Heatmap simple basé sur `orders.created_at` — heures 0-23 × jours de la semaine, coloré par nombre de commandes.
+
+**Filtre date** : 7j / 30j / 90j dropdown.
+
+## 6. Coupons — Améliorations
+
+Réutiliser `useDiscountCodes` existant. Ajouter une colonne "Commandes générées" en cross-référençant `orders` qui ont un discount appliqué (si le champ existe — sinon juste `used_count`).
+
+## 7. Routes (App.tsx)
+
+Ajouter 6 routes sous `/dashboard/marketing/*`.
+
+## 8. i18n
+
+Ajouter clés `marketing.hub.*`, `marketing.analytics.*`, `marketing.promos.*`, `marketing.links.*` dans fr.json et en.json.
+
+## Fichiers impactés
+
+| Fichier | Action |
+|---|---|
+| Migration SQL | 2 tables + RLS |
+| `src/pages/marketing/*.tsx` | 6 nouvelles pages |
+| `src/hooks/useFlashPromotions.ts` | Nouveau |
+| `src/hooks/useTrackedLinks.ts` | Nouveau |
+| `src/hooks/useProductAnalytics.ts` | Nouveau |
+| `src/hooks/useHourlyAnalytics.ts` | Nouveau |
+| `src/App.tsx` | 6 routes |
+| `src/i18n/locales/fr.json` | Clés marketing |
+| `src/i18n/locales/en.json` | Clés marketing |
+
+Pas de données fictives. ~1200 lignes de code nouveau.
 
