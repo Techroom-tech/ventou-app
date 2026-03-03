@@ -1,61 +1,53 @@
 
 
-# Plan: Mode traitement rapide + Simplification statuts + Suppression commandes annulées
+# Plan: Page Clients Ventou
 
-## Changements
+## Contexte
 
-### 1. Simplifier les statuts (`src/types/shop.ts`)
-- Supprimer `preparing`, `shipping`, `archived` du type `OrderStatus`
-- Nouveau type : `'pending' | 'confirmed' | 'delivered' | 'cancelled'`
-- Nouvelles transitions :
-  - `pending → confirmed | cancelled`
-  - `confirmed → delivered | cancelled`
-  - `delivered → []` (terminal)
-  - `cancelled → []` (terminal)
+La route `/dashboard/customers` existe dans la navigation mais aucune page n'est implémentée. Les données clients seront extraites de la table `orders` (agrégation par `phone`). Pas de table `customers` dédiée — on regroupe par numéro de téléphone.
 
-### 2. Supprimer les styles inutiles (`src/components/dashboard/OrderStatusBadge.tsx`)
-- Retirer `preparing`, `shipping`, `archived` du mapping `statusStyles`
+## Fichiers à créer/modifier
 
-### 3. Mode traitement rapide (`src/pages/Orders.tsx`)
-- Ajouter un state `quickMode` (boolean)
-- Bouton "Mode rapide" dans le header
-- Quand activé : filtre automatiquement sur `status = 'pending'`, masque la recherche/les pills, affiche uniquement une liste simplifiée avec nom + montant + **gros bouton vert "Confirmer"** par ligne
-- Retirer `preparing`, `shipping` des STATUS_TABS → garder `['all', 'pending', 'confirmed', 'delivered', 'cancelled']`
-- Retirer les actions inline `canShip` (shipping)
-- Ajouter un bouton "Supprimer" (icône Trash) pour les commandes au statut `cancelled`
-- Supprimer l'action batch "archived"
+### 1. `src/hooks/useCustomers.ts` (nouveau)
 
-### 4. Ajouter la suppression de commandes annulées (`src/hooks/useOrders.ts`)
-- Nouveau hook `useDeleteOrders` : mutation `DELETE FROM orders WHERE id = X AND shop_id = Y AND status = 'cancelled'`
-- Nécessite une **migration DB** pour ajouter une policy RLS `DELETE` sur la table `orders` restreinte au owner + status cancelled
+Hook `useCustomers(shopId)` qui :
+- Récupère toutes les commandes du shop (`customer_name`, `phone`, `city`, `quartier`, `status`, `total`, `created_at`, `id`)
+- Agrège côté client par `phone` : nom, ville, total commandes, livrées, annulées, date première commande, montant total
+- Calcule le badge automatique (fidèle ≥3 livrées, nouveau = 1 commande, à risque ≥2 annulées)
+- Supporte recherche par nom/téléphone et pagination (20/page)
+- Retourne aussi le count total
 
-### 5. Migration Supabase
-```sql
-CREATE POLICY "owner_delete_cancelled_orders" ON public.orders
-FOR DELETE TO authenticated
-USING (
-  status = 'cancelled'
-  AND shop_id IN (SELECT id FROM shops WHERE owner_id = auth.uid())
-);
-```
+### 2. `src/pages/Customers.tsx` (nouveau)
 
-### 6. Page détail (`src/pages/OrderDetail.tsx`)
-- Supprimer `preparing`, `shipping`, `archived` de `STATUS_LABELS` et `CTA_MAP`
-- CTA simplifié : `pending → confirmed`, `confirmed → delivered`
-- Ajouter bouton "Supprimer" si `status === 'cancelled'`
+Page complète avec `DashboardLayout` :
 
-### 7. i18n
-- Ajouter clés `orders.quickMode`, `orders.delete`, `orders.deleteConfirm` dans `fr.json` et `en.json`
+**Header** : "Clients" + "X clients enregistrés" + barre recherche
 
-## Fichiers impactés
-| Fichier | Action |
-|---|---|
-| `src/types/shop.ts` | Simplifier OrderStatus + transitions |
-| `src/components/dashboard/OrderStatusBadge.tsx` | Retirer statuts supprimés |
-| `src/pages/Orders.tsx` | Mode rapide + suppression + nettoyage statuts |
-| `src/pages/OrderDetail.tsx` | Nettoyage statuts + bouton supprimer |
-| `src/hooks/useOrders.ts` | Nouveau hook useDeleteOrders |
-| `src/i18n/locales/fr.json` | Nouvelles clés |
-| `src/i18n/locales/en.json` | Nouvelles clés |
-| Migration SQL | Policy DELETE pour commandes annulées |
+**Desktop** : Table avec colonnes Avatar (initiales), Nom, Téléphone (lien `tel:`), Ville, Total cmd, Livrées, Annulées, Badge, Voir →
+
+**Mobile** : Cartes compactes avec nom, téléphone, ville, résumé "X commandes • Y livrées • Z annulées", badge, boutons Appeler/WhatsApp
+
+**Drawer détail client** (Sheet droite desktop 420px, full mobile) :
+- Bloc Contact : nom, téléphone, boutons Appeler/WhatsApp, ville/quartier, date 1re commande
+- Bloc Résumé : 3 mini-cards (Total, Livrées, Annulées)
+- Bloc Historique : liste compacte des commandes (ID, date, montant, badge statut), cliquable vers `/dashboard/commandes/:id`, pagination 20
+
+### 3. `src/App.tsx`
+
+Ajouter la route `/dashboard/customers` → `Customers` (lazy import)
+
+### 4. `src/i18n/locales/fr.json` + `en.json`
+
+Clés : `customers.title`, `customers.count`, `customers.loyal`, `customers.new`, `customers.atRisk`, `customers.totalOrders`, `customers.delivered`, `customers.cancelled`, `customers.firstOrder`, `customers.orderHistory`
+
+## Données
+
+Pas de nouvelle table DB. Tout est agrégé depuis `orders` existante. La clé de regroupement est le `phone` (identifiant unique du client dans un contexte COD).
+
+## Performance
+
+- Requête unique `orders` avec `select` limité aux colonnes nécessaires
+- Agrégation côté client (acceptable pour 200 commandes/jour max)
+- Pagination 20 clients/page côté affichage
+- Debounce recherche 300ms
 
