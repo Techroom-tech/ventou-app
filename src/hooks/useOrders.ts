@@ -126,7 +126,6 @@ export function useUpdateOrderStatus() {
         .from('orders')
         .update({
           status: newStatus,
-          ...(newStatus === 'archived' ? { is_archived: true } : {}),
         })
         .eq('id', orderId)
         .eq('shop_id', shopId)
@@ -190,7 +189,6 @@ export function useBatchUpdateOrderStatus() {
             .from('orders')
             .update({
               status: newStatus,
-              ...(newStatus === 'archived' ? { is_archived: true } : {}),
             })
             .eq('id', orderId)
             .eq('shop_id', shopId)
@@ -332,6 +330,43 @@ export function useCreateOrder() {
     },
     onError: (error) => {
       console.error('[useCreateOrder] error:', error);
+    },
+  });
+}
+
+// Delete cancelled orders
+export function useDeleteOrders() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderIds,
+      shopId,
+    }: {
+      orderIds: string[];
+      shopId: string;
+    }) => {
+      const results = await Promise.allSettled(
+        orderIds.map(async (orderId) => {
+          const { error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', orderId)
+            .eq('shop_id', shopId)
+            .eq('status', 'cancelled');
+
+          if (error) throw error;
+        })
+      );
+
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      return { succeeded, failed, total: orderIds.length };
+    },
+    onSuccess: (_data, { shopId }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['orders-today', shopId] });
     },
   });
 }

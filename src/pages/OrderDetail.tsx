@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   ArrowLeft, Phone, MessageCircle, MapPin,
-  Send, Star, ChevronDown,
+  Send, Star, ChevronDown, Trash2,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
 import { useShop } from '@/hooks/useShop';
-import { useUpdateOrderStatus, useUpdateSellerNote } from '@/hooks/useOrders';
+import { useUpdateOrderStatus, useUpdateSellerNote, useDeleteOrders } from '@/hooks/useOrders';
 import { Order, OrderStatus, ORDER_TRANSITIONS } from '@/types/shop';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -35,18 +35,13 @@ interface OrderItem {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'En attente',
   confirmed: 'Confirmée',
-  preparing: 'Préparation',
-  shipping: 'Livraison',
   delivered: 'Livrée',
   cancelled: 'Annulée',
-  archived: 'Archivée',
 };
 
 const CTA_MAP: Partial<Record<OrderStatus, { label: string; next: OrderStatus; emoji: string }>> = {
   pending:   { label: 'Confirmer la commande',  next: 'confirmed',  emoji: '✓' },
-  confirmed: { label: 'Mettre en préparation',  next: 'preparing',  emoji: '📦' },
-  preparing: { label: 'Marquer en livraison',   next: 'shipping',   emoji: '🚚' },
-  shipping:  { label: 'Marquer livrée',         next: 'delivered',  emoji: '✓' },
+  confirmed: { label: 'Marquer livrée',         next: 'delivered',  emoji: '✓' },
 };
 
 function formatDateTime(iso: string) {
@@ -112,6 +107,7 @@ export default function OrderDetail() {
 
   const updateNote = useUpdateSellerNote();
   const updateStatus = useUpdateOrderStatus();
+  const deleteOrders = useDeleteOrders();
   const queryClient = useQueryClient();
 
   // ── Parse items ──────────────────────────────────────────────────────────
@@ -150,7 +146,6 @@ export default function OrderDetail() {
     }
   };
 
-  // ── Status CTA ───────────────────────────────────────────────────────────
   const handleCTA = async (next: OrderStatus) => {
     if (!order || !shopId) return;
     try {
@@ -163,6 +158,18 @@ export default function OrderDetail() {
       await refetch();
     } catch (e: unknown) {
       toast.error((e as Error).message ?? 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!order || !shopId) return;
+    if (!window.confirm('Supprimer définitivement cette commande annulée ?')) return;
+    try {
+      await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
+      toast.success('Commande supprimée');
+      navigate('/dashboard/orders');
+    } catch {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -245,6 +252,17 @@ export default function OrderDetail() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              )}
+              {order.status === 'cancelled' && (
+                <Button
+                  variant="outline" size="sm"
+                  className="h-8 text-xs gap-1 text-destructive border-destructive/30"
+                  onClick={handleDelete}
+                  disabled={deleteOrders.isPending}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Supprimer
+                </Button>
               )}
             </div>
           </div>

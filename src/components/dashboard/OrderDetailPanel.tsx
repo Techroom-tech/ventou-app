@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow, format, addDays, differenceInHours } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   Phone, MapPin, ExternalLink, MessageCircle, Printer,
-  Clock, Timer, CheckCircle2, XCircle, Archive,
+  Clock, CheckCircle2, XCircle,
   FileText, MoreVertical, Copy, Trash2, Star, User,
-  Package, CreditCard, TrendingUp, SendHorizonal, ChevronRight,
+  Package, CreditCard, SendHorizonal, ChevronRight,
   AlertCircle,
 } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { OrderStatusBadge } from './OrderStatusBadge';
-import { useUpdateOrderStatus, useOrderTimeline, useUpdateSellerNote } from '@/hooks/useOrders';
+import { useUpdateOrderStatus, useOrderTimeline, useUpdateSellerNote, useDeleteOrders } from '@/hooks/useOrders';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { Order, OrderStatus, ORDER_TRANSITIONS } from '@/types/shop';
 import { toast } from 'sonner';
@@ -29,25 +29,19 @@ import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MAIN_FLOW: OrderStatus[] = ['pending', 'confirmed', 'preparing', 'shipping', 'delivered'];
+const MAIN_FLOW: OrderStatus[] = ['pending', 'confirmed', 'delivered'];
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending:   'En attente',
   confirmed: 'Confirmée',
-  preparing: 'Préparation',
-  shipping:  'Livraison',
   delivered: 'Livrée',
   cancelled: 'Annulée',
-  archived:  'Archivée',
 };
 
 const ACTION_LABELS: Partial<Record<OrderStatus, string>> = {
   confirmed: 'Confirmer la commande',
-  preparing: 'Mettre en préparation',
-  shipping:  'Marquer en livraison',
   delivered: 'Marquer comme livrée',
   cancelled: 'Annuler la commande',
-  archived:  'Archiver',
 };
 
 // ─── Status Timeline ──────────────────────────────────────────────────────────
@@ -61,7 +55,7 @@ function StatusTimeline({
   onStepClick: (status: OrderStatus) => void;
   isUpdating: boolean;
 }) {
-  const isCancelled = currentStatus === 'cancelled' || currentStatus === 'archived';
+  const isCancelled = currentStatus === 'cancelled';
   const currentIndex = MAIN_FLOW.indexOf(currentStatus);
 
   if (isCancelled) {
@@ -73,15 +67,6 @@ function StatusTimeline({
             {STATUS_LABELS[currentStatus]}
           </span>
         </div>
-        {currentStatus === 'cancelled' && (
-          <button
-            onClick={() => onStepClick('archived')}
-            disabled={isUpdating}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground transition-all disabled:opacity-50"
-          >
-            <Archive className="h-3 w-3" /> Archiver
-          </button>
-        )}
       </div>
     );
   }
@@ -98,7 +83,6 @@ function StatusTimeline({
 
         return (
           <div key={step} className="flex items-center flex-shrink-0">
-            {/* Step bubble */}
             <button
               onClick={() => canClick && onStepClick(step)}
               disabled={isUpdating || !canClick}
@@ -134,7 +118,6 @@ function StatusTimeline({
               </span>
             </button>
 
-            {/* Connector */}
             {idx < MAIN_FLOW.length - 1 && (
               <div className={cn(
                 'h-0.5 w-6 mx-0.5 flex-shrink-0 transition-all duration-500',
@@ -145,29 +128,6 @@ function StatusTimeline({
         );
       })}
     </div>
-  );
-}
-
-// ─── Delivery Countdown ───────────────────────────────────────────────────────
-
-function DeliveryCountdown({ estimatedDate }: { estimatedDate: Date }) {
-  const [hoursLeft, setHoursLeft] = useState(differenceInHours(estimatedDate, new Date()));
-  useEffect(() => {
-    const timer = setInterval(() => setHoursLeft(differenceInHours(estimatedDate, new Date())), 60_000);
-    return () => clearInterval(timer);
-  }, [estimatedDate]);
-  if (hoursLeft <= 0) return (
-    <Badge variant="outline" className="text-[hsl(142,76%,30%)] border-[hsl(142,76%,36%)]/30 bg-[hsl(142,76%,36%)]/10 text-[10px]">
-      <Timer className="h-3 w-3 mr-1" /> Livraison imminente
-    </Badge>
-  );
-  const days = Math.floor(hoursLeft / 24);
-  const hours = hoursLeft % 24;
-  return (
-    <Badge variant="outline" className="text-[hsl(260,60%,45%)] border-[hsl(260,60%,55%)]/30 bg-[hsl(260,60%,55%)]/10 text-[10px]">
-      <Timer className="h-3 w-3 mr-1" />
-      {days > 0 ? `${days}j ` : ''}{hours}h restantes
-    </Badge>
   );
 }
 
@@ -233,7 +193,6 @@ interface NoteEntry {
 
 function parseNotes(raw: string | null | undefined): NoteEntry[] {
   if (!raw) return [];
-  // Format: each note is separated by "\n---\n", each note line: "[ISO_DATE] TEXT"
   return raw.split('\n---\n').map(chunk => {
     const match = chunk.match(/^\[(\d{4}-\d{2}-\d{2}T[^\]]+)\] (.+)$/s);
     if (match) return { date: new Date(match[1]), text: match[2] };
@@ -265,13 +224,12 @@ export function OrderDetailPanel({
   const locale = i18n.language === 'fr' ? fr : undefined;
   const updateStatus = useUpdateOrderStatus();
   const updateNote   = useUpdateSellerNote();
+  const deleteOrders = useDeleteOrders();
 
-  const [estimatedDays, setEstimatedDays] = useState(2);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [newNote, setNewNote] = useState('');
   const noteInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync notes when order changes
   useEffect(() => {
     if (order) {
       const raw = (order as Order & { seller_note?: string }).seller_note;
@@ -288,16 +246,12 @@ export function OrderDetailPanel({
   const items      = (Array.isArray(order.items) ? order.items : []) as Record<string, unknown>[];
   const nextStatuses = ORDER_TRANSITIONS[order.status] ?? [];
   const orderNum   = order.order_number ?? `#${order.id.slice(0, 8).toUpperCase()}`;
-  const estimatedDate = addDays(new Date(order.created_at), estimatedDays);
   const isNew      = Date.now() - new Date(order.created_at).getTime() < 10 * 60 * 1000;
 
-  // Derive subtotal from items
   const subtotal = items.reduce((acc, item) => {
     const i = item as Record<string, unknown>;
     return acc + Number(i.unit_price ?? 0) * Number(i.quantity ?? 1);
   }, 0);
-
-  // ── Handlers ──
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     try {
@@ -305,6 +259,17 @@ export function OrderDetailPanel({
       toast.success(`Statut mis à jour → ${STATUS_LABELS[newStatus]}`);
     } catch (e: unknown) {
       toast.error((e as Error).message ?? 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!window.confirm('Supprimer définitivement cette commande annulée ?')) return;
+    try {
+      await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
+      toast.success('Commande supprimée');
+      onClose();
+    } catch {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -330,8 +295,7 @@ export function OrderDetailPanel({
     window.open(`https://wa.me/${clean}?text=${msg}`, '_blank');
   };
 
-  // Primary CTA for current status
-  const primaryNextStatuses = nextStatuses.filter(s => s !== 'cancelled' && s !== 'archived');
+  const primaryNextStatuses = nextStatuses.filter(s => s !== 'cancelled');
   const primaryNext = primaryNextStatuses[0];
 
   return (
@@ -342,7 +306,6 @@ export function OrderDetailPanel({
       >
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <div className="sticky top-0 z-20 bg-card border-b border-border px-5 py-4 shadow-sm">
-          {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1.5">
             <span>Commandes</span>
             <ChevronRight className="h-3 w-3" />
@@ -360,7 +323,6 @@ export function OrderDetailPanel({
               )}
             </div>
 
-            {/* Header actions */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <Button
                 variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -384,9 +346,9 @@ export function OrderDetailPanel({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="gap-2 cursor-pointer text-xs text-destructive focus:text-destructive"
-                        onClick={() => handleStatusUpdate('archived')}
+                        onClick={handleDeleteOrder}
                       >
-                        <Trash2 className="h-3.5 w-3.5" /> Supprimer / Archiver
+                        <Trash2 className="h-3.5 w-3.5" /> Supprimer
                       </DropdownMenuItem>
                     </>
                   )}
@@ -412,25 +374,6 @@ export function OrderDetailPanel({
                 onStepClick={handleStatusUpdate}
                 isUpdating={updateStatus.isPending}
               />
-
-              {/* Estimated delivery for shipping */}
-              {order.status === 'shipping' && (
-                <div className="flex items-center gap-3 flex-wrap mt-3 pt-3 border-t border-border">
-                  <DeliveryCountdown estimatedDate={estimatedDate} />
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>Délai estimé :</span>
-                    <select
-                      className="border border-border rounded-lg px-2 py-1 bg-background text-foreground text-xs"
-                      value={estimatedDays}
-                      onChange={e => setEstimatedDays(Number(e.target.value))}
-                    >
-                      {[1, 2, 3, 5, 7].map(d => (
-                        <option key={d} value={d}>{d} jour{d > 1 ? 's' : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
 
               {/* Quick action buttons */}
               <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
@@ -471,7 +414,6 @@ export function OrderDetailPanel({
                   </a>
                 )}
 
-                {/* Cancel button */}
                 {nextStatuses.includes('cancelled') && (
                   <Button
                     variant="outline"
@@ -483,31 +425,29 @@ export function OrderDetailPanel({
                   </Button>
                 )}
 
-                {/* Archive */}
-                {nextStatuses.includes('archived') && !nextStatuses.includes('cancelled') && (
+                {/* Delete for cancelled */}
+                {order.status === 'cancelled' && (
                   <Button
                     variant="outline"
-                    className="h-9 gap-1.5 text-xs text-muted-foreground flex-shrink-0"
-                    onClick={() => handleStatusUpdate('archived')}
-                    disabled={updateStatus.isPending}
+                    className="h-9 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/5 flex-shrink-0"
+                    onClick={handleDeleteOrder}
+                    disabled={deleteOrders.isPending}
                   >
-                    <Archive className="h-3.5 w-3.5" /> Archiver
+                    <Trash2 className="h-3.5 w-3.5" /> Supprimer
                   </Button>
                 )}
 
-                {/* Terminal states */}
                 {nextStatuses.length === 0 && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground py-1">
                     <AlertCircle className="h-3.5 w-3.5" />
                     {order.status === 'delivered' && 'Commande livrée — aucune action requise'}
                     {order.status === 'cancelled' && 'Commande annulée'}
-                    {order.status === 'archived' && 'Commande archivée'}
                   </div>
                 )}
               </div>
             </Card>
 
-            {/* ── 2-COL GRID (desktop) / Stack (mobile) ─────────────────── */}
+            {/* ── 2-COL GRID ─────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
               {/* ── ARTICLES ─────────────────────────────────────────────── */}
@@ -555,38 +495,16 @@ export function OrderDetailPanel({
                     <span className="text-muted-foreground">Sous-total</span>
                     <span className="font-medium">{formatCurrency(subtotal || total, currencyCode as 'XOF')}</span>
                   </div>
-                  <div className="flex justify-between text-sm items-center">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      Livraison
-                      <Badge variant="outline" className="text-[9px] px-1 py-0">LIVRAISON</Badge>
-                    </span>
-                    <span className="text-muted-foreground text-xs">—</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Remise</span>
-                    <span className="text-[hsl(0,72%,45%)]">-0 {currencyCode}</span>
-                  </div>
                   <Separator className="my-2" />
                   <div className="flex justify-between">
-                    <span className="font-bold text-foreground">TOTAL À PAYER</span>
+                    <span className="font-bold text-foreground">Total à encaisser</span>
                     <span className="text-lg font-bold text-foreground">{formatCurrency(total, currencyCode as 'XOF')}</span>
-                  </div>
-
-                  {/* Marge estimée */}
-                  <div className="flex justify-between items-center pt-2 border-t border-dashed border-border">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-[hsl(142,76%,36%)]" />
-                      Marge estimée
-                    </span>
-                    <span className="text-sm font-semibold text-[hsl(142,76%,30%)]">
-                      + {formatCurrency(Math.round(total * 0.22), currencyCode as 'XOF')}
-                    </span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs pt-1">
                     <span className="text-muted-foreground">Mode de paiement</span>
                     <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/20 text-primary">
-                      {order.payment_method === 'cod' ? '💵 Paiement livraison' : order.payment_method ?? 'N/A'}
+                      {order.payment_method === 'cod' ? '💵 Paiement livraison' : order.payment_method ?? 'COD'}
                     </Badge>
                   </div>
                 </div>
@@ -603,7 +521,6 @@ export function OrderDetailPanel({
                   </div>
                 </div>
 
-                {/* Avatar + name */}
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-primary">
@@ -613,7 +530,6 @@ export function OrderDetailPanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-semibold text-sm text-foreground">{order.customer_name}</p>
-                      <span className="text-sm">✓</span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                       {isRepeatCustomer ? (
@@ -686,7 +602,6 @@ export function OrderDetailPanel({
               <Card className="lg:col-span-2">
                 <SectionHeader icon={FileText} label="Notes internes" />
 
-                {/* Existing notes */}
                 {notes.length > 0 && (
                   <div className="space-y-2 mb-3">
                     {notes.map((note, idx) => (
@@ -700,7 +615,6 @@ export function OrderDetailPanel({
                   </div>
                 )}
 
-                {/* Add note input */}
                 <div className="flex items-center gap-2">
                   <input
                     ref={noteInputRef}
@@ -729,52 +643,25 @@ export function OrderDetailPanel({
                 {timeline.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">Aucun historique disponible</p>
                 ) : (
-                  <div className="space-y-0">
-                    {/* Creation event */}
-                    <div className="flex items-start gap-3 pb-3">
-                      <div className="flex flex-col items-center flex-shrink-0">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
-                          <Package className="h-3 w-3 text-primary" />
+                  <div className="space-y-3">
+                    {timeline.map((log: Record<string, unknown>, idx: number) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-foreground">
+                            <span className="font-medium">{String(log.old_status)}</span>
+                            {' → '}
+                            <span className="font-semibold">{String(log.new_status)}</span>
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(log.changed_at as string), 'dd/MM/yyyy HH:mm', { locale })}
+                          </p>
                         </div>
-                        <div className="w-px flex-1 bg-border mt-1" style={{ minHeight: 16 }} />
                       </div>
-                      <div className="flex-1 pt-1">
-                        <p className="text-xs font-medium text-foreground">Commande créée</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Via boutique en ligne · {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale })}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Status change events */}
-                    {timeline.map((log, idx) => {
-                      const logAny = log as Record<string, unknown>;
-                      const isLast = idx === timeline.length - 1;
-                      return (
-                        <div key={idx} className="flex items-start gap-3 pb-3">
-                          <div className="flex flex-col items-center flex-shrink-0">
-                            <div className="w-7 h-7 rounded-full bg-secondary border-2 border-border flex items-center justify-center">
-                              <CheckCircle2 className="h-3 w-3 text-muted-foreground" />
-                            </div>
-                            {!isLast && <div className="w-px flex-1 bg-border mt-1" style={{ minHeight: 16 }} />}
-                          </div>
-                          <div className="flex-1 pt-1">
-                            <div className="flex items-center gap-1.5">
-                              <OrderStatusBadge status={logAny.old_status as OrderStatus} />
-                              <span className="text-[10px] text-muted-foreground">→</span>
-                              <OrderStatusBadge status={logAny.new_status as OrderStatus} />
-                            </div>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {format(new Date(logAny.changed_at as string), 'dd/MM/yyyy HH:mm', { locale })}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    ))}
                   </div>
                 )}
               </Card>
-
             </div>
           </div>
         </div>

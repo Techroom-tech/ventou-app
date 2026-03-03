@@ -128,21 +128,15 @@ export interface ProductVariant {
 export type OrderStatus =
   | 'pending'
   | 'confirmed'
-  | 'preparing'
-  | 'shipping'
   | 'delivered'
-  | 'cancelled'
-  | 'archived';
+  | 'cancelled';
 
 // Valid forward transitions (no backward allowed)
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending:   ['confirmed', 'cancelled'],
-  confirmed: ['preparing', 'cancelled'],
-  preparing: ['shipping'],
-  shipping:  ['delivered'],
-  delivered: ['archived'],
-  cancelled: ['archived'],
-  archived:  [],
+  confirmed: ['delivered', 'cancelled'],
+  delivered: [],
+  cancelled: [],
 };
 
 export type PaymentMethod = 'MoMo' | 'Wave' | 'Orange' | 'Cash' | 'cod' | 'whatsapp';
