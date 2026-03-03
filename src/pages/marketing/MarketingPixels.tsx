@@ -49,18 +49,21 @@ export default function MarketingPixels() {
   const [scriptTarget, setScriptTarget] = useState('head');
   const [testResults, setTestResults] = useState<Record<string, 'success' | 'error' | null>>({});
 
+  const [fbEnabled, setFbEnabled] = useState(false);
+  const [ttEnabled, setTtEnabled] = useState(false);
+  const [gtmEnabled, setGtmEnabled] = useState(false);
+
   useEffect(() => {
     if (settings) {
       setFbPixel(settings.facebook_pixel ?? '');
       setTtPixel(settings.tiktok_pixel ?? '');
       setGtmId(settings.gtm_id ?? '');
       setCustomScripts(settings.custom_scripts ?? '');
+      setFbEnabled(!!settings.facebook_pixel);
+      setTtEnabled(!!settings.tiktok_pixel);
+      setGtmEnabled(!!settings.gtm_id);
     }
   }, [settings]);
-
-  const fbEnabled = fbPixel.trim().length > 0;
-  const ttEnabled = ttPixel.trim().length > 0;
-  const gtmEnabled = gtmId.trim().length > 0;
 
   const testFbPixel = () => {
     const valid = /^\d{10,20}$/.test(fbPixel.trim());
@@ -133,7 +136,7 @@ export default function MarketingPixels() {
                 </div>
                 <Switch
                   checked={fbEnabled}
-                  onCheckedChange={(v) => { if (!v) setFbPixel(''); }}
+                  onCheckedChange={(v) => { setFbEnabled(v); if (!v) setFbPixel(''); }}
                 />
               </div>
               <CardContent className="p-6 space-y-4">
@@ -143,7 +146,7 @@ export default function MarketingPixels() {
                     placeholder="123456789012345"
                     value={fbPixel}
                     onChange={(e) => setFbPixel(e.target.value)}
-                    disabled={!fbEnabled && fbPixel.length === 0}
+                    disabled={!fbEnabled}
                     className="mt-1"
                   />
                 </div>
@@ -186,7 +189,7 @@ export default function MarketingPixels() {
                 </div>
                 <Switch
                   checked={ttEnabled}
-                  onCheckedChange={(v) => { if (!v) setTtPixel(''); }}
+                  onCheckedChange={(v) => { setTtEnabled(v); if (!v) setTtPixel(''); }}
                 />
               </div>
               <CardContent className="p-6 space-y-4">
@@ -196,7 +199,7 @@ export default function MarketingPixels() {
                     placeholder="ABCDEF123456"
                     value={ttPixel}
                     onChange={(e) => setTtPixel(e.target.value)}
-                    disabled={!ttEnabled && ttPixel.length === 0}
+                    disabled={!ttEnabled}
                     className="mt-1"
                   />
                 </div>
@@ -228,7 +231,7 @@ export default function MarketingPixels() {
                 </div>
                 <Switch
                   checked={gtmEnabled}
-                  onCheckedChange={(v) => { if (!v) setGtmId(''); }}
+                  onCheckedChange={(v) => { setGtmEnabled(v); if (!v) setGtmId(''); }}
                 />
               </div>
               <CardContent className="p-6">
@@ -238,7 +241,7 @@ export default function MarketingPixels() {
                     placeholder="GTM-XXXXXXX"
                     value={gtmId}
                     onChange={(e) => setGtmId(e.target.value)}
-                    disabled={!gtmEnabled && gtmId.length === 0}
+                    disabled={!gtmEnabled}
                     className="mt-1"
                   />
                 </div>
