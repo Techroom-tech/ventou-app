@@ -121,6 +121,11 @@
 
 /* VENTOU utility classes */
 @layer utilities {
+  .emoji-color {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+    color: initial;
+    -webkit-text-fill-color: initial;
+  }
   .text-gradient-ventou {
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
