@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -20,6 +20,7 @@ import StoreNotFound from '@/components/storefront/StoreNotFound';
 import { CountryProvider, useCountry } from '@/contexts/CountryContext';
 import CountrySelector from '@/components/storefront/CountrySelector';
 import { getPlatformUrl } from '@/lib/domain';
+import { useStorefrontTracking, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase } from '@/hooks/useStorefrontTracking';
 interface ShopStorefrontProps {
   slug: string;
 }
@@ -153,6 +154,9 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
       return data as Shop | null;
     },
   });
+
+  // ── Inject tracking pixels (FB, TikTok, GTM) on public storefront only ──
+  useStorefrontTracking(shop?.id);
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['storefront-products', shop?.id, shop?.products_sort_order],
@@ -450,6 +454,12 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                         onClick={() => {
                           setSelectedProduct(product);
                           setDetailOpen(true);
+                          trackViewContent({
+                            content_name: product.name,
+                            content_id: product.id,
+                            value: product.price,
+                            currency: shop.currency ?? 'XOF',
+                          });
                         }}
                       >
                         {/* Image — aspect ratio 4/3 */}
@@ -533,6 +543,12 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                             onClick={e => {
                               e.stopPropagation();
                               addToCart(product);
+                              trackAddToCart({
+                                content_name: product.name,
+                                content_id: product.id,
+                                value: product.price,
+                                currency: shop.currency ?? 'XOF',
+                              });
                             }}
                           >
                             <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
@@ -581,7 +597,10 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
       <CartDrawer
         open={cartOpen}
         onOpenChange={setCartOpen}
-        onCheckout={() => setCheckoutOpen(true)}
+        onCheckout={() => {
+          setCheckoutOpen(true);
+          trackInitiateCheckout({ currency: shop.currency ?? 'XOF' });
+        }}
         currency={shop.currency}
         shopName={shop.name}
       />
