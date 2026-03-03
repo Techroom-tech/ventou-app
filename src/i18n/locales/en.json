@@ -623,12 +623,14 @@
       "all": "All",
       "pending": "Pending",
       "confirmed": "Confirmed",
-      "preparing": "Preparing",
-      "shipping": "Shipping",
       "delivered": "Delivered",
-      "cancelled": "Cancelled",
-      "archived": "Archived"
+      "cancelled": "Cancelled"
     },
+    "quickMode": "Quick mode",
+    "quickModeHint": "Quick processing mode — Pending orders only",
+    "allProcessed": "All orders are processed!",
+    "deleteConfirm": "Permanently delete this cancelled order?",
+    "deleted": "Order deleted",
     "detail": {
       "title": "Order detail",
       "customer": "Customer",

@@ -21,7 +21,7 @@ export function useTopProducts(shopId: string | undefined) {
         .from('orders')
         .select('items, total, status')
         .eq('shop_id', shopId)
-        .in('status', ['delivered', 'confirmed', 'shipping', 'preparing'])
+        .in('status', ['delivered', 'confirmed'])
         .gte('created_at', since.toISOString());
 
       if (error) throw error;

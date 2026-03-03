@@ -179,7 +179,7 @@ export const mockOrders: Order[] = [
     customer_name: 'Moussa Traoré',
     customer_phone: '+225 07 890 1234',
     total_amount: 120000,
-    status: 'shipping',
+    status: 'delivered',
     payment_method: 'MoMo',
     created_at: hoursAgo(8),
     updated_at: hoursAgo(8),

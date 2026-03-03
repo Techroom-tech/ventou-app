@@ -623,12 +623,14 @@
       "all": "Toutes",
       "pending": "En attente",
       "confirmed": "Confirmée",
-      "preparing": "En préparation",
-      "shipping": "En livraison",
       "delivered": "Livrée",
-      "cancelled": "Annulée",
-      "archived": "Archivée"
+      "cancelled": "Annulée"
     },
+    "quickMode": "Mode rapide",
+    "quickModeHint": "Mode traitement rapide — Commandes en attente uniquement",
+    "allProcessed": "Toutes les commandes sont traitées !",
+    "deleteConfirm": "Supprimer définitivement cette commande annulée ?",
+    "deleted": "Commande supprimée",
     "detail": {
       "title": "Détail commande",
       "customer": "Client",
