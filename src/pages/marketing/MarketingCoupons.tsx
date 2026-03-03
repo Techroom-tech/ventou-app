@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -51,21 +52,29 @@ export default function MarketingCoupons() {
     return 'active';
   };
 
+  const statusBadge = (status: string) => {
+    const variant = status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary';
+    const label = status === 'active' ? t('marketing.coupons.active') : status === 'expired' ? t('marketing.coupons.expired') : t('marketing.coupons.paused');
+    return <Badge variant={variant}>{label}</Badge>;
+  };
+
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto pb-12 space-y-6">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')} className="shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">{t('marketing.hub.coupons')}</h1>
+            <h1 className="text-[28px] font-semibold text-foreground tracking-tight">{t('marketing.hub.coupons')}</h1>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-1" />{t('marketing.coupons.create')}</Button>
+              <Button size="sm" className="bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white">
+                <Plus className="h-4 w-4 mr-1" />{t('marketing.coupons.create')}
+              </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[600px]">
               <DialogHeader><DialogTitle>{t('marketing.coupons.create')}</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <Input placeholder="CODE" value={code} onChange={(e) => setCode(e.target.value)} />
@@ -79,7 +88,7 @@ export default function MarketingCoupons() {
                 <Input type="number" placeholder={t('marketing.coupons.value')} value={value} onChange={(e) => setValue(e.target.value)} />
                 <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
                 <Input type="number" placeholder={t('marketing.coupons.usageLimit')} value={usageLimit} onChange={(e) => setUsageLimit(e.target.value)} />
-                <Button className="w-full" onClick={handleCreate} disabled={createMut.isPending}>
+                <Button className="w-full bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white" onClick={handleCreate} disabled={createMut.isPending}>
                   {t('common.save')}
                 </Button>
               </div>
@@ -95,33 +104,71 @@ export default function MarketingCoupons() {
             ) : !codes?.length ? (
               <p className="text-sm text-muted-foreground">{t('marketing.coupons.empty')}</p>
             ) : (
-              <div className="space-y-3">
-                {codes.map((c) => {
-                  const status = getStatus(c);
-                  return (
-                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-sm">{c.code}</span>
-                          <Badge variant={status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary'}>
-                            {status === 'active' ? t('marketing.coupons.active') : status === 'expired' ? t('marketing.coupons.expired') : t('marketing.coupons.paused')}
-                          </Badge>
+              <>
+                {/* Desktop */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-center">{t('marketing.coupons.value')}</TableHead>
+                        <TableHead className="text-center">{t('marketing.coupons.used')}</TableHead>
+                        <TableHead className="text-center">{t('customers.badge')}</TableHead>
+                        <TableHead className="text-right"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {codes.map((c) => {
+                        const status = getStatus(c);
+                        return (
+                          <TableRow key={c.id}>
+                            <TableCell className="font-mono font-bold">{c.code}</TableCell>
+                            <TableCell>{c.type === 'percentage' ? '%' : 'FCFA'}</TableCell>
+                            <TableCell className="text-center">{c.type === 'percentage' ? `${c.value}%` : `${c.value} FCFA`}</TableCell>
+                            <TableCell className="text-center">{c.used_count}/{c.usage_limit ?? '∞'}</TableCell>
+                            <TableCell className="text-center">{statusBadge(status)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Switch
+                                  checked={c.is_active}
+                                  onCheckedChange={(v) => toggleMut.mutate({ id: c.id, shop_id: shop!.id, is_active: v })}
+                                />
+                                <Button variant="ghost" size="icon" onClick={() => { deleteMut.mutate({ id: c.id, shop_id: shop!.id }); }}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile */}
+                <div className="md:hidden space-y-3">
+                  {codes.map((c) => {
+                    const status = getStatus(c);
+                    return (
+                      <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl border border-border">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm">{c.code}</span>
+                            {statusBadge(status)}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {c.type === 'percentage' ? `${c.value}%` : `${c.value} FCFA`} · {c.used_count}/{c.usage_limit ?? '∞'}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {c.type === 'percentage' ? `${c.value}%` : `${c.value} FCFA`} · {t('marketing.coupons.used')}: {c.used_count}/{c.usage_limit ?? '∞'}
-                        </p>
+                        <Switch checked={c.is_active} onCheckedChange={(v) => toggleMut.mutate({ id: c.id, shop_id: shop!.id, is_active: v })} />
+                        <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: c.id, shop_id: shop!.id })}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
-                      <Switch
-                        checked={c.is_active}
-                        onCheckedChange={(v) => toggleMut.mutate({ id: c.id, shop_id: shop!.id, is_active: v })}
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => { deleteMut.mutate({ id: c.id, shop_id: shop!.id }); toast.success(t('common.success')); }}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

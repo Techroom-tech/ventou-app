@@ -22,13 +22,16 @@ export default function MarketingAnalytics() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto pb-12 space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')}>
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')} className="shrink-0 self-start">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">{t('marketing.analytics.title')}</h1>
+            <h1 className="text-[28px] font-semibold text-foreground tracking-tight">
+              {t('marketing.analytics.title')}
+            </h1>
             <p className="text-sm text-muted-foreground">{t('marketing.analytics.subtitle')}</p>
           </div>
           <Select value={String(days)} onValueChange={(v) => setDays(Number(v))}>
@@ -63,28 +66,47 @@ export default function MarketingAnalytics() {
             ) : !products?.length ? (
               <p className="text-sm text-muted-foreground">{t('marketing.analytics.noData')}</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('marketing.analytics.product')}</TableHead>
-                    <TableHead className="text-center">{t('marketing.analytics.orders')}</TableHead>
-                    <TableHead className="text-center">{t('marketing.analytics.delivered')}</TableHead>
-                    <TableHead className="text-center">{t('marketing.analytics.cancelled')}</TableHead>
-                    <TableHead className="text-right">{t('marketing.analytics.revenue')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('marketing.analytics.product')}</TableHead>
+                        <TableHead className="text-center">{t('marketing.analytics.orders')}</TableHead>
+                        <TableHead className="text-center">{t('marketing.analytics.delivered')}</TableHead>
+                        <TableHead className="text-center">{t('marketing.analytics.cancelled')}</TableHead>
+                        <TableHead className="text-right">{t('marketing.analytics.revenue')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {products.slice(0, 20).map((p) => (
+                        <TableRow key={p.productName}>
+                          <TableCell className="font-medium">{p.productName}</TableCell>
+                          <TableCell className="text-center">{p.totalOrders}</TableCell>
+                          <TableCell className="text-center text-green-600">{p.delivered}</TableCell>
+                          <TableCell className="text-center text-red-500">{p.cancelled}</TableCell>
+                          <TableCell className="text-right">{p.revenue.toLocaleString()} FCFA</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-3">
                   {products.slice(0, 20).map((p) => (
-                    <TableRow key={p.productName}>
-                      <TableCell className="font-medium">{p.productName}</TableCell>
-                      <TableCell className="text-center">{p.totalOrders}</TableCell>
-                      <TableCell className="text-center text-green-600">{p.delivered}</TableCell>
-                      <TableCell className="text-center text-red-500">{p.cancelled}</TableCell>
-                      <TableCell className="text-right">{p.revenue.toLocaleString()} FCFA</TableCell>
-                    </TableRow>
+                    <div key={p.productName} className="p-3 rounded-xl border border-border space-y-1">
+                      <span className="font-semibold text-sm text-foreground">{p.productName}</span>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{t('marketing.analytics.orders')}: {p.totalOrders}</span>
+                        <span className="text-green-600">{p.delivered} ✓</span>
+                        <span className="text-red-500">{p.cancelled} ✗</span>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{p.revenue.toLocaleString()} FCFA</p>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

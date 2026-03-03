@@ -735,14 +735,6 @@
       "paused": "Pausé",
       "expired": "Expiré"
     },
-    "promos": {
-      "create": "Nouvelle promo",
-      "list": "Promotions flash",
-      "empty": "Aucune promotion flash créée",
-      "selectProduct": "Sélectionner un produit",
-      "startsAt": "Début",
-      "endsAt": "Fin"
-    },
     "links": {
       "create": "Nouveau lien",
       "list": "Vos liens trackés",
@@ -752,7 +744,33 @@
       "other": "Autre"
     },
     "pixels": {
-      "customScripts": "Scripts personnalisés"
+      "customScripts": "Scripts personnalisés",
+      "subtitle": "Configurez vos outils de suivi publicitaire",
+      "enabled": "Actif",
+      "disabled": "Inactif",
+      "testConnection": "Tester connexion",
+      "testPixel": "Tester pixel",
+      "testSuccess": "Format valide ✓",
+      "testError": "Format invalide — vérifiez l'identifiant",
+      "capiHint": "Optionnel — permet le suivi côté serveur pour plus de précision.",
+      "injectIn": "Injecter dans",
+      "sanitizeWarning": "Les scripts personnalisés sont injectés tels quels. Assurez-vous qu'ils proviennent de sources fiables.",
+      "autoEvents": "Événements automatiques",
+      "autoEventsDesc": "Ces événements sont envoyés automatiquement quand vos pixels sont actifs.",
+      "eventViewContent": "Quand un visiteur consulte une fiche produit",
+      "eventAddToCart": "Quand un produit est ajouté au panier",
+      "eventCheckout": "Quand le formulaire de commande est ouvert",
+      "eventPurchase": "Quand une commande est confirmée"
+    },
+    "promos": {
+      "create": "Nouvelle promo",
+      "list": "Promotions flash",
+      "empty": "Aucune promotion flash créée",
+      "selectProduct": "Sélectionner un produit",
+      "startsAt": "Début",
+      "endsAt": "Fin",
+      "showBadge": "Afficher badge",
+      "showCountdown": "Afficher countdown"
     }
   }
 }
