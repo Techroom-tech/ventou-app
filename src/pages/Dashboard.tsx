@@ -343,9 +343,9 @@ export default function Dashboard() {
         {/* ── Hero Greeting ── */}
         <div className="pt-2 sm:pt-4">
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-medium text-foreground leading-tight">
-            {isFr ? greeting.text : greeting.textEn}{firstName ? ` ${firstName}` : ''} !
+            {isFr ? greeting.text : greeting.textEn}{firstName ? ` ${firstName}` : ''}&nbsp;!{' '}
+            <span role="img" aria-label="greeting emoji">{greeting.emoji}</span>
           </h1>
-          <span className="text-3xl sm:text-4xl" role="img" aria-label="greeting emoji">{greeting.emoji}</span>
           <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-lg">
             {t('dashboard.hero.subtitle', "C'est l'heure de pointe - lancez cette campagne que vous planifiez !")}
           </p>
