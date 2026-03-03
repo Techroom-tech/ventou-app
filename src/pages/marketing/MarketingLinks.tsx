@@ -7,6 +7,8 @@ import { useTrackedLinks, useCreateTrackedLink, useDeleteTrackedLink } from '@/h
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -51,19 +53,21 @@ export default function MarketingLinks() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto pb-12 space-y-6">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')} className="shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">{t('marketing.hub.links')}</h1>
+            <h1 className="text-[28px] font-semibold text-foreground tracking-tight">{t('marketing.hub.links')}</h1>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-1" />{t('marketing.links.create')}</Button>
+              <Button size="sm" className="bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white">
+                <Plus className="h-4 w-4 mr-1" />{t('marketing.links.create')}
+              </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[600px]">
               <DialogHeader><DialogTitle>{t('marketing.links.create')}</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <Input placeholder={t('marketing.links.name')} value={name} onChange={(e) => setName(e.target.value)} />
@@ -79,7 +83,7 @@ export default function MarketingLinks() {
                     <SelectItem value="other">{t('marketing.links.other')}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button className="w-full" onClick={handleCreate} disabled={createMut.isPending}>{t('common.save')}</Button>
+                <Button className="w-full bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white" onClick={handleCreate} disabled={createMut.isPending}>{t('common.save')}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -93,26 +97,62 @@ export default function MarketingLinks() {
             ) : !links?.length ? (
               <p className="text-sm text-muted-foreground">{t('marketing.links.empty')}</p>
             ) : (
-              <div className="space-y-3">
-                {links.map((l) => (
-                  <div key={l.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{l.name}</span>
-                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{l.source}</span>
+              <>
+                {/* Desktop */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('marketing.links.name')}</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Ref</TableHead>
+                        <TableHead className="text-center">{t('marketing.links.clicks')}</TableHead>
+                        <TableHead className="text-right"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {links.map((l) => (
+                        <TableRow key={l.id}>
+                          <TableCell className="font-medium">{l.name}</TableCell>
+                          <TableCell><Badge variant="secondary">{l.source}</Badge></TableCell>
+                          <TableCell className="font-mono text-xs">{l.ref_code}</TableCell>
+                          <TableCell className="text-center">{l.clicks}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile */}
+                <div className="md:hidden space-y-3">
+                  {links.map((l) => (
+                    <div key={l.id} className="flex items-center gap-3 p-3 rounded-xl border border-border">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm">{l.name}</span>
+                          <Badge variant="secondary" className="text-[10px]">{l.source}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate font-mono">{l.ref_code} · {l.clicks} {t('marketing.links.clicks')}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{l.target_url}?ref={l.ref_code}</p>
-                      <p className="text-xs text-muted-foreground">{l.clicks} {t('marketing.links.clicks')}</p>
+                      <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => { deleteMut.mutate({ id: l.id, shop_id: shop!.id }); toast.success(t('common.success')); }}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

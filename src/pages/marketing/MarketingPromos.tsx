@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -26,7 +28,6 @@ export default function MarketingPromos() {
   const toggleMut = useToggleFlashPromotion();
   const deleteMut = useDeleteFlashPromotion();
 
-  // Load products for picker
   const { data: products } = useQuery({
     queryKey: ['products_list', shop?.id],
     queryFn: async () => {
@@ -43,6 +44,8 @@ export default function MarketingPromos() {
   const [discountValue, setDiscountValue] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [showBadge, setShowBadge] = useState(true);
+  const [showCountdown, setShowCountdown] = useState(true);
 
   const handleCreate = async () => {
     if (!shop || !productId || !discountValue || !startsAt || !endsAt) return;
@@ -53,6 +56,8 @@ export default function MarketingPromos() {
       discount_value: Number(discountValue),
       starts_at: new Date(startsAt).toISOString(),
       ends_at: new Date(endsAt).toISOString(),
+      show_badge: showBadge,
+      show_countdown: showCountdown,
     });
     toast.success(t('common.success'));
     setOpen(false);
@@ -69,21 +74,28 @@ export default function MarketingPromos() {
     return 'active';
   };
 
+  const statusBadge = (status: string) => {
+    const variant = status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary';
+    return <Badge variant={variant}>{status}</Badge>;
+  };
+
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto pb-12 space-y-6">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')} className="shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">{t('marketing.hub.promos')}</h1>
+            <h1 className="text-[28px] font-semibold text-foreground tracking-tight">{t('marketing.hub.promos')}</h1>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-1" />{t('marketing.promos.create')}</Button>
+              <Button size="sm" className="bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white">
+                <Plus className="h-4 w-4 mr-1" />{t('marketing.promos.create')}
+              </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[600px]">
               <DialogHeader><DialogTitle>{t('marketing.promos.create')}</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <Select value={productId} onValueChange={setProductId}>
@@ -112,7 +124,17 @@ export default function MarketingPromos() {
                     <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
                   </div>
                 </div>
-                <Button className="w-full" onClick={handleCreate} disabled={createMut.isPending}>{t('common.save')}</Button>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="showBadge" checked={showBadge} onCheckedChange={(v) => setShowBadge(!!v)} />
+                    <Label htmlFor="showBadge" className="text-sm">{t('marketing.promos.showBadge')}</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="showCountdown" checked={showCountdown} onCheckedChange={(v) => setShowCountdown(!!v)} />
+                    <Label htmlFor="showCountdown" className="text-sm">{t('marketing.promos.showCountdown')}</Label>
+                  </div>
+                </div>
+                <Button className="w-full bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white" onClick={handleCreate} disabled={createMut.isPending}>{t('common.save')}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -130,20 +152,18 @@ export default function MarketingPromos() {
                 {promos.map((p) => {
                   const status = getStatus(p);
                   return (
-                    <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                    <div key={p.id} className="flex items-center gap-3 p-4 rounded-xl border border-border">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm">{productName(p.product_id)}</span>
-                          <Badge variant={status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary'}>
-                            {status}
-                          </Badge>
+                          {statusBadge(status)}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           -{p.discount_value}{p.discount_type === 'percentage' ? '%' : ' FCFA'} · {format(new Date(p.starts_at), 'dd/MM HH:mm')} → {format(new Date(p.ends_at), 'dd/MM HH:mm')}
                         </p>
                       </div>
                       <Switch checked={p.is_active} onCheckedChange={(v) => toggleMut.mutate({ id: p.id, shop_id: shop!.id, is_active: v })} />
-                      <Button variant="ghost" size="icon" onClick={() => { deleteMut.mutate({ id: p.id, shop_id: shop!.id }); toast.success(t('common.success')); }}>
+                      <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: p.id, shop_id: shop!.id })}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
