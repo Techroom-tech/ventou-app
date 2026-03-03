@@ -194,6 +194,10 @@
     "hero": {
       "subtitle": "It's peak time - launch that campaign you've been planning!"
     },
+    "completeProfile": {
+      "title": "Complete your profile to personalize your experience",
+      "cta": "Complete"
+    },
     "header": {
       "search": "Search anything: ⌘K",
       "visitShop": "Visit my shop",
