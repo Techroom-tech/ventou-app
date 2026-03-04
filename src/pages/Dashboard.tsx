@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, ShoppingCart, Package, TrendingUp,
   Plus, BarChart2, Tag, Info,
@@ -27,6 +28,15 @@ import { formatCurrency } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { getTimeGreeting } from '@/lib/greeting';
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.06, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+  }),
+};
+
 // ─── Stat Card (Premium – clickable) ─────────────────────────────────────────
 interface StatCardProps {
   title: string;
@@ -36,32 +46,40 @@ interface StatCardProps {
   href?: string;
 }
 
-function StatCard({ title, value, icon: Icon, loading, href }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, loading, href, index = 0 }: StatCardProps & { index?: number }) {
   const navigate = useNavigate();
   return (
-    <Card
-      className={cn(
-        'rounded-xl border border-border bg-card hover:shadow-md transition-shadow cursor-pointer group',
-      )}
-      onClick={() => href && navigate(href)}
+    <motion.div
+      custom={index}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+      variants={fadeUp}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <p className="text-[13px] text-muted-foreground font-medium">{title}</p>
-            {loading ? (
-              <Skeleton className="h-7 w-28" />
-            ) : (
-              <p className="text-2xl font-semibold text-foreground leading-none">{value}</p>
-            )}
+      <Card
+        className={cn(
+          'rounded-xl border border-border bg-card hover:shadow-md transition-shadow cursor-pointer group',
+        )}
+        onClick={() => href && navigate(href)}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1.5">
+              <p className="text-[13px] text-muted-foreground font-medium">{title}</p>
+              {loading ? (
+                <Skeleton className="h-7 w-28" />
+              ) : (
+                <p className="text-2xl font-semibold text-foreground leading-none">{value}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+              <Icon className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.8} />
+              {href && <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />}
+            </div>
           </div>
-          <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-            <Icon className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.8} />
-            {href && <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -140,54 +158,65 @@ function RevenueChart({ shopId, currency }: { shopId: string; currency: string }
         </div>
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-[200px] w-full rounded-lg mt-3" />
-      ) : (
-        <div className="h-[200px] sm:h-[240px] mt-3">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-              <defs>
-                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={v => v === 0 ? '0' : `${(v / 1000).toFixed(0)}k`}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 8,
-                  fontSize: 11,
-                  color: 'hsl(var(--foreground))',
-                }}
-                formatter={(v: number) => [formatCurrency(v, currency as 'XOF'), t('dashboard.chart.revenue')]}
-              />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                fill="url(#revGrad)"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      <AnimatePresence mode="wait">
+        {isLoading ? (
+          <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+            <Skeleton className="h-[200px] w-full rounded-lg mt-3" />
+          </motion.div>
+        ) : (
+          <motion.div
+            key={days}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="h-[200px] sm:h-[240px] mt-3"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={v => v === 0 ? '0' : `${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    fontSize: 11,
+                    color: 'hsl(var(--foreground))',
+                  }}
+                  formatter={(v: number) => [formatCurrency(v, currency as 'XOF'), t('dashboard.chart.revenue')]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  fill="url(#revGrad)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Card>
   );
 }
@@ -388,6 +417,7 @@ export default function Dashboard() {
             icon={DollarSign}
             loading={kpiLoading}
             href="/dashboard/orders"
+            index={0}
           />
           <StatCard
             title={t('dashboard.stats.revenue7days', '7 derniers jours')}
@@ -395,6 +425,7 @@ export default function Dashboard() {
             icon={TrendingUp}
             loading={kpiLoading}
             href="/dashboard/orders?period=7days"
+            index={1}
           />
           <StatCard
             title={t('dashboard.stats.ordersToday', 'Commandes')}
@@ -402,6 +433,7 @@ export default function Dashboard() {
             icon={ShoppingCart}
             loading={kpiLoading}
             href="/dashboard/orders"
+            index={2}
           />
           <StatCard
             title={t('dashboard.stats.totalClients', 'Clients')}
@@ -409,6 +441,7 @@ export default function Dashboard() {
             icon={Users}
             loading={kpiLoading}
             href="/dashboard/customers"
+            index={3}
           />
         </div>
 
