@@ -1068,6 +1068,7 @@ export type Database = {
         Row: {
           created_at: string | null
           custom_scripts: string | null
+          facebook_capi_token: string | null
           facebook_pixel: string | null
           gtm_id: string | null
           id: string
@@ -1078,6 +1079,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           custom_scripts?: string | null
+          facebook_capi_token?: string | null
           facebook_pixel?: string | null
           gtm_id?: string | null
           id?: string
@@ -1088,6 +1090,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           custom_scripts?: string | null
+          facebook_capi_token?: string | null
           facebook_pixel?: string | null
           gtm_id?: string | null
           id?: string

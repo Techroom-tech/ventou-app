@@ -5,6 +5,7 @@ export interface TrackingSettings {
   id?: string;
   shop_id: string;
   facebook_pixel: string | null;
+  facebook_capi_token: string | null;
   tiktok_pixel: string | null;
   gtm_id: string | null;
   custom_scripts: string | null;
@@ -12,6 +13,7 @@ export interface TrackingSettings {
 
 const DEFAULTS: Omit<TrackingSettings, 'shop_id'> = {
   facebook_pixel: null,
+  facebook_capi_token: null,
   tiktok_pixel: null,
   gtm_id: null,
   custom_scripts: null,
@@ -33,6 +35,7 @@ export function useTrackingSettings(shopId: string | undefined) {
         id: data.id,
         shop_id: data.shop_id,
         facebook_pixel: data.facebook_pixel ?? null,
+        facebook_capi_token: (data as any).facebook_capi_token ?? null,
         tiktok_pixel: data.tiktok_pixel ?? null,
         gtm_id: data.gtm_id ?? null,
         custom_scripts: data.custom_scripts ?? null,

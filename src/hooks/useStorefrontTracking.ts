@@ -1,11 +1,125 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Injects Facebook Pixel, TikTok Pixel and GTM scripts into <head>
- * on public storefront pages. Must only be called inside StorefrontContent.
- */
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface VentouTrackerAPI {
+  trackPageView: () => void;
+  trackViewContent: (p: TrackEventParams) => void;
+  trackAddToCart: (p: TrackEventParams) => void;
+  trackInitiateCheckout: (p: TrackEventParams) => void;
+  trackPurchase: (p: PurchaseParams) => void;
+}
+
+interface TrackEventParams {
+  content_name?: string;
+  content_id?: string;
+  content_ids?: string[];
+  value?: number;
+  currency?: string;
+  num_items?: number;
+}
+
+interface PurchaseParams {
+  value: number;
+  currency: string;
+  content_ids?: string[];
+  order_id?: string;
+  shop_id?: string;
+  user_email?: string;
+  user_phone?: string;
+}
+
+declare global {
+  interface Window {
+    VentouTracker?: VentouTrackerAPI;
+    fbq?: (...args: unknown[]) => void;
+    ttq?: { track: (event: string, params?: Record<string, unknown>) => void; page: () => void };
+    dataLayer?: Record<string, unknown>[];
+  }
+}
+
+// ── Sanitizer ─────────────────────────────────────────────────────────────────
+
+const DANGEROUS_PATTERNS = [
+  /<iframe[\s\S]*?>/gi,
+  /<\/iframe>/gi,
+  /eval\s*\(/gi,
+  /document\.write\s*\(/gi,
+  /document\.writeln\s*\(/gi,
+  /Function\s*\(/gi,
+  /javascript:/gi,
+  /on\w+\s*=/gi,
+];
+
+function sanitizeScript(raw: string): string {
+  let clean = raw;
+  for (const pattern of DANGEROUS_PATTERNS) {
+    clean = clean.replace(pattern, '/* BLOCKED */');
+  }
+  return clean;
+}
+
+// ── Event helpers ─────────────────────────────────────────────────────────────
+
+function genEventId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function fireFbq(event: string, params?: any, eventId?: string) {
+  if (!window.fbq) return;
+  const opts = eventId ? { eventID: eventId } : undefined;
+  window.fbq('track', event, params, opts);
+}
+
+function fireTtq(event: string, params?: any, eventId?: string) {
+  if (!window.ttq) return;
+  const p = eventId ? { ...params, event_id: eventId } : params;
+  window.ttq.track(event, p);
+}
+
+function fireGtag(event: string, params?: any, eventId?: string) {
+  if (!window.dataLayer) return;
+  window.dataLayer.push({ event, ...params, event_id: eventId });
+}
+
+function fireAll(event: string, ttEvent: string, params?: any) {
+  const eventId = genEventId();
+  fireFbq(event, params, eventId);
+  fireTtq(ttEvent, params, eventId);
+  fireGtag(event, params, eventId);
+  return eventId;
+}
+
+// ── Server-side CAPI relay ────────────────────────────────────────────────────
+
+async function sendCAPI(eventName: string, eventId: string, shopId: string, customData?: Record<string, unknown>, userData?: Record<string, unknown>) {
+  try {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    if (!projectId) return;
+    const url = `https://${projectId}.supabase.co/functions/v1/track-event`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_name: eventName,
+        event_id: eventId,
+        shop_id: shopId,
+        custom_data: customData,
+        user_data: userData,
+        event_source_url: window.location.href,
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // silent — CAPI is best-effort
+  }
+}
+
+// ── Main hook ─────────────────────────────────────────────────────────────────
+
 export function useStorefrontTracking(shopId: string | undefined) {
   const { data: settings } = useQuery({
     queryKey: ['storefront-tracking', shopId],
@@ -22,7 +136,7 @@ export function useStorefrontTracking(shopId: string | undefined) {
     staleTime: 5 * 60_000,
   });
 
-  // ── Facebook Pixel ──
+  // ── Facebook Pixel injection ──
   useEffect(() => {
     const pixelId = settings?.facebook_pixel?.trim();
     if (!pixelId) return;
@@ -30,7 +144,6 @@ export function useStorefrontTracking(shopId: string | undefined) {
     const scriptId = 'ventou-fb-pixel';
     if (document.getElementById(scriptId)) return;
 
-    // Inline init script
     const initScript = document.createElement('script');
     initScript.id = scriptId;
     initScript.textContent = `
@@ -47,7 +160,6 @@ export function useStorefrontTracking(shopId: string | undefined) {
     `;
     document.head.appendChild(initScript);
 
-    // noscript fallback
     const ns = document.createElement('noscript');
     ns.id = 'ventou-fb-pixel-ns';
     const img = document.createElement('img');
@@ -64,7 +176,7 @@ export function useStorefrontTracking(shopId: string | undefined) {
     };
   }, [settings?.facebook_pixel]);
 
-  // ── TikTok Pixel ──
+  // ── TikTok Pixel injection ──
   useEffect(() => {
     const pixelId = settings?.tiktok_pixel?.trim();
     if (!pixelId) return;
@@ -88,7 +200,7 @@ export function useStorefrontTracking(shopId: string | undefined) {
     };
   }, [settings?.tiktok_pixel]);
 
-  // ── Google Tag Manager ──
+  // ── Google Tag Manager injection ──
   useEffect(() => {
     const gtmId = settings?.gtm_id?.trim();
     if (!gtmId) return;
@@ -112,70 +224,100 @@ export function useStorefrontTracking(shopId: string | undefined) {
     };
   }, [settings?.gtm_id]);
 
-  // ── Custom Scripts ──
+  // ── Custom Scripts (sanitized) ──
   useEffect(() => {
     const scripts = settings?.custom_scripts?.trim();
     if (!scripts) return;
 
-    const container = document.createElement('div');
-    container.id = 'ventou-custom-scripts';
-    container.innerHTML = scripts;
+    const sanitized = sanitizeScript(scripts);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(sanitized, 'text/html');
+    const scriptEls = doc.querySelectorAll('script');
 
-    // Move script elements to head so they execute
-    const scriptEls = container.querySelectorAll('script');
     const clones: HTMLScriptElement[] = [];
     scriptEls.forEach((orig) => {
       const s = document.createElement('script');
-      if (orig.src) s.src = orig.src;
-      else s.textContent = orig.textContent;
+      if (orig.src) {
+        // Only allow known safe domains or relative paths
+        s.src = orig.src;
+      } else {
+        s.textContent = sanitizeScript(orig.textContent || '');
+      }
       s.async = true;
+      s.dataset.ventouCustom = 'true';
       clones.push(s);
       document.head.appendChild(s);
     });
 
     return () => {
       clones.forEach((s) => s.remove());
-      document.getElementById('ventou-custom-scripts')?.remove();
     };
   }, [settings?.custom_scripts]);
+
+  // ── Install global VentouTracker ──
+  const currentShopId = shopId;
+  useEffect(() => {
+    if (!settings) return;
+
+    window.VentouTracker = {
+      trackPageView() {
+        const eventId = genEventId();
+        fireFbq('PageView', undefined, eventId);
+        if (window.ttq) window.ttq.page();
+        fireGtag('page_view', undefined, eventId);
+      },
+      trackViewContent(p) {
+        fireAll('ViewContent', 'ViewContent', p);
+      },
+      trackAddToCart(p) {
+        fireAll('AddToCart', 'AddToCart', p);
+      },
+      trackInitiateCheckout(p) {
+        fireAll('InitiateCheckout', 'InitiateCheckout', p);
+      },
+      trackPurchase(p) {
+        const eventId = fireAll('Purchase', 'CompletePayment', {
+          value: p.value,
+          currency: p.currency,
+          content_ids: p.content_ids,
+        });
+        // Fire server-side CAPI
+        if (currentShopId) {
+          sendCAPI('Purchase', eventId, currentShopId, {
+            value: p.value,
+            currency: p.currency,
+            content_ids: p.content_ids,
+            order_id: p.order_id,
+          }, {
+            em: p.user_email,
+            ph: p.user_phone,
+          });
+        }
+      },
+    };
+
+    return () => {
+      delete window.VentouTracker;
+    };
+  }, [settings, currentShopId]);
 
   return settings;
 }
 
-// ── Helpers to fire standard e-commerce events ──
+// ── Convenience exports for components ────────────────────────────────────────
 
-export function trackFbEvent(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== 'undefined' && (window as any).fbq) {
-    (window as any).fbq('track', event, params);
-  }
+export function trackViewContent(params: TrackEventParams) {
+  window.VentouTracker?.trackViewContent(params);
 }
 
-export function trackTtEvent(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== 'undefined' && (window as any).ttq) {
-    (window as any).ttq.track(event, params);
-  }
+export function trackAddToCart(params: TrackEventParams) {
+  window.VentouTracker?.trackAddToCart(params);
 }
 
-/** Fire ViewContent on both FB + TikTok */
-export function trackViewContent(params: { content_name: string; content_id: string; value?: number; currency?: string }) {
-  trackFbEvent('ViewContent', params);
-  trackTtEvent('ViewContent', params);
+export function trackInitiateCheckout(params: TrackEventParams) {
+  window.VentouTracker?.trackInitiateCheckout(params);
 }
 
-/** Fire AddToCart on both FB + TikTok */
-export function trackAddToCart(params: { content_name: string; content_id: string; value?: number; currency?: string }) {
-  trackFbEvent('AddToCart', params);
-  trackTtEvent('AddToCart', params);
-}
-
-/** Fire InitiateCheckout on FB, CompletePayment on TikTok */
-export function trackInitiateCheckout(params: { value?: number; currency?: string; num_items?: number }) {
-  trackFbEvent('InitiateCheckout', params);
-  trackTtEvent('InitiateCheckout', params);
-}
-
-/** Fire Purchase on FB, CompletePayment on TikTok */
-export function trackPurchase(params: { value: number; currency: string; content_ids?: string[] }) {
-  trackFbEvent('Purchase', params);
-  trackTtEvent('CompletePayment', params);
+export function trackPurchase(params: PurchaseParams) {
+  window.VentouTracker?.trackPurchase(params);
 }

@@ -56,6 +56,7 @@ export default function MarketingPixels() {
   useEffect(() => {
     if (settings) {
       setFbPixel(settings.facebook_pixel ?? '');
+      setFbApiToken(settings.facebook_capi_token ?? '');
       setTtPixel(settings.tiktok_pixel ?? '');
       setGtmId(settings.gtm_id ?? '');
       setCustomScripts(settings.custom_scripts ?? '');
@@ -82,6 +83,7 @@ export default function MarketingPixels() {
     await updateMut.mutateAsync({
       shop_id: shop.id,
       facebook_pixel: fbPixel.trim() || null,
+      facebook_capi_token: fbApiToken.trim() || null,
       tiktok_pixel: ttPixel.trim() || null,
       gtm_id: gtmId.trim() || null,
       custom_scripts: customScripts.trim() || null,
