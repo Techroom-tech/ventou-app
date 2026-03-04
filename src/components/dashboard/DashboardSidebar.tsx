@@ -1,7 +1,7 @@
 import { useState, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, LifeBuoy, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronDown, Headphones, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShop } from '@/hooks/useShop';
 import { allNavItems, onboardingNavItems, isNavActive } from '@/config/navigation';
@@ -38,11 +38,11 @@ const NavItems = memo(function NavItems({
             to={item.path}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+              'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150',
               collapsed && 'justify-center px-0',
               isActive
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-[1.03]'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             )}
           >
             <item.icon size={20} strokeWidth={1.8} className="shrink-0" />
@@ -117,21 +117,21 @@ export function DashboardSidebar() {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 mt-4 space-y-0.5">
+        <nav className="flex-1 px-2 mt-3 space-y-0.5">
           <NavItems items={navItems} pathname={location.pathname} collapsed={collapsed} t={t} />
         </nav>
 
         {/* Footer */}
-        <div className="px-3 pb-4 space-y-0.5">
+        <div className="px-2 pb-3 space-y-0.5">
           {/* Help center */}
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
                   to="/support"
-                  className="flex items-center justify-center py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150 hover:scale-[1.03]"
+                  className="flex items-center justify-center py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150"
                 >
-                  <LifeBuoy size={20} strokeWidth={1.8} />
+                  <Headphones size={20} strokeWidth={1.8} />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right">{t('dashboard.sidebar.helpCenter', 'Centre d\'aide')}</TooltipContent>
@@ -139,9 +139,9 @@ export function DashboardSidebar() {
           ) : (
             <Link
               to="/support"
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150 hover:scale-[1.03]"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150"
             >
-              <LifeBuoy size={20} strokeWidth={1.8} />
+              <Headphones size={20} strokeWidth={1.8} />
               {t('dashboard.sidebar.helpCenter', 'Centre d\'aide')}
             </Link>
           )}
@@ -153,7 +153,7 @@ export function DashboardSidebar() {
                 <button
                   onClick={toggleCollapsed}
                   aria-label={t('dashboard.sidebar.expand', 'Étendre le menu')}
-                  className="flex items-center justify-center py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150 w-full"
+                  className="flex items-center justify-center py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150 w-full"
                 >
                   <PanelLeftOpen size={20} strokeWidth={1.8} />
                 </button>
@@ -163,7 +163,7 @@ export function DashboardSidebar() {
           ) : (
             <button
               onClick={toggleCollapsed}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150 w-full"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-150 w-full"
             >
               <PanelLeftClose size={20} strokeWidth={1.8} />
               {t('dashboard.sidebar.collapse', 'Réduire le menu')}

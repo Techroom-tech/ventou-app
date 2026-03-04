@@ -4,15 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   DollarSign, ShoppingCart, Package, TrendingUp,
   Plus, BarChart2, Tag, Info,
-  AlertTriangle, AlertCircle, ArrowUpRight, ArrowDownRight,
-  Clock, UserCircle,
+  AlertTriangle, AlertCircle, ArrowUpRight,
+  Clock, UserCircle, Users,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
@@ -28,33 +27,37 @@ import { formatCurrency } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { getTimeGreeting } from '@/lib/greeting';
 
-// ─── Stat Card (Premium) ─────────────────────────────────────────────────────
+// ─── Stat Card (Premium – clickable) ─────────────────────────────────────────
 interface StatCardProps {
   title: string;
   value: string;
   icon: React.ElementType;
   loading?: boolean;
-  large?: boolean;
+  href?: string;
 }
 
-function StatCard({ title, value, icon: Icon, loading, large }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, loading, href }: StatCardProps) {
+  const navigate = useNavigate();
   return (
-    <Card className={cn('rounded-2xl border-0 bg-muted/60', large && 'col-span-2 sm:col-span-1')}>
-      <CardContent className={cn('p-5', large && 'p-6')}>
+    <Card
+      className={cn(
+        'rounded-xl border border-border bg-card hover:shadow-md transition-shadow cursor-pointer group',
+      )}
+      onClick={() => href && navigate(href)}
+    >
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
+            <p className="text-[13px] text-muted-foreground font-medium">{title}</p>
             {loading ? (
-              <Skeleton className={cn('h-8 w-32', large && 'h-10 w-40')} />
+              <Skeleton className="h-7 w-28" />
             ) : (
-              <p className={cn('font-bold text-foreground', large ? 'text-2xl sm:text-3xl' : 'text-xl')}>
-                {value}
-              </p>
+              <p className="text-2xl font-semibold text-foreground leading-none">{value}</p>
             )}
-            <p className="text-xs text-muted-foreground font-medium">{title}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <Icon className="h-4 w-4 text-muted-foreground/60" />
-            <Info className="h-3.5 w-3.5 text-muted-foreground/40" />
+          <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+            <Icon className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.8} />
+            {href && <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />}
           </div>
         </div>
       </CardContent>
@@ -69,16 +72,16 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
 
   return (
     <div className={cn(
-      'flex items-center justify-between gap-3 rounded-xl border px-4 py-3',
+      'flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5',
       isWarning
         ? 'bg-[hsl(48,100%,96%)] border-[hsl(45,93%,47%)]/40 dark:bg-[hsl(48,100%,4%)] dark:border-[hsl(45,93%,47%)]/30'
         : 'bg-destructive/5 border-destructive/20'
     )}>
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         {isWarning
           ? <AlertTriangle className="h-4 w-4 text-[hsl(32,95%,44%)] shrink-0" />
           : <AlertCircle className="h-4 w-4 text-destructive shrink-0" />}
-        <p className={cn('text-sm font-medium', isWarning ? 'text-[hsl(30,60%,30%)] dark:text-[hsl(45,93%,70%)]' : 'text-destructive')}>
+        <p className={cn('text-[13px] font-medium', isWarning ? 'text-[hsl(30,60%,30%)] dark:text-[hsl(45,93%,70%)]' : 'text-destructive')}>
           {alert.type === 'pending_stale'
             ? t('dashboard.alerts.pendingOld', { count: alert.count })
             : t('dashboard.alerts.outOfStock', { count: alert.count })}
@@ -110,10 +113,10 @@ function RevenueChart({ shopId, currency }: { shopId: string; currency: string }
   const totalOrders = chartData?.reduce((s, d) => s + d.orders, 0) ?? 0;
 
   return (
-    <Card className="p-4 sm:p-5 rounded-2xl">
+    <Card className="p-4 rounded-xl border border-border">
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">{t('dashboard.chart.title')}</h3>
+          <h3 className="text-[13px] font-semibold text-foreground">{t('dashboard.chart.title')}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {totalOrders} {totalOrders === 1 ? t('dashboard.chart.order') : t('dashboard.chart.orders')}
             {' · '}{formatCurrency(totalRev, currency as 'XOF')}
@@ -138,9 +141,9 @@ function RevenueChart({ shopId, currency }: { shopId: string; currency: string }
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-[220px] w-full rounded-lg mt-4" />
+        <Skeleton className="h-[200px] w-full rounded-lg mt-3" />
       ) : (
-        <div className="h-[220px] sm:h-[260px] mt-4">
+        <div className="h-[200px] sm:h-[240px] mt-3">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
               <defs>
@@ -203,10 +206,10 @@ function RecentOrdersSection({ shopId, currency }: { shopId: string; currency: s
   }
 
   return (
-    <Card className="rounded-2xl">
-      <CardHeader className="pb-3 px-4 pt-4">
+    <Card className="rounded-xl border border-border">
+      <CardHeader className="pb-2 px-4 pt-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">{t('dashboard.orders.recent')}</CardTitle>
+          <CardTitle className="text-[13px] font-semibold">{t('dashboard.orders.recent')}</CardTitle>
           <Link to="/dashboard/orders" className="text-xs text-primary hover:underline font-medium">
             {t('dashboard.orders.viewAll')} →
           </Link>
@@ -214,13 +217,13 @@ function RecentOrdersSection({ shopId, currency }: { shopId: string; currency: s
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
-          <div className="px-4 pb-4 space-y-3">
-            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+          <div className="px-4 pb-3 space-y-2">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-11 w-full rounded-lg" />)}
           </div>
         ) : recentOrders.length === 0 ? (
           <div className="px-4 pb-4 text-center">
-            <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">{t('dashboard.orders.noOrders')}</p>
+            <Clock className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-[13px] text-muted-foreground">{t('dashboard.orders.noOrders')}</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -228,16 +231,16 @@ function RecentOrdersSection({ shopId, currency }: { shopId: string; currency: s
               <Link
                 key={order.id}
                 to={`/dashboard/orders/${order.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+                className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{order.customer_name}</p>
+                  <p className="text-[13px] font-medium text-foreground truncate">{order.customer_name}</p>
                   <p className="text-xs text-muted-foreground">
                     #{order.order_number} · {timeAgo(order.created_at)}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-[13px] font-semibold text-foreground">
                     {formatCurrency(order.total ?? 0, currency as 'XOF')}
                   </p>
                   <OrderStatusBadge status={order.status} />
@@ -257,10 +260,10 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
   const { data: topProducts, isLoading } = useTopProducts(shopId);
 
   return (
-    <Card className="rounded-2xl">
-      <CardHeader className="pb-3 px-4 pt-4">
+    <Card className="rounded-xl border border-border">
+      <CardHeader className="pb-2 px-4 pt-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">
+          <CardTitle className="text-[13px] font-semibold">
             {t('dashboard.topProducts.title')}
           </CardTitle>
           <Link to="/dashboard/products" className="text-xs text-primary hover:underline font-medium">
@@ -270,13 +273,13 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
-          <div className="px-4 pb-4 space-y-3">
+          <div className="px-4 pb-3 space-y-2">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
           </div>
         ) : (!topProducts || topProducts.length === 0) ? (
-          <div className="px-4 pb-6 text-center">
-            <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground mb-3">
+          <div className="px-4 pb-5 text-center">
+            <Package className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-[13px] text-muted-foreground mb-3">
               {t('dashboard.topProducts.empty', 'Aucune donnée disponible')}
             </p>
             <Link to="/dashboard/products/new">
@@ -288,13 +291,13 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
           </div>
         ) : (
           topProducts.map((p, i) => (
-            <div key={p.name} className="flex items-center gap-3 px-4 py-3 border-b last:border-0">
+            <div key={p.name} className="flex items-center gap-3 px-4 py-2.5 border-b last:border-0">
               <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                <p className="text-[13px] font-medium text-foreground truncate">{p.name}</p>
                 <p className="text-xs text-muted-foreground">{p.units} {t('dashboard.topProducts.units')}</p>
               </div>
-              <span className="text-sm font-semibold text-foreground shrink-0">
+              <span className="text-[13px] font-semibold text-foreground shrink-0">
                 {formatCurrency(p.revenue, currency as 'XOF')}
               </span>
             </div>
@@ -322,21 +325,20 @@ export default function Dashboard() {
   const firstName = profile?.first_name || '';
   const isFr = i18n.language?.startsWith('fr');
 
-  // Format values with mask support
   const fmtCurrency = (val: number) => maskValue(formatCurrency(val, currency as 'XOF'), isMasked);
   const fmtNumber = (val: number) => maskValue(String(val), isMasked);
 
   return (
     <>
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-4">
 
         {/* ── Hero Greeting ── */}
-        <div className="pt-2 sm:pt-4">
-          <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-serif font-medium text-foreground leading-tight">
+        <div className="pt-1 sm:pt-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground leading-tight">
             {isFr ? greeting.text : greeting.textEn}{firstName ? ` ${firstName}` : ''}&nbsp;!{' '}
             <span role="img" aria-label="greeting emoji" className="emoji-color">{greeting.emoji}</span>
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-lg">
+          <p className="text-[13px] text-muted-foreground mt-1 max-w-lg">
             {isFr ? greeting.subtitle : greeting.subtitleEn}
           </p>
         </div>
@@ -344,12 +346,12 @@ export default function Dashboard() {
         {/* ── Complete Profile Banner ── */}
         {!profile?.first_name && (
           <Link to="/dashboard/parametres/profil" className="block">
-            <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 transition-colors hover:bg-accent/10">
-              <UserCircle className="h-5 w-5 text-accent shrink-0" />
-              <span className="text-sm text-muted-foreground flex-1">
+            <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 transition-colors hover:bg-accent/10">
+              <UserCircle className="h-4 w-4 text-accent shrink-0" />
+              <span className="text-[13px] text-muted-foreground flex-1">
                 {t('dashboard.completeProfile.title', 'Complétez votre profil pour personnaliser votre expérience')}
               </span>
-              <span className="text-sm font-medium text-accent whitespace-nowrap">
+              <span className="text-[13px] font-medium text-accent whitespace-nowrap">
                 {t('dashboard.completeProfile.cta', 'Compléter')}
               </span>
             </div>
@@ -357,47 +359,56 @@ export default function Dashboard() {
         )}
 
         {/* ── Action Buttons (Pills) ── */}
-        <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <Link to="/dashboard/products/new">
-            <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground">
-              <Plus className="h-4 w-4" />
+            <Button variant="outline" className="rounded-full whitespace-nowrap h-8 text-xs gap-1.5 border-accent text-accent hover:bg-accent hover:text-accent-foreground">
+              <Plus className="h-3.5 w-3.5" />
               {t('dashboard.actions.addProduct')}
             </Button>
           </Link>
           <Link to="/dashboard/parametres/codes-promo">
-            <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2">
-              <Tag className="h-4 w-4" />
+            <Button variant="outline" className="rounded-full whitespace-nowrap h-8 text-xs gap-1.5">
+              <Tag className="h-3.5 w-3.5" />
               {t('dashboard.actions.createPromo')}
             </Button>
           </Link>
           <Link to="/dashboard/marketing/analytics">
-            <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2">
-              <BarChart2 className="h-4 w-4" />
+            <Button variant="outline" className="rounded-full whitespace-nowrap h-8 text-xs gap-1.5">
+              <BarChart2 className="h-3.5 w-3.5" />
               {isFr ? 'Voir analytics' : 'View analytics'}
             </Button>
           </Link>
         </div>
 
-        {/* ── Stat Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* ── Stat Cards (clickable) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
             title={t('dashboard.stats.revenueTotal', 'Revenu total')}
             value={fmtCurrency(kpi?.revenueToday ?? 0)}
             icon={DollarSign}
             loading={kpiLoading}
-            large
+            href="/dashboard/orders"
           />
           <StatCard
             title={t('dashboard.stats.revenue7days', '7 derniers jours')}
             value={fmtCurrency(kpi?.avgOrderValue ?? 0)}
             icon={TrendingUp}
             loading={kpiLoading}
+            href="/dashboard/orders?period=7days"
           />
           <StatCard
-            title={t('dashboard.stats.totalClients', 'Nombre total de clients')}
+            title={t('dashboard.stats.ordersToday', 'Commandes')}
             value={fmtNumber(kpi?.ordersToday ?? 0)}
             icon={ShoppingCart}
             loading={kpiLoading}
+            href="/dashboard/orders"
+          />
+          <StatCard
+            title={t('dashboard.stats.totalClients', 'Clients')}
+            value={fmtNumber(kpi?.productsSoldToday ?? 0)}
+            icon={Users}
+            loading={kpiLoading}
+            href="/dashboard/customers"
           />
         </div>
 
@@ -415,7 +426,7 @@ export default function Dashboard() {
 
         {/* ── Top Products + Recent Orders ── */}
         {shopId && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="lg:col-span-2">
               <RecentOrdersSection shopId={shopId} currency={currency} />
             </div>

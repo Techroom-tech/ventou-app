@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShop } from '@/hooks/useShop';
 import { useDataMask } from '@/contexts/DataMaskContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LanguageToggle } from '@/components/LanguageToggle';
 import { NotificationsPopover } from './NotificationsPopover';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,12 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Search, ExternalLink, Copy, Eye, EyeOff } from 'lucide-react';
+import { LogOut, User, Search, Store, Copy, Eye, EyeOff, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { getStorefrontUrl } from '@/lib/domain';
 
 export function DashboardHeader() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { profile, user, signOut } = useAuth();
   const { shop } = useShop();
@@ -51,40 +49,47 @@ export function DashboardHeader() {
     });
   };
 
+  const switchLanguage = (lng: string) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem('i18nextLng', lng);
+  };
+
+  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'fr';
+
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center gap-3 px-4 sm:px-6">
+    <header className="h-14 bg-card border-b border-border flex items-center gap-3 px-4 sm:px-6">
       {/* Logo - mobile only */}
       <div className="lg:hidden flex items-center gap-2 shrink-0">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <span className="text-primary-foreground font-bold text-sm">V</span>
+        <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
+          <span className="text-primary-foreground font-bold text-xs">V</span>
         </div>
-        <span className="text-lg font-bold text-foreground">VENTOU</span>
+        <span className="text-base font-bold text-foreground">VENTOU</span>
       </div>
 
       {/* Search bar - desktop */}
-      <div className="hidden lg:flex flex-1 max-w-xl">
+      <div className="hidden lg:flex flex-1 max-w-md">
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             readOnly
             placeholder={t('dashboard.header.search', 'Trouvez n\'importe quoi : ⌘K')}
-            className="w-full h-10 pl-10 pr-4 rounded-xl bg-muted border-0 text-sm text-muted-foreground cursor-pointer focus:outline-none"
+            className="w-full h-9 pl-9 pr-4 rounded-lg bg-muted border-0 text-xs text-muted-foreground cursor-pointer focus:outline-none"
           />
         </div>
       </div>
 
       {/* Right actions */}
-      <div className="flex items-center gap-2 ml-auto">
-        {/* Visit shop - desktop */}
+      <div className="flex items-center gap-1.5 ml-auto">
+        {/* Visit shop */}
         {shop?.slug && (
           <Button
             variant="outline"
             size="sm"
             onClick={handleVisitShop}
-            className="hidden sm:flex rounded-full text-xs gap-1.5"
+            className="hidden sm:flex h-8 rounded-lg text-xs gap-1.5 px-3 border-border"
           >
-            <ExternalLink className="h-[18px] w-[18px] icon-interactive" />
+            <Store className="h-4 w-4" />
             {t('dashboard.header.visitShop', 'Visiter ma boutique')}
           </Button>
         )}
@@ -93,45 +98,79 @@ export function DashboardHeader() {
         {shop?.slug && (
           <button
             onClick={handleCopyLink}
-            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+            className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
             title={t('dashboard.actions.shareSub')}
           >
-            <Copy className="h-[18px] w-[18px] icon-interactive" />
+            <Copy className="h-4 w-4" />
           </button>
         )}
 
         {/* Mask toggle */}
         <button
           onClick={toggleMask}
-          className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
           title={t('dashboard.header.maskData', 'Masquer les données')}
         >
-          {isMasked ? <EyeOff className="h-[18px] w-[18px] icon-interactive" /> : <Eye className="h-[18px] w-[18px] icon-interactive" />}
+          {isMasked ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
 
-        <div className="hidden sm:block">
-          <LanguageToggle />
-        </div>
         <NotificationsPopover />
 
+        {/* Profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Avatar className="h-9 w-9 cursor-pointer">
+            <Avatar className="h-8 w-8 cursor-pointer">
               <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-accent text-accent-foreground text-sm">
+              <AvatarFallback className="bg-accent text-accent-foreground text-xs">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>{profile?.first_name || user?.email}</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-[260px] rounded-xl p-3 shadow-lg">
+            {/* User info */}
+            <div className="flex items-center gap-3 px-1 pb-3">
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-accent text-accent-foreground text-sm">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : (user?.email?.split('@')[0] || 'User')}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+            </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/dashboard/parametres/profil')}>
+
+            {/* Language */}
+            <DropdownMenuLabel className="text-[11px] uppercase text-muted-foreground font-medium tracking-wide px-1">
+              <Globe className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />
+              {t('dashboard.profile.language', 'Langue')}
+            </DropdownMenuLabel>
+            <div className="flex gap-1 px-1 pb-1">
+              <button
+                onClick={() => switchLanguage('fr')}
+                className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${currentLang === 'fr' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+              >
+                🇫🇷 Français
+              </button>
+              <button
+                onClick={() => switchLanguage('en')}
+                className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${currentLang === 'en' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+              >
+                🇬🇧 English
+              </button>
+            </div>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/dashboard/parametres/profil')} className="rounded-lg">
               <User className="h-4 w-4 mr-2" />
               {t('dashboard.myAccount', 'Mon compte')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive rounded-lg">
               <LogOut className="h-4 w-4 mr-2" />
               {t('dashboard.signOut', 'Se déconnecter')}
             </DropdownMenuItem>
