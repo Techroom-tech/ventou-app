@@ -35,7 +35,7 @@ export function AdminHeader() {
   return (
     <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
-        <Shield className="h-5 w-5 text-primary" />
+        <Shield className="h-[18px] w-[18px] text-primary" />
         <span className="font-semibold text-foreground text-sm">Ventou Admin</span>
         {role && (
           <Badge variant="secondary" className="text-xs capitalize">
@@ -60,7 +60,7 @@ export function AdminHeader() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-            <LogOut className="h-4 w-4 mr-2" />
+            <LogOut className="h-4 w-4 mr-2 icon-interactive" />
             {t('dashboard.signOut', 'Se déconnecter')}
           </DropdownMenuItem>
         </DropdownMenuContent>

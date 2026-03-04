@@ -42,7 +42,7 @@ export function AdminMobileNav() {
                     active && 'bg-sidebar-accent text-sidebar-foreground border-l-2 border-sidebar-primary'
                   )}
                 >
-                  <item.icon className="h-4 w-4 shrink-0" />
+                  <item.icon className="h-5 w-5 shrink-0 icon-interactive" />
                   <span>{t(`admin.nav.${item.key}`, item.key)}</span>
                 </button>
               );

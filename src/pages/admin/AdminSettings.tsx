@@ -31,7 +31,7 @@ export default function AdminSettings() {
             <Card key={title} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => link && navigate(link)}>
               <CardHeader className="flex flex-row items-center gap-4 pb-2">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-primary" />
+                  <Icon className="h-5 w-5 text-primary icon-interactive" />
                 </div>
                 <div>
                   <CardTitle className="text-sm">{title}</CardTitle>

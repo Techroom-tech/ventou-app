@@ -135,7 +135,7 @@ export default function MarketingCoupons() {
                                   onCheckedChange={(v) => toggleMut.mutate({ id: c.id, shop_id: shop!.id, is_active: v })}
                                 />
                                 <Button variant="ghost" size="icon" onClick={() => { deleteMut.mutate({ id: c.id, shop_id: shop!.id }); }}>
-                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <Trash2 className="h-4 w-4 text-destructive icon-interactive" />
                                 </Button>
                               </div>
                             </TableCell>

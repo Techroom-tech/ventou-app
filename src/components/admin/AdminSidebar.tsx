@@ -33,7 +33,7 @@ export function AdminSidebar() {
               )}
               activeClassName=""
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon className="h-5 w-5 shrink-0 icon-interactive" />
               <span>{t(`admin.nav.${item.key}`, item.key)}</span>
             </NavLink>
           );

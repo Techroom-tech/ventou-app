@@ -164,7 +164,7 @@ export default function MarketingPromos() {
                       </div>
                       <Switch checked={p.is_active} onCheckedChange={(v) => toggleMut.mutate({ id: p.id, shop_id: shop!.id, is_active: v })} />
                       <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: p.id, shop_id: shop!.id })}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-destructive icon-interactive" />
                       </Button>
                     </div>
                   );

@@ -174,7 +174,7 @@ export default function SettingsCodesPromo() {
                   </div>
                   <Switch checked={code.is_active} onCheckedChange={() => handleToggle(code.id, code.is_active)} />
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(code.id)} className="text-destructive hover:text-destructive h-8 w-8">
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4 icon-interactive" />
                   </Button>
                 </div>
               ))}

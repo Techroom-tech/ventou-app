@@ -119,11 +119,11 @@ export default function MarketingLinks() {
                           <TableCell className="text-center">{l.clicks}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
-                                <Copy className="h-4 w-4" />
+                               <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
+                                <Copy className="h-4 w-4 icon-interactive" />
                               </Button>
                               <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4 text-destructive icon-interactive" />
                               </Button>
                             </div>
                           </TableCell>

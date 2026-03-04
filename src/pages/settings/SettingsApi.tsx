@@ -43,7 +43,7 @@ export default function SettingsApi() {
                 className="bg-muted font-mono text-sm"
               />
               <Button variant="outline" size="icon" onClick={() => shop?.id && copy(shop.id, setCopiedId)}>
-                {copiedId ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                {copiedId ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 icon-interactive" />}
               </Button>
             </div>
           </div>
@@ -57,7 +57,7 @@ export default function SettingsApi() {
                 className="bg-muted font-mono text-sm"
               />
               <Button variant="outline" size="icon" onClick={() => shop?.slug && copy(shop.slug, setCopiedSlug)}>
-                {copiedSlug ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                {copiedSlug ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 icon-interactive" />}
               </Button>
             </div>
           </div>

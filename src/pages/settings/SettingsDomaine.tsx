@@ -43,12 +43,12 @@ export default function SettingsDomaine() {
             <div className="flex items-center gap-2">
               <Input value={shopUrl} readOnly className="bg-muted font-mono text-sm" />
               <Button variant="outline" size="icon" onClick={handleCopy}>
-                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 icon-interactive" />}
               </Button>
               {shopUrl && (
                 <Button variant="outline" size="icon" asChild>
                   <a href={shopUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4 icon-interactive" />
                   </a>
                 </Button>
               )}
