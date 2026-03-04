@@ -12,6 +12,8 @@ export interface VendorReview {
   country: string | null;
   is_approved: boolean;
   created_at: string;
+  vendor_reply: string | null;
+  vendor_reply_at: string | null;
   product_name?: string;
 }
 
@@ -60,6 +62,28 @@ export function useDeleteReview() {
         .eq('id', reviewId);
       if (error) throw error;
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vendor-reviews'] });
+    },
+  });
+}
+
+export function useReplyToReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ reviewId, reply }: { reviewId: string; reply: string }) => {
+      const { error } = await supabase
+        .from('product_reviews')
+        .update({ vendor_reply: reply.trim(), vendor_reply_at: new Date().toISOString() })
+        .eq('id', reviewId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vendor-reviews'] });
+      qc.invalidateQueries({ queryKey: ['product-reviews'] });
+    },
+  });
+}
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendor-reviews'] });
     },
