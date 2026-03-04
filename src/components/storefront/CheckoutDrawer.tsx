@@ -306,6 +306,18 @@ function CheckoutFormContent({
         window.open(`https://wa.me/${phoneClean}?text=${encodeURIComponent(msg)}`, '_blank');
       }
 
+      // Fire tracking Purchase event
+      if (typeof window !== 'undefined' && window.VentouTracker) {
+        window.VentouTracker.trackPurchase({
+          value: grandTotal,
+          currency,
+          content_ids: items.map(i => i.product.id),
+          shop_id: shop.id,
+          user_email: undefined,
+          user_phone: data.phone.trim(),
+        });
+      }
+
       clearCart();
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onSuccess(); }, 3000);

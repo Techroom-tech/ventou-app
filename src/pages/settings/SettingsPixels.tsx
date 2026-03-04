@@ -40,6 +40,7 @@ export default function SettingsPixels() {
       await updateSettings({
         shop_id: shop.id,
         facebook_pixel: form.facebook_pixel || null,
+        facebook_capi_token: null,
         tiktok_pixel: form.tiktok_pixel || null,
         gtm_id: form.gtm_id || null,
         custom_scripts: form.custom_scripts || null,

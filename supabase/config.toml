@@ -1,1 +1,4 @@
 project_id = "chpplckgndznakuvcqbx"
+
+[functions.track-event]
+verify_jwt = false
