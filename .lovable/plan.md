@@ -1,73 +1,85 @@
 
 
-# Plan: Refonte Marketing Center — Hub Premium + Pixels Structurés
+# Plan: Fix Multi-Tenant Tracking System
 
-## Résumé
+## Root Cause
 
-Réécrire les 6 pages marketing avec un design SaaS premium (cartes 16px radius, hover shadows, icônes 32px, chevrons). La page Pixels passe d'un formulaire basique à un formulaire structuré par bloc (Facebook, TikTok, GTM, Custom) avec toggles d'activation par section. Le tracking_settings DB reste inchangé — les toggles sont dérivés de la présence d'un ID non-vide.
+The `tracking_settings` table has RLS that only allows authenticated shop owners to read. Public storefront visitors (anonymous) cannot query tracking settings, so pixels are never injected on `test.ventou.shop`.
 
-## Fichiers à modifier
+## Changes
 
-### 1. `src/pages/marketing/MarketingHub.tsx` — Refonte complète
+### 1. Add public SELECT RLS policy on `tracking_settings`
 
-- Header : titre 28px SemiBold "Marketing", sous-texte 14px "Boostez vos ventes avec des outils marketing avancés"
-- Grid 2 colonnes desktop / 1 mobile, gap 16px
-- Cartes : min-height 120px, border-radius 16px, bg white, border #E5E7EB, hover shadow-md
-- Icône 32px dans cercle coloré à gauche, titre 16px SemiBold, description 14px, ChevronRight à droite
-- Max-width 1200px, padding 32px desktop / 16px mobile
+SQL migration:
+```sql
+CREATE POLICY "public_read_tracking_settings"
+ON public.tracking_settings
+FOR SELECT
+TO anon, authenticated
+USING (true);
+```
 
-### 2. `src/pages/marketing/MarketingPixels.tsx` — Refonte structurée (style formulaire sérieux)
+This allows the storefront to fetch pixel IDs for any shop. The data is non-sensitive (pixel IDs are public by nature — they're meant to be in page source).
 
-- Max-width 960px centered
-- Header : "Pixels & Tracking" 28px, sous-texte "Configurez vos outils de suivi publicitaire"
-- **Bloc Facebook Pixel** : Card avec header (icône FB + titre + toggle ON/OFF). Quand ON : champs Pixel ID + Conversion API Token. Bouton "Tester connexion". Quand OFF : champs disabled/grisés.
-- **Bloc TikTok Pixel** : Même structure. Toggle + Pixel ID + Bouton "Tester pixel".
-- **Bloc Google Tag Manager** : Toggle + Input GTM ID.
-- **Bloc Scripts personnalisés** : Textarea + select injection head/body.
-- Bouton "Enregistrer" en bas, style orange #FF6B00.
-- Les toggles sont dérivés : ON si le champ correspondant est non-vide. Passer OFF vide le champ.
-- Section "Événements auto" : liste informative ViewContent, AddToCart, InitiateCheckout, Purchase — texte informatif, pas de config.
-- Note : Le "Tester connexion" et "Tester pixel" valident juste le format de l'ID (regex) côté client, pas d'appel API réel (pas de secret FB/TikTok stocké).
+### 2. Refactor `useStorefrontTracking.ts` — Unified tracker + event_id deduplication
 
-### 3. `src/pages/marketing/MarketingAnalytics.tsx` — Améliorations UI
+- Add `event_id` (crypto.randomUUID) to every event call for CAPI deduplication
+- Create `window.VentouTracker` global object with methods: `trackPageView`, `trackViewContent`, `trackAddToCart`, `trackInitiateCheckout`, `trackPurchase`
+- Each method fires fbq + ttq + gtag with unique event_id
+- Sanitize custom_scripts: strip `<iframe>`, `eval(`, `document.write` before injection
+- Remove the `container.innerHTML = scripts` XSS vector — parse and only allow `<script src="...">` or inline text content after sanitization
 
-- Max-width 1200px
-- Header 28px "Analytics", sous-texte, filtre date à droite
-- Bloc sources trafic : placeholder informatif (pas de données — message clair)
-- Bloc performance produits : table desktop, cards mobile, pagination 20
-- Bloc heatmap : inchangé mais responsive amélioré
+### 3. Refactor `CheckoutDrawer.tsx` — Add `trackPurchase` on order success
 
-### 4. `src/pages/marketing/MarketingCoupons.tsx` — UI Premium
+After successful order insert, call `window.VentouTracker.trackPurchase()` with order value, currency, content_ids, and event_id.
 
-- Bouton "Créer un coupon" orange #FF6B00
-- Table desktop avec colonnes Code, Type, Statut (badge coloré), Usages, Date fin
-- Cards mobile compactes
-- Modal création 600px desktop / full mobile
+### 4. Create Edge Function `supabase/functions/track-event/index.ts` — Server-side CAPI
 
-### 5. `src/pages/marketing/MarketingPromos.tsx` — UI Premium
+- Receives: `event_name`, `event_id`, `shop_id`, `user_data` (hashed), `custom_data`
+- Fetches `tracking_settings` for the shop using service role
+- If `facebook_pixel` exists: POST to `https://graph.facebook.com/v18.0/{pixel_id}/events` with the CAPI token (stored in a new `facebook_capi_token` column)
+- If `tiktok_pixel` exists: POST to TikTok Events API
+- Returns success/failure
+- Uses SUPABASE_SERVICE_ROLE_KEY to bypass RLS
 
-- Même traitement : bouton orange, cards/table, badges statut
-- Ajout checkboxes : Afficher badge, Afficher countdown
+### 5. Add `facebook_capi_token` column to `tracking_settings`
 
-### 6. `src/pages/marketing/MarketingLinks.tsx` — UI Premium
+SQL migration:
+```sql
+ALTER TABLE tracking_settings ADD COLUMN IF NOT EXISTS facebook_capi_token text;
+```
 
-- Table desktop : Nom, Source, Clics, ref_code
-- Cards mobile
-- Bouton copier lien
+### 6. Update `MarketingPixels.tsx` — Save CAPI token
 
-### 7. `src/i18n/locales/fr.json` + `en.json`
+The fbApiToken state already exists but isn't persisted. Wire it to the new `facebook_capi_token` column in the save handler and load it from settings.
 
-Ajouter clés manquantes : `marketing.pixels.facebook`, `marketing.pixels.tiktok`, `marketing.pixels.gtm`, `marketing.pixels.testConnection`, `marketing.pixels.autoEvents`, `marketing.pixels.enabled`, `marketing.pixels.disabled`, etc.
+### 7. Update `supabase/config.toml` — Register edge function
 
-## Ce qui ne change PAS
+Add `[functions.track-event]` with `verify_jwt = false` (called from storefront without auth).
 
-- Tables DB : `tracking_settings`, `discount_codes`, `flash_promotions`, `tracked_links` — inchangées
-- Hooks : tous réutilisés tels quels
-- Routes App.tsx : inchangées
-- Aucune donnée fictive ajoutée
+## Files Modified
 
-## Performance
+| File | Change |
+|---|---|
+| Migration SQL | Add public read policy + `facebook_capi_token` column |
+| `src/hooks/useStorefrontTracking.ts` | Unified VentouTracker, event_id dedup, XSS sanitization |
+| `src/components/storefront/CheckoutDrawer.tsx` | Call trackPurchase on success |
+| `src/pages/marketing/MarketingPixels.tsx` | Persist CAPI token |
+| `src/hooks/useTrackingSettings.ts` | Add facebook_capi_token field |
+| `supabase/functions/track-event/index.ts` | Server-side CAPI relay |
+| `supabase/config.toml` | Register track-event function |
 
-- Lazy load déjà en place via App.tsx
-- Pagination 20 lignes sur tables produits/coupons/promos/liens
+## What stays the same
+
+- DB table structure (tracking_settings) — just adding 1 column + 1 policy
+- Subdomain detection (lib/subdomain.ts) — already works correctly
+- App.tsx routing — already renders ShopStorefront for subdomain hosts
+- StorefrontContext — already resolves slug from hostname
+
+## Security
+
+- CAPI token never exposed client-side (only used in edge function)
+- Custom scripts sanitized (no iframe, eval, document.write)
+- Pixel IDs are inherently public (visible in page source on any website)
+- Edge function validates input with zod before forwarding to Meta/TikTok APIs
 
