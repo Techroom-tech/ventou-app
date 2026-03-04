@@ -3,14 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import { Store, MessageCircle, ShoppingBag, Search, ShoppingCart, Menu, X } from 'lucide-react';
+import { Store, MessageCircle, ShoppingBag, Search, ShoppingCart, Menu, X, Star } from 'lucide-react';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
 import { Shop, Product } from '@/types/shop';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { CartProvider, useCart } from '@/components/storefront/CartContext';
 import CartButton from '@/components/storefront/CartButton';
 import CartDrawer from '@/components/storefront/CartDrawer';
@@ -177,19 +176,47 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
     staleTime: 60_000,
   });
 
-  // ── Fetch product by slug for /p/:productSlug routes ──
+  // ── Fetch product by slug — runs in parallel with shop query (no dependency on shop.id) ──
   const { data: productFromSlug, isLoading: productSlugLoading } = useQuery({
-    queryKey: ['storefront-product-slug', shop?.id, productSlug],
+    queryKey: ['storefront-product-slug', slug, productSlug],
     queryFn: async () => {
       const { data } = await supabase
         .from('products')
-        .select('*')
-        .eq('shop_id', shop!.id)
+        .select('*, shops!inner(slug)')
+        .eq('shops.slug', slug)
         .eq('slug', productSlug!)
         .maybeSingle();
-      return data as Product | null;
+      if (!data) return null;
+      const { shops, ...product } = data as any;
+      return product as Product;
     },
-    enabled: !!shop?.id && !!productSlug,
+    enabled: !!productSlug,
+    staleTime: 60_000,
+  });
+
+  // ── Batch review stats for product cards ──
+  const { data: reviewStats } = useQuery({
+    queryKey: ['storefront-review-stats', shop?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('product_reviews')
+        .select('product_id, rating')
+        .eq('shop_id', shop!.id)
+        .eq('is_approved', true);
+      if (!data) return {} as Record<string, { count: number; avg: number }>;
+      const stats: Record<string, { count: number; sum: number }> = {};
+      for (const r of data) {
+        if (!stats[r.product_id]) stats[r.product_id] = { count: 0, sum: 0 };
+        stats[r.product_id].count++;
+        stats[r.product_id].sum += r.rating;
+      }
+      const result: Record<string, { count: number; avg: number }> = {};
+      for (const [pid, s] of Object.entries(stats)) {
+        result[pid] = { count: s.count, avg: s.sum / s.count };
+      }
+      return result;
+    },
+    enabled: !!shop?.id,
     staleTime: 60_000,
   });
 
@@ -344,10 +371,6 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
             </div>
             <div className="flex items-center gap-2">
               <CountrySelector />
-              <ThemeToggle />
-              <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
-                <ShoppingCart className="h-5 w-5" />
-              </Button>
             </div>
           </div>
         </header>
@@ -438,10 +461,6 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
 
           <div className="flex items-center gap-2">
             <CountrySelector />
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
-              <ShoppingCart className="h-5 w-5" />
-            </Button>
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -634,20 +653,27 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
                           {/* Title — 2-line clamp */}
                           <h3 className="product-title">{product.name}</h3>
 
-                          {/* Rating block — static visual (4 filled + 1 empty star) */}
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4].map(i => (
-                                <svg key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 20 20">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
-                              <svg className="w-3.5 h-3.5 fill-muted text-muted-foreground" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                            </div>
-                            <span className="text-[12px] text-muted-foreground">0 avis</span>
-                          </div>
+                          {/* Rating block — real review data */}
+                          {(() => {
+                            const stats = reviewStats?.[product.id];
+                            const avg = stats?.avg ?? 0;
+                            const count = stats?.count ?? 0;
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-0.5">
+                                  {[1, 2, 3, 4, 5].map(i => (
+                                    <Star
+                                      key={i}
+                                      className={`w-3.5 h-3.5 ${i <= Math.round(avg) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground'}`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-[12px] text-muted-foreground">
+                                  {count > 0 ? `${avg.toFixed(1)} (${count})` : t('storefront.noReviews', '0 avis')}
+                                </span>
+                              </div>
+                            );
+                          })()}
 
                           {/* Price structure — stacked */}
                           <div className="space-y-0.5">
