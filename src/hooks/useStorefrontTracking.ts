@@ -93,6 +93,20 @@ function fireAll(event: string, ttEvent: string, params?: any) {
   return eventId;
 }
 
+// ── Event queue for pre-init buffering ────────────────────────────────────────
+
+type QueuedEvent = { method: keyof VentouTrackerAPI; args: any[] };
+const eventQueue: QueuedEvent[] = [];
+
+function flushQueue() {
+  while (eventQueue.length > 0) {
+    const evt = eventQueue.shift()!;
+    const tracker = window.VentouTracker;
+    if (!tracker) break;
+    (tracker[evt.method] as Function)(...evt.args);
+  }
+}
+
 // ── Server-side CAPI relay ────────────────────────────────────────────────────
 
 async function sendCAPI(eventName: string, eventId: string, shopId: string, customData?: Record<string, unknown>, userData?: Record<string, unknown>) {
@@ -238,7 +252,6 @@ export function useStorefrontTracking(shopId: string | undefined) {
     scriptEls.forEach((orig) => {
       const s = document.createElement('script');
       if (orig.src) {
-        // Only allow known safe domains or relative paths
         s.src = orig.src;
       } else {
         s.textContent = sanitizeScript(orig.textContent || '');
@@ -281,7 +294,6 @@ export function useStorefrontTracking(shopId: string | undefined) {
           currency: p.currency,
           content_ids: p.content_ids,
         });
-        // Fire server-side CAPI
         if (currentShopId) {
           sendCAPI('Purchase', eventId, currentShopId, {
             value: p.value,
@@ -296,6 +308,9 @@ export function useStorefrontTracking(shopId: string | undefined) {
       },
     };
 
+    // Flush any events that were queued before tracker was ready
+    flushQueue();
+
     return () => {
       delete window.VentouTracker;
     };
@@ -304,20 +319,49 @@ export function useStorefrontTracking(shopId: string | undefined) {
   return settings;
 }
 
-// ── Convenience exports for components ────────────────────────────────────────
+// ── Convenience exports (with queue + direct fbq fallback) ────────────────────
 
 export function trackViewContent(params: TrackEventParams) {
-  window.VentouTracker?.trackViewContent(params);
+  if (window.VentouTracker) {
+    window.VentouTracker.trackViewContent(params);
+  } else {
+    // Direct fallback — fbq uses internal queue, works even before script loads
+    fireFbq('ViewContent', params);
+    fireTtq('ViewContent', params);
+    fireGtag('ViewContent', params);
+    eventQueue.push({ method: 'trackViewContent', args: [params] });
+  }
 }
 
 export function trackAddToCart(params: TrackEventParams) {
-  window.VentouTracker?.trackAddToCart(params);
+  if (window.VentouTracker) {
+    window.VentouTracker.trackAddToCart(params);
+  } else {
+    fireFbq('AddToCart', params);
+    fireTtq('AddToCart', params);
+    fireGtag('AddToCart', params);
+    eventQueue.push({ method: 'trackAddToCart', args: [params] });
+  }
 }
 
 export function trackInitiateCheckout(params: TrackEventParams) {
-  window.VentouTracker?.trackInitiateCheckout(params);
+  if (window.VentouTracker) {
+    window.VentouTracker.trackInitiateCheckout(params);
+  } else {
+    fireFbq('InitiateCheckout', params);
+    fireTtq('InitiateCheckout', params);
+    fireGtag('InitiateCheckout', params);
+    eventQueue.push({ method: 'trackInitiateCheckout', args: [params] });
+  }
 }
 
 export function trackPurchase(params: PurchaseParams) {
-  window.VentouTracker?.trackPurchase(params);
+  if (window.VentouTracker) {
+    window.VentouTracker.trackPurchase(params);
+  } else {
+    fireFbq('Purchase', { value: params.value, currency: params.currency, content_ids: params.content_ids });
+    fireTtq('CompletePayment', { value: params.value, currency: params.currency, content_ids: params.content_ids });
+    fireGtag('Purchase', { value: params.value, currency: params.currency, content_ids: params.content_ids });
+    eventQueue.push({ method: 'trackPurchase', args: [params] });
+  }
 }

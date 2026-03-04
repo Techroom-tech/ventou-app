@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 
 import { useShop } from '@/hooks/useShop';
 import { useTrackingSettings, useUpdateTrackingSettings } from '@/hooks/useTrackingSettings';
@@ -42,12 +42,10 @@ export default function MarketingPixels() {
   const updateMut = useUpdateTrackingSettings();
 
   const [fbPixel, setFbPixel] = useState('');
-  const [fbApiToken, setFbApiToken] = useState('');
   const [ttPixel, setTtPixel] = useState('');
   const [gtmId, setGtmId] = useState('');
   const [customScripts, setCustomScripts] = useState('');
   const [scriptTarget, setScriptTarget] = useState('head');
-  const [testResults, setTestResults] = useState<Record<string, 'success' | 'error' | null>>({});
 
   const [fbEnabled, setFbEnabled] = useState(false);
   const [ttEnabled, setTtEnabled] = useState(false);
@@ -56,7 +54,6 @@ export default function MarketingPixels() {
   useEffect(() => {
     if (settings) {
       setFbPixel(settings.facebook_pixel ?? '');
-      setFbApiToken(settings.facebook_capi_token ?? '');
       setTtPixel(settings.tiktok_pixel ?? '');
       setGtmId(settings.gtm_id ?? '');
       setCustomScripts(settings.custom_scripts ?? '');
@@ -66,37 +63,18 @@ export default function MarketingPixels() {
     }
   }, [settings]);
 
-  const testFbPixel = () => {
-    const valid = /^\d{10,20}$/.test(fbPixel.trim());
-    setTestResults(prev => ({ ...prev, facebook: valid ? 'success' : 'error' }));
-    toast[valid ? 'success' : 'error'](valid ? t('marketing.pixels.testSuccess') : t('marketing.pixels.testError'));
-  };
-
-  const testTtPixel = () => {
-    const valid = /^[A-Z0-9]{6,30}$/i.test(ttPixel.trim());
-    setTestResults(prev => ({ ...prev, tiktok: valid ? 'success' : 'error' }));
-    toast[valid ? 'success' : 'error'](valid ? t('marketing.pixels.testSuccess') : t('marketing.pixels.testError'));
-  };
-
   const handleSave = async () => {
     if (!shop) return;
     await updateMut.mutateAsync({
       shop_id: shop.id,
       facebook_pixel: fbPixel.trim() || null,
-      facebook_capi_token: fbApiToken.trim() || null,
+      facebook_capi_token: null,
       tiktok_pixel: ttPixel.trim() || null,
       gtm_id: gtmId.trim() || null,
       custom_scripts: customScripts.trim() || null,
     });
     toast.success(t('common.success'));
   };
-
-  const autoEvents = [
-    { name: 'ViewContent', desc: t('marketing.pixels.eventViewContent') },
-    { name: 'AddToCart', desc: t('marketing.pixels.eventAddToCart') },
-    { name: 'InitiateCheckout', desc: t('marketing.pixels.eventCheckout') },
-    { name: 'Purchase', desc: t('marketing.pixels.eventPurchase') },
-  ];
 
   return (
     <>
@@ -141,7 +119,7 @@ export default function MarketingPixels() {
                   onCheckedChange={(v) => { setFbEnabled(v); if (!v) setFbPixel(''); }}
                 />
               </div>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-6">
                 <div>
                   <Label className="text-xs text-muted-foreground">Pixel ID</Label>
                   <Input
@@ -152,24 +130,6 @@ export default function MarketingPixels() {
                     className="mt-1"
                   />
                 </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Conversion API Token</Label>
-                  <Input
-                    placeholder="EAAx..."
-                    value={fbApiToken}
-                    onChange={(e) => setFbApiToken(e.target.value)}
-                    disabled={!fbEnabled}
-                    className="mt-1"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">{t('marketing.pixels.capiHint')}</p>
-                </div>
-                {fbEnabled && (
-                  <Button variant="outline" size="sm" onClick={testFbPixel} className="gap-2">
-                    {testResults.facebook === 'success' && <Check className="h-3.5 w-3.5 text-green-600" />}
-                    {testResults.facebook === 'error' && <X className="h-3.5 w-3.5 text-destructive" />}
-                    {t('marketing.pixels.testConnection')}
-                  </Button>
-                )}
               </CardContent>
             </Card>
 
@@ -194,7 +154,7 @@ export default function MarketingPixels() {
                   onCheckedChange={(v) => { setTtEnabled(v); if (!v) setTtPixel(''); }}
                 />
               </div>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-6">
                 <div>
                   <Label className="text-xs text-muted-foreground">Pixel ID</Label>
                   <Input
@@ -205,13 +165,6 @@ export default function MarketingPixels() {
                     className="mt-1"
                   />
                 </div>
-                {ttEnabled && (
-                  <Button variant="outline" size="sm" onClick={testTtPixel} className="gap-2">
-                    {testResults.tiktok === 'success' && <Check className="h-3.5 w-3.5 text-green-600" />}
-                    {testResults.tiktok === 'error' && <X className="h-3.5 w-3.5 text-destructive" />}
-                    {t('marketing.pixels.testPixel')}
-                  </Button>
-                )}
               </CardContent>
             </Card>
 
@@ -276,27 +229,6 @@ export default function MarketingPixels() {
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                   <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700 dark:text-amber-400">{t('marketing.pixels.sanitizeWarning')}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Auto Events Info */}
-            <Card className="overflow-hidden">
-              <div className="px-6 py-4 border-b border-border">
-                <span className="font-semibold text-sm text-foreground">{t('marketing.pixels.autoEvents')}</span>
-                <p className="text-xs text-muted-foreground mt-0.5">{t('marketing.pixels.autoEventsDesc')}</p>
-              </div>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {autoEvents.map((evt) => (
-                    <div key={evt.name} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                      <div>
-                        <span className="text-sm font-mono font-medium text-foreground">{evt.name}</span>
-                        <p className="text-xs text-muted-foreground">{evt.desc}</p>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>
