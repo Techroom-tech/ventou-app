@@ -688,7 +688,8 @@
       "reports": "Signalements",
       "subscriptions": "Abonnements",
       "users": "Utilisateurs",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "shop-diagnostic": "Diagnostic boutiques"
     },
     "login": {
       "title": "Connexion",

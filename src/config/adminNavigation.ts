@@ -7,6 +7,7 @@ import {
   CreditCard,
   Shield,
   Settings,
+  Bug,
 } from 'lucide-react';
 import type { AdminNavItem, AdminRole } from '@/types/admin';
 
@@ -18,6 +19,7 @@ export const adminNavItems: AdminNavItem[] = [
   { key: 'reports', icon: Flag, path: '/admin/reports' },
   { key: 'subscriptions', icon: CreditCard, path: '/admin/subscriptions' },
   { key: 'users', icon: Shield, path: '/admin/users' },
+  { key: 'shop-diagnostic', icon: Bug, path: '/admin/shop-diagnostic', roles: ['super_admin'] },
   { key: 'settings', icon: Settings, path: '/admin/settings', roles: ['super_admin'] },
 ];
 
