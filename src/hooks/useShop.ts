@@ -36,11 +36,14 @@ export function useShop() {
     localStorage.setItem(SELECTED_SHOP_KEY, shopId);
   }, []);
 
+  const isSuspended = selectedShop?.is_suspended === true;
+
   return {
     shop: selectedShop,
     shops: allShops,
     isLoading,
     hasShop: allShops.length > 0,
+    isSuspended,
     refetch,
     selectShop,
   };

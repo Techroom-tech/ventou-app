@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import {
   ArrowLeft, Save, Rocket, ChevronDown, Loader2,
-  Package, Globe, Search, Eye, EyeOff, FileText,
+  Package, Globe, Search, Eye, EyeOff, FileText, AlertTriangle,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -85,8 +85,9 @@ const SectionCard = memo(function SectionCard({ id, title, icon: Icon, isOpen, o
 export default function AddProduct() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { shop, isLoading: shopLoading } = useShop();
+  const { shop, isLoading: shopLoading, isSuspended } = useShop();
   const { user } = useAuth();
+
 
   // Form state
   const [name, setName] = useState('');
@@ -338,6 +339,22 @@ export default function AddProduct() {
   const handleCategoryCreated = useCallback((cat: Category) => {
     setCategories((prev) => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)));
   }, []);
+
+  // Block suspended shops from adding products
+  if (!shopLoading && isSuspended) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <h2 className="text-xl font-bold">Boutique suspendue</h2>
+        <p className="text-muted-foreground max-w-md">
+          Votre boutique est actuellement suspendue. Vous ne pouvez pas ajouter de produits. Contactez le support pour plus d'informations.
+        </p>
+        <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          Retour au tableau de bord
+        </Button>
+      </div>
+    );
+  }
 
   if (shopLoading) {
     return (
