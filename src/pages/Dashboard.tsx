@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   DollarSign, ShoppingCart, Package, TrendingUp,
-  Plus, Share2, BarChart2, Tag, Info,
+  Plus, BarChart2, Tag, Info,
   AlertTriangle, AlertCircle, ArrowUpRight, ArrowDownRight,
   Clock, UserCircle,
 } from 'lucide-react';
@@ -26,8 +26,6 @@ import { useDataMask, maskValue } from '@/contexts/DataMaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { getStorefrontUrl } from '@/lib/domain';
 import { getTimeGreeting } from '@/lib/greeting';
 
 // ─── Stat Card (Premium) ─────────────────────────────────────────────────────
@@ -324,14 +322,6 @@ export default function Dashboard() {
   const firstName = profile?.first_name || '';
   const isFr = i18n.language?.startsWith('fr');
 
-  function handleShare() {
-    if (!shop?.slug) return;
-    const url = getStorefrontUrl(shop.slug);
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success(t('dashboard.actions.shareCopied'));
-    });
-  }
-
   // Format values with mask support
   const fmtCurrency = (val: number) => maskValue(formatCurrency(val, currency as 'XOF'), isMasked);
   const fmtNumber = (val: number) => maskValue(String(val), isMasked);
@@ -347,7 +337,7 @@ export default function Dashboard() {
             <span role="img" aria-label="greeting emoji" className="emoji-color">{greeting.emoji}</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-lg">
-            {t('dashboard.hero.subtitle', "C'est l'heure de pointe - lancez cette campagne que vous planifiez !")}
+            {isFr ? greeting.subtitle : greeting.subtitleEn}
           </p>
         </div>
 
@@ -380,10 +370,12 @@ export default function Dashboard() {
               {t('dashboard.actions.createPromo')}
             </Button>
           </Link>
-          <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2" onClick={handleShare}>
-            <Share2 className="h-4 w-4" />
-            {t('dashboard.actions.shareShop')}
-          </Button>
+          <Link to="/dashboard/marketing/analytics">
+            <Button variant="outline" className="rounded-full whitespace-nowrap h-10 text-sm gap-2">
+              <BarChart2 className="h-4 w-4" />
+              {isFr ? 'Voir analytics' : 'View analytics'}
+            </Button>
+          </Link>
         </div>
 
         {/* ── Stat Cards ── */}
