@@ -1,33 +1,32 @@
 
 
-# Plan: Clean Up MarketingPixels UI + Fix Pixel Event Tracking
+# Plan: Dynamic Subtitle + Replace "Partager" CTA with Marketing Action
 
-## UI Cleanup (MarketingPixels.tsx)
+## Changes
 
-Remove three sections from `src/pages/marketing/MarketingPixels.tsx`:
-1. **Conversion API Token field** (lines ~131-143 inside Facebook card)
-2. **"Tester connexion" button** for Facebook (lines ~144-150) and TikTok (lines ~172-179)
-3. **"Événements automatiques" card** (lines ~226-252, the entire auto-events section + the `autoEvents` array definition)
+### 1. Dynamic subtitle in `src/lib/greeting.ts`
+Add a `subtitle` (FR) and `subtitleEn` (EN) field to `TimeGreeting` that varies by time slot:
 
-Also remove the `fbApiToken`/`setFbApiToken` state, `testFbPixel`/`testTtPixel` functions, `testResults` state, and the unused `Check`/`X` icon imports since they're only used by those removed sections.
+| Time | FR subtitle | EN subtitle |
+|---|---|---|
+| 5-12h | Commencez la journée en beauté — vérifiez vos commandes du matin ! | Start the day right — check your morning orders! |
+| 12-14h | Profitez de la pause pour optimiser votre boutique. | Use the break to optimize your shop. |
+| 14-18h | C'est l'heure de pointe — lancez cette campagne que vous planifiez ! | Peak hours — launch that campaign you've been planning! |
+| 18-22h | Bilan de la journée — voyez comment vos ventes ont performé. | Day recap — see how your sales performed. |
+| 22-5h | Reposez-vous, votre boutique travaille pour vous. | Rest easy, your shop is working for you. |
 
-Clean up `handleSave` to stop sending `facebook_capi_token`.
+### 2. Use dynamic subtitle in `src/pages/Dashboard.tsx`
+Replace the hardcoded `t('dashboard.hero.subtitle', "C'est l'heure de pointe...")` with `isFr ? greeting.subtitle : greeting.subtitleEn`.
 
-## Fix Pixel Tracking (only PageView fires, other events don't)
+### 3. Replace "Partager" button with a Marketing action
+Replace the third CTA (Share2 / `handleShare`) with a link to **Analytics** (`/dashboard/marketing/analytics`) using the `BarChart2` icon already imported. Label: "Voir analytics" / "View analytics".
 
-**Root cause**: The `fireFbq()` helper checks `if (!window.fbq) return;` — but `fbq` IS available (it's queued synchronously). The real issue is that `window.VentouTracker` is set inside a `useEffect` that depends on `settings` (async query). If `addToCart` or checkout happen before `settings` resolves, `window.VentouTracker` is `undefined` and the convenience functions (`trackAddToCart` etc.) silently no-op.
-
-**Fix in `src/hooks/useStorefrontTracking.ts`**:
-- Add an **event queue**: buffer events that arrive before `VentouTracker` is installed
-- When `VentouTracker` mounts, flush the queue
-- The convenience functions (`trackAddToCart`, `trackInitiateCheckout`, etc.) push to queue if `VentouTracker` isn't ready yet, instead of silently dropping
-
-Additionally, call `fbq('track', ...)` directly as a fallback inside each convenience function — since `fbq` uses a queue pattern internally, it works even before the script loads, but `VentouTracker` might not be mounted yet.
+Remove `handleShare` function, `Share2` import, `getStorefrontUrl` import, and `toast` import (if unused elsewhere).
 
 ## Files Modified
 
 | File | Change |
 |---|---|
-| `src/pages/marketing/MarketingPixels.tsx` | Remove CAPI field, test buttons, auto-events section |
-| `src/hooks/useStorefrontTracking.ts` | Add event queue + direct fbq fallback in convenience functions |
+| `src/lib/greeting.ts` | Add `subtitle`/`subtitleEn` per time slot |
+| `src/pages/Dashboard.tsx` | Use `greeting.subtitle`, replace Partager CTA with Analytics link |
 
