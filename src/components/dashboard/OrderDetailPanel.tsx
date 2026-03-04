@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
-  Phone, MapPin, ExternalLink, MessageCircle, Printer,
+  Phone, MapPin, ExternalLink, Printer,
   Clock, CheckCircle2, XCircle,
   FileText, MoreVertical, Copy, Trash2, Star, User,
   Package, CreditCard, SendHorizonal, ChevronRight,
@@ -13,6 +13,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -394,7 +395,7 @@ export function OrderDetailPanel({
                     className="h-9 gap-1.5 text-xs text-[hsl(142,76%,28%)] border-[hsl(142,76%,36%)]/40 bg-[hsl(142,76%,36%)]/5 hover:bg-[hsl(142,76%,36%)]/15 flex-shrink-0"
                     onClick={handleWhatsApp}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                    <WhatsAppIcon size={14} /> WhatsApp
                   </Button>
                 )}
 
@@ -562,7 +563,7 @@ export function OrderDetailPanel({
                         className="h-6 w-6 text-[hsl(142,76%,36%)]"
                         onClick={handleWhatsApp}
                       >
-                        <MessageCircle className="h-3.5 w-3.5" />
+                        <WhatsAppIcon size={14} />
                       </Button>
                     </div>
                   )}

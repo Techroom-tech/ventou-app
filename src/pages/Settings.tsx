@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Truck, MessageCircle, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
+import { Settings2, Truck, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -119,7 +120,7 @@ export default function Settings() {
             {/* WhatsApp toggle */}
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-start gap-3">
-                <MessageCircle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                <WhatsAppIcon size={20} className="text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <Label className="text-sm font-medium cursor-pointer" htmlFor="allow-whatsapp">
                     Commandes via WhatsApp

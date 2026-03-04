@@ -1,4 +1,5 @@
-import { Facebook, MessageCircle, Send } from 'lucide-react';
+import { Facebook, Send } from 'lucide-react';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Button } from '@/components/ui/button';
 
 interface ShareButtonsProps {
@@ -20,7 +21,7 @@ export default function ShareButtons({ url, title }: ShareButtonsProps) {
     {
       label: 'WhatsApp',
       href: `https://wa.me/?text=${encodedTitle}%20${encoded}`,
-      icon: MessageCircle,
+      icon: ({ className }: { className?: string }) => <WhatsAppIcon className={className} size={16} />,
       color: '#25D366',
     },
     {
