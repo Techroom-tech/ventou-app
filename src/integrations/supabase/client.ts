@@ -27,13 +27,43 @@ export const formatCurrency = (amount: number, currency: CurrencyCode = 'XOF') =
   }).format(safeAmount);
 };
 
+// ── Custom storage adapter for Remember Me ──
+// Delegates to localStorage (remember me) or sessionStorage (default)
+const STORAGE_KEY = 'sb-chpplckgndznakuvcqbx-auth-token';
+
+export const VentouStorage = {
+  getItem(key: string): string | null {
+    // Always check localStorage first (remember me), then sessionStorage
+    return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+  },
+  setItem(key: string, value: string): void {
+    const rememberMe = localStorage.getItem('ventou_remember_me') === 'true';
+    if (rememberMe) {
+      localStorage.setItem(key, value);
+      // Clean sessionStorage copy if any
+      try { sessionStorage.removeItem(key); } catch {}
+    } else {
+      sessionStorage.setItem(key, value);
+      // Clean localStorage copy of auth token (but keep ventou_* flags)
+      if (key === STORAGE_KEY) {
+        try { localStorage.removeItem(key); } catch {}
+      }
+    }
+  },
+  removeItem(key: string): void {
+    localStorage.removeItem(key);
+    try { sessionStorage.removeItem(key); } catch {}
+  },
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<any>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: VentouStorage,
     persistSession: true,
     autoRefreshToken: true,
+    storageKey: STORAGE_KEY,
   }
 });

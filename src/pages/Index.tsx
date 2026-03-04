@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,11 @@ const Index = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+
+  // Auto-redirect logged-in vendors to dashboard
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const features = [
     {
