@@ -51,20 +51,20 @@ export default function MarketingHub() {
               )}
             >
               <div className={cn(
-                'w-14 h-14 rounded-2xl flex items-center justify-center shrink-0',
+                'w-11 h-11 rounded-xl flex items-center justify-center shrink-0',
                 card.iconBg
               )}>
-                <card.icon className={cn('h-7 w-7', card.iconColor)} />
+                <card.icon className={cn('h-5 w-5', card.iconColor)} />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-semibold text-base text-foreground block">
+                <span className="font-semibold text-sm text-foreground block">
                   {t(card.titleKey)}
                 </span>
                 <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
                   {t(card.descKey)}
                 </p>
               </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
             </div>
           ))}
         </div>
