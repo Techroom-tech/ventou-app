@@ -12,6 +12,8 @@ export interface ProductReview {
   country: string | null;
   is_approved: boolean;
   created_at: string;
+  vendor_reply: string | null;
+  vendor_reply_at: string | null;
 }
 
 export function useProductReviews(productId: string | undefined) {

@@ -84,8 +84,3 @@ export function useReplyToReview() {
     },
   });
 }
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['vendor-reviews'] });
-    },
-  });
-}

@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Star, Check, X, Trash2, MessageSquare } from 'lucide-react';
+import { Star, Check, X, Trash2, MessageSquare, Reply, Send } from 'lucide-react';
 import { useShop } from '@/hooks/useShop';
-import { useVendorReviews, useToggleReviewApproval, useDeleteReview } from '@/hooks/useVendorReviews';
+import { useVendorReviews, useToggleReviewApproval, useDeleteReview, useReplyToReview } from '@/hooks/useVendorReviews';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -25,7 +26,10 @@ export default function Reviews() {
   const { data: reviews = [], isLoading } = useVendorReviews(shop?.id);
   const toggleApproval = useToggleReviewApproval();
   const deleteReview = useDeleteReview();
+  const replyToReview = useReplyToReview();
   const [tab, setTab] = useState('all');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
 
   const filtered = useMemo(() => {
     if (tab === 'pending') return reviews.filter(r => !r.is_approved);
@@ -59,6 +63,14 @@ export default function Reviews() {
   const handleDelete = async (id: string) => {
     await deleteReview.mutateAsync(id);
     toast.success('Avis supprimé');
+  };
+
+  const handleReply = async (id: string) => {
+    if (!replyText.trim()) return;
+    await replyToReview.mutateAsync({ reviewId: id, reply: replyText });
+    setReplyingTo(null);
+    setReplyText('');
+    toast.success('Réponse publiée');
   };
 
   return (
@@ -155,7 +167,7 @@ export default function Reviews() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map(review => (
-                    <TableRow key={review.id}>
+                    <TableRow key={review.id} className="group">
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {review.country && (
@@ -179,9 +191,47 @@ export default function Reviews() {
                       </TableCell>
                       <TableCell><RatingStars rating={review.rating} /></TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                          {review.review_text || '—'}
-                        </p>
+                        <div className="max-w-[240px] space-y-1">
+                          <p className="text-sm text-muted-foreground truncate">
+                            {review.review_text || '—'}
+                          </p>
+                          {review.vendor_reply && (
+                            <div className="bg-muted/50 rounded px-2 py-1 text-xs">
+                              <span className="font-medium text-foreground">Votre réponse : </span>
+                              <span className="text-muted-foreground">{review.vendor_reply}</span>
+                            </div>
+                          )}
+                          {replyingTo === review.id && (
+                            <div className="flex gap-1.5 mt-1">
+                              <Textarea
+                                value={replyText}
+                                onChange={e => setReplyText(e.target.value)}
+                                placeholder="Votre réponse..."
+                                rows={2}
+                                maxLength={500}
+                                className="text-xs min-h-[52px]"
+                              />
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => handleReply(review.id)}
+                                  disabled={replyToReview.isPending || !replyText.trim()}
+                                >
+                                  <Send className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => { setReplyingTo(null); setReplyText(''); }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={review.is_approved ? 'default' : 'secondary'}>
@@ -190,6 +240,18 @@ export default function Reviews() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary"
+                            onClick={() => {
+                              setReplyingTo(replyingTo === review.id ? null : review.id);
+                              setReplyText(review.vendor_reply || '');
+                            }}
+                            title="Répondre"
+                          >
+                            <Reply className="h-4 w-4" />
+                          </Button>
                           {!review.is_approved && (
                             <Button
                               variant="ghost"
