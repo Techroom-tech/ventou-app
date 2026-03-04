@@ -209,24 +209,56 @@ export default function CreateShop() {
       setSlugStatus('idle');
       return;
     }
+
+    // Normalize slug before checking
+    const normalizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (normalizedSlug !== slug) {
+      return; // Let the form validation handle invalid format
+    }
+
     setSlugStatus('checking');
     setSlugSuggestions([]);
 
     try {
+      // Primary: call edge function
       const { data, error } = await supabase.functions.invoke('check-slug', {
-        body: { slug },
+        body: { slug: normalizedSlug },
       });
-      if (error) throw error;
 
-      if (data.available) {
+      if (error) {
+        console.warn('check-slug edge function error, falling back to direct query:', error);
+        // Fallback: direct database check
+        const { data: existing } = await supabase
+          .from('shops')
+          .select('slug')
+          .eq('slug', normalizedSlug)
+          .maybeSingle();
+        
+        setSlugStatus(existing ? 'taken' : 'available');
+        return;
+      }
+
+      // Explicitly check for true to avoid falsy gotchas
+      if (data && data.available === true) {
         setSlugStatus('available');
       } else {
         setSlugStatus('taken');
-        setSlugSuggestions(data.suggestions || []);
+        setSlugSuggestions(data?.suggestions || []);
       }
     } catch (err) {
-      console.error('check-slug failed:', err);
-      setSlugStatus('error');
+      console.error('check-slug failed entirely, falling back:', err);
+      // Last resort fallback: direct DB query
+      try {
+        const { data: existing } = await supabase
+          .from('shops')
+          .select('slug')
+          .eq('slug', normalizedSlug)
+          .maybeSingle();
+        
+        setSlugStatus(existing ? 'taken' : 'available');
+      } catch {
+        setSlugStatus('error');
+      }
     }
   }, []);
 
