@@ -1,45 +1,42 @@
 
 
-# Plan: Edge Function Cache for Storefront Queries
+# Plan: Cache Invalidation for Storefront Edge Function
 
-## Problem
-Every storefront visit triggers 2 direct DB queries (shop by slug + products list). At scale with thousands of concurrent visitors, this creates unnecessary DB load since shop/product data changes infrequently.
+## Approach
 
-## Solution
-Create a Supabase Edge Function `storefront-cache` that acts as a caching proxy with **in-memory TTL cache** at the Deno isolate level. The storefront client calls the edge function instead of Supabase directly.
+Add an `invalidate` action to the existing `storefront-cache` edge function, then call it from the client whenever a vendor modifies their shop or products.
 
 ## Changes
 
-### 1. New Edge Function: `supabase/functions/storefront-cache/index.ts`
+### 1. Update `supabase/functions/storefront-cache/index.ts`
 
-Handles two actions via POST body:
-- `{ action: "shop", slug: "my-shop" }` — returns shop data, cached 5 minutes
-- `{ action: "products", shop_id: "uuid" }` — returns products list, cached 2 minutes
+Add a third action handler:
+```
+{ action: "invalidate", shop_id: "uuid", slug?: "string" }
+```
+This clears all cache entries matching the shop: `shop:{slug}`, `products:{shop_id}:*`. Since we may not always have the slug when invalidating, also accept `shop_id` and iterate the cache map to find matching keys.
 
-In-memory `Map<string, { data, expiry }>` provides zero-latency cache hits within the same isolate. Cache misses query Supabase with the service role key and populate the cache.
+### 2. Create helper `src/lib/invalidateStorefrontCache.ts`
 
-### 2. Update `supabase/config.toml`
+A small utility function that calls `supabase.functions.invoke('storefront-cache', { body: { action: 'invalidate', shop_id, slug } })`. Fire-and-forget (no await needed in most cases).
 
-Add `[functions.storefront-cache]` with `verify_jwt = false` (public storefront, no auth needed).
+### 3. Call invalidation from mutation sites
 
-### 3. Update `src/pages/ShopStorefront.tsx`
+| Location | Trigger |
+|---|---|
+| `src/contexts/ProductContext.tsx` — `addProduct`, `updateProduct`, `deleteProduct`, `duplicateProduct`, `toggleVisibility` | After successful product mutation, call `invalidateStorefrontCache(shop.id, shop.slug)` |
+| `src/pages/settings/SettingsIdentite.tsx` — save handler | After successful shop update |
+| `src/pages/settings/SettingsApparence.tsx` — save handler | After successful shop update |
 
-Replace the two direct `supabase.from()` queries with calls to the edge function via `supabase.functions.invoke('storefront-cache', ...)`. Keep the same `useQuery` wrappers with `staleTime: 60_000` for client-side caching on top.
-
-## Technical Details
-
-| Layer | TTL | Purpose |
-|---|---|---|
-| Edge Function in-memory | 5min (shop) / 2min (products) | Reduce DB queries across all visitors |
-| React Query `staleTime` | 60s | Reduce edge function calls per user session |
-
-The edge function uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS (read-only, public data only — active shops + active products). No sensitive data is exposed.
+All calls are fire-and-forget — they don't block the UI or affect the vendor's save flow.
 
 ### Files Modified
 
 | File | Change |
 |---|---|
-| `supabase/functions/storefront-cache/index.ts` | New edge function with in-memory cache |
-| `supabase/config.toml` | Add function config |
-| `src/pages/ShopStorefront.tsx` | Call edge function instead of direct DB |
+| `supabase/functions/storefront-cache/index.ts` | Add `invalidate` action that clears matching cache entries |
+| `src/lib/invalidateStorefrontCache.ts` | New utility — single function wrapping the edge function call |
+| `src/contexts/ProductContext.tsx` | Call invalidation after product mutations |
+| `src/pages/settings/SettingsIdentite.tsx` | Call invalidation after shop identity save |
+| `src/pages/settings/SettingsApparence.tsx` | Call invalidation after appearance save |
 
