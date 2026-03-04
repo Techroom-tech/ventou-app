@@ -252,6 +252,10 @@ function CheckoutFormContent({
   // ── Submit ───────────────────────────────────────────────────────────────────
   const onSubmit = async (data: CheckoutForm) => {
     if (items.length === 0) return;
+    if (shop.is_suspended) {
+      console.warn('[CheckoutDrawer] Shop is suspended, blocking order.');
+      return;
+    }
     setSubmitting(true);
     try {
       const orderItems = items.map(i => ({
