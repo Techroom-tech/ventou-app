@@ -235,6 +235,7 @@ function RecentOrdersSection({ shopId, currency }: { shopId: string; currency: s
   }
 
   return (
+    <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.4, ease: 'easeOut' }}>
     <Card className="rounded-xl border border-border">
       <CardHeader className="pb-2 px-4 pt-3">
         <div className="flex items-center justify-between">
@@ -280,6 +281,7 @@ function RecentOrdersSection({ shopId, currency }: { shopId: string; currency: s
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
 
@@ -289,6 +291,7 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
   const { data: topProducts, isLoading } = useTopProducts(shopId);
 
   return (
+    <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}>
     <Card className="rounded-xl border border-border">
       <CardHeader className="pb-2 px-4 pt-3">
         <div className="flex items-center justify-between">
@@ -334,6 +337,7 @@ function TopProductsSection({ shopId, currency }: { shopId: string; currency: st
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
 
