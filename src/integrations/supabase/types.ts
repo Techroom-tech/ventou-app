@@ -799,6 +799,7 @@ export type Database = {
           cta_label: string | null
           currency: string | null
           dark_mode_enabled: boolean | null
+          deleted_at: string | null
           description: string | null
           enable_cod: boolean | null
           enable_whatsapp_order: boolean | null
@@ -851,6 +852,7 @@ export type Database = {
           cta_label?: string | null
           currency?: string | null
           dark_mode_enabled?: boolean | null
+          deleted_at?: string | null
           description?: string | null
           enable_cod?: boolean | null
           enable_whatsapp_order?: boolean | null
@@ -903,6 +905,7 @@ export type Database = {
           cta_label?: string | null
           currency?: string | null
           dark_mode_enabled?: boolean | null
+          deleted_at?: string | null
           description?: string | null
           enable_cod?: boolean | null
           enable_whatsapp_order?: boolean | null
@@ -1175,6 +1178,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_shop_with_validation: {
+        Args: {
+          _category?: string
+          _city?: string
+          _country?: string
+          _description?: string
+          _name: string
+          _primary_color?: string
+          _slug: string
+          _whatsapp?: string
+        }
+        Returns: {
+          domain: string
+          error_code: string
+          normalized_slug: string
+          shop_id: string
+          store_limit: number
+          stores_count: number
+          success: boolean
+        }[]
+      }
       get_customer_stats: {
         Args: {
           _page_offset?: number
