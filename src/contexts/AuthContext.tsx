@@ -33,6 +33,7 @@ const AUTH_FALLBACK: AuthContextType = {
 };
 
 function isSessionExpired(): boolean {
+  if (typeof window === 'undefined') return false;
   const start = localStorage.getItem('ventou_session_start');
   if (!start) return false;
   const rememberMe = localStorage.getItem('ventou_remember_me') === 'true';
@@ -41,6 +42,7 @@ function isSessionExpired(): boolean {
 }
 
 function clearSessionFlags() {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem('ventou_remember_me');
   localStorage.removeItem('ventou_session_start');
 }

@@ -6,15 +6,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { toast } from "sonner";
 import '@/i18n';
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { DashboardGuard } from "@/components/DashboardGuard";
 import { getStoreSlugFromHostname } from "@/lib/subdomain";
 import { StorefrontProvider } from "@/contexts/StorefrontContext";
+
+// Shared dashboard shell (guards + layout mounted once)
+const DashboardShell = lazy(() => import("./components/dashboard/DashboardShell"));
 
 // Vendor pages
 const Index = lazy(() => import("./pages/Index"));
@@ -82,8 +82,18 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 // Admin guard
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -94,11 +104,12 @@ const LoadingSpinner = () => (
 const App = () => {
   const hostnameSlug = getStoreSlugFromHostname();
 
-  // Debug logging for production troubleshooting
   useEffect(() => {
-    console.log('[Ventou] hostname:', window.location.hostname);
-    console.log('[Ventou] hostnameSlug:', hostnameSlug);
-    console.log('[Ventou] pathname:', window.location.pathname);
+    if (import.meta.env.DEV) {
+      console.log('[Ventou] hostname:', window.location.hostname);
+      console.log('[Ventou] hostnameSlug:', hostnameSlug);
+      console.log('[Ventou] pathname:', window.location.pathname);
+    }
   }, [hostnameSlug]);
 
   if (hostnameSlug) {
@@ -131,7 +142,6 @@ const App = () => {
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <ProductProvider>
           <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             {/* Public */}
@@ -143,42 +153,44 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/support" element={<Support />} />
 
-            {/* Vendor dashboard */}
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardGuard><Dashboard /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/products" element={<ProtectedRoute><DashboardGuard><Products /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/products/new" element={<ProtectedRoute><DashboardGuard><AddProduct /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/orders" element={<ProtectedRoute><DashboardGuard><Orders /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/create-shop" element={<ProtectedRoute><DashboardGuard><CreateShop /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/shop-created" element={<ProtectedRoute><DashboardGuard><ShopCreatedSuccess /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/products/:id/edit" element={<ProtectedRoute><DashboardGuard><EditProduct /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardGuard><Settings /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/commandes/:orderId" element={<ProtectedRoute><DashboardGuard><OrderDetail /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/customers" element={<ProtectedRoute><DashboardGuard><Customers /></DashboardGuard></ProtectedRoute>} />
+            {/* Dashboard — shared shell: auth + shop guard + layout mounted ONCE */}
+            <Route path="/dashboard" element={<DashboardShell />}>
+              <Route index element={<Dashboard />} />
+              <Route path="products" element={<ProductProvider><Products /></ProductProvider>} />
+              <Route path="products/new" element={<ProductProvider><AddProduct /></ProductProvider>} />
+              <Route path="products/:id/edit" element={<ProductProvider><EditProduct /></ProductProvider>} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="create-shop" element={<CreateShop />} />
+              <Route path="shop-created" element={<ShopCreatedSuccess />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="commandes/:orderId" element={<OrderDetail />} />
+              <Route path="customers" element={<Customers />} />
 
-            {/* Marketing */}
-            <Route path="/dashboard/marketing" element={<ProtectedRoute><DashboardGuard><MarketingHub /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/marketing/analytics" element={<ProtectedRoute><DashboardGuard><MarketingAnalytics /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/marketing/coupons" element={<ProtectedRoute><DashboardGuard><MarketingCoupons /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/marketing/promos" element={<ProtectedRoute><DashboardGuard><MarketingPromos /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/marketing/liens" element={<ProtectedRoute><DashboardGuard><MarketingLinks /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/marketing/pixels" element={<ProtectedRoute><DashboardGuard><MarketingPixels /></DashboardGuard></ProtectedRoute>} />
+              {/* Marketing */}
+              <Route path="marketing" element={<MarketingHub />} />
+              <Route path="marketing/analytics" element={<MarketingAnalytics />} />
+              <Route path="marketing/coupons" element={<MarketingCoupons />} />
+              <Route path="marketing/promos" element={<MarketingPromos />} />
+              <Route path="marketing/liens" element={<MarketingLinks />} />
+              <Route path="marketing/pixels" element={<MarketingPixels />} />
 
-            {/* Settings V6 */}
-            <Route path="/dashboard/parametres" element={<ProtectedRoute><DashboardGuard><SettingsHub /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/identite" element={<ProtectedRoute><DashboardGuard><SettingsIdentite /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/domaine" element={<ProtectedRoute><DashboardGuard><SettingsDomaine /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/apparence" element={<ProtectedRoute><DashboardGuard><SettingsApparence /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/livraison" element={<ProtectedRoute><DashboardGuard><SettingsLivraison /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/paiement" element={<ProtectedRoute><DashboardGuard><SettingsPaiement /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/codes-promo" element={<ProtectedRoute><DashboardGuard><SettingsCodesPromo /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/seo" element={<ProtectedRoute><DashboardGuard><SettingsSeo /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/pixels" element={<ProtectedRoute><DashboardGuard><SettingsPixels /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/notifications" element={<ProtectedRoute><DashboardGuard><SettingsNotifications /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/support" element={<ProtectedRoute><DashboardGuard><SettingsSupport /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/profil" element={<ProtectedRoute><DashboardGuard><SettingsProfil /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/equipe" element={<ProtectedRoute><DashboardGuard><SettingsEquipe /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/facturation" element={<ProtectedRoute><DashboardGuard><SettingsFacturation /></DashboardGuard></ProtectedRoute>} />
-            <Route path="/dashboard/parametres/api" element={<ProtectedRoute><DashboardGuard><SettingsApi /></DashboardGuard></ProtectedRoute>} />
+              {/* Settings V6 */}
+              <Route path="parametres" element={<SettingsHub />} />
+              <Route path="parametres/identite" element={<SettingsIdentite />} />
+              <Route path="parametres/domaine" element={<SettingsDomaine />} />
+              <Route path="parametres/apparence" element={<SettingsApparence />} />
+              <Route path="parametres/livraison" element={<SettingsLivraison />} />
+              <Route path="parametres/paiement" element={<SettingsPaiement />} />
+              <Route path="parametres/codes-promo" element={<SettingsCodesPromo />} />
+              <Route path="parametres/seo" element={<SettingsSeo />} />
+              <Route path="parametres/pixels" element={<SettingsPixels />} />
+              <Route path="parametres/notifications" element={<SettingsNotifications />} />
+              <Route path="parametres/support" element={<SettingsSupport />} />
+              <Route path="parametres/profil" element={<SettingsProfil />} />
+              <Route path="parametres/equipe" element={<SettingsEquipe />} />
+              <Route path="parametres/facturation" element={<SettingsFacturation />} />
+              <Route path="parametres/api" element={<SettingsApi />} />
+            </Route>
 
             {/* Hidden admin login */}
             <Route path="/0x8v3k/auth" element={<AdminLogin />} />
@@ -208,7 +220,6 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
-          </ProductProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
