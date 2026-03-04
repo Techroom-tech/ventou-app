@@ -64,7 +64,7 @@ export function DashboardHeader() {
       {/* Search bar - desktop */}
       <div className="hidden lg:flex flex-1 max-w-xl">
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-muted-foreground" />
           <input
             type="text"
             readOnly
@@ -84,7 +84,7 @@ export function DashboardHeader() {
             onClick={handleVisitShop}
             className="hidden sm:flex rounded-full text-xs gap-1.5"
           >
-            <ExternalLink className="h-3.5 w-3.5" />
+            <ExternalLink className="h-[18px] w-[18px] icon-interactive" />
             {t('dashboard.header.visitShop', 'Visiter ma boutique')}
           </Button>
         )}
@@ -96,7 +96,7 @@ export function DashboardHeader() {
             className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
             title={t('dashboard.actions.shareSub')}
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="h-[18px] w-[18px] icon-interactive" />
           </button>
         )}
 
@@ -106,7 +106,7 @@ export function DashboardHeader() {
           className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
           title={t('dashboard.header.maskData', 'Masquer les données')}
         >
-          {isMasked ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {isMasked ? <EyeOff className="h-[18px] w-[18px] icon-interactive" /> : <Eye className="h-[18px] w-[18px] icon-interactive" />}
         </button>
 
         <div className="hidden sm:block">

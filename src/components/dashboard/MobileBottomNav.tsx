@@ -43,7 +43,7 @@ export function MobileBottomNav() {
                   isActive ? 'text-accent' : 'text-muted-foreground'
                 )}
               >
-                <item.icon className="h-[22px] w-[22px]" />
+                <item.icon className="h-5 w-5" />
                 <span>{t(`dashboard.nav.${item.key}`)}</span>
               </Link>
             );
@@ -98,7 +98,7 @@ export function MobileBottomNav() {
                   isActive ? 'text-accent' : 'text-muted-foreground'
                 )}
               >
-                <item.icon className="h-[22px] w-[22px]" />
+                <item.icon className="h-5 w-5 icon-interactive" />
                 <span>{t(`dashboard.nav.${item.key}`)}</span>
               </Link>
             );
@@ -112,7 +112,7 @@ export function MobileBottomNav() {
               isMenuActive || drawerOpen ? 'text-accent' : 'text-muted-foreground'
             )}
           >
-            <MoreHorizontal className="h-[22px] w-[22px]" />
+            <MoreHorizontal className="h-5 w-5 icon-interactive" />
             <span>{t('dashboard.nav.menu', 'Menu')}</span>
           </button>
         </div>

@@ -81,7 +81,7 @@ export function DashboardSidebar() {
                 {isActive && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary" />
                 )}
-                <item.icon className="h-5 w-5 shrink-0" />
+                <item.icon className="h-5 w-5 shrink-0 icon-interactive" />
                 {!collapsed && t(`dashboard.nav.${item.key}`)}
               </Link>
             );
@@ -98,7 +98,7 @@ export function DashboardSidebar() {
               collapsed && 'justify-center'
             )}
           >
-            <HelpCircle className="h-5 w-5 shrink-0" />
+            <HelpCircle className="h-5 w-5 shrink-0 icon-interactive" />
             {!collapsed && t('dashboard.sidebar.helpCenter', 'Centre d\'aide')}
           </Link>
 
