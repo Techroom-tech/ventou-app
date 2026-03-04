@@ -1,70 +1,45 @@
 
 
-# Plan: Server-Side Pagination for Products, Orders Counts & Customers
+# Plan: Edge Function Cache for Storefront Queries
 
-## Current Issues
+## Problem
+Every storefront visit triggers 2 direct DB queries (shop by slug + products list). At scale with thousands of concurrent visitors, this creates unnecessary DB load since shop/product data changes infrequently.
 
-1. **ProductContext** fetches ALL products with no limit — will silently truncate at 1000 rows for shops with many products
-2. **useOrderCounts** fetches ALL orders client-side just to count by status — hits the 1000 limit, producing wrong counts
-3. **useCustomers** fetches ALL orders to aggregate customers — same 1000 limit problem
-4. **useRepeatCustomers** fetches ALL orders — same issue
+## Solution
+Create a Supabase Edge Function `storefront-cache` that acts as a caching proxy with **in-memory TTL cache** at the Deno isolate level. The storefront client calls the edge function instead of Supabase directly.
 
 ## Changes
 
-### 1. Add server-side pagination to ProductContext + Products page
+### 1. New Edge Function: `supabase/functions/storefront-cache/index.ts`
 
-**ProductContext** — add `page`, `search`, `statusFilter` params to the query. Use `.range()` with `count: 'exact'` like orders already do. Expose `page`, `setPage`, `totalCount`, `totalPages` in the context.
+Handles two actions via POST body:
+- `{ action: "shop", slug: "my-shop" }` — returns shop data, cached 5 minutes
+- `{ action: "products", shop_id: "uuid" }` — returns products list, cached 2 minutes
 
-**Products.tsx** — remove client-side filtering. Pass search/status to `useProducts()`. Add pagination controls at the bottom (Previous/Next buttons).
+In-memory `Map<string, { data, expiry }>` provides zero-latency cache hits within the same isolate. Cache misses query Supabase with the service role key and populate the cache.
 
-### 2. Replace useOrderCounts with server-side counts
+### 2. Update `supabase/config.toml`
 
-Instead of fetching all orders and counting client-side, run 4 parallel `head: true` count queries (one per status + one for all non-archived). This bypasses the 1000 limit entirely and is far more efficient.
+Add `[functions.storefront-cache]` with `verify_jwt = false` (public storefront, no auth needed).
 
-### 3. Add server-side pagination to useCustomers
+### 3. Update `src/pages/ShopStorefront.tsx`
 
-Create a **database function** `get_customer_stats(shop_id, search_term, page_size, page_offset)` that aggregates orders by phone server-side using `GROUP BY`, returning paginated customer stats with counts. This avoids fetching all orders to the client.
-
-### 4. Fix useRepeatCustomers with server-side count
-
-Replace the full-scan query with a DB function or a `GROUP BY` query via RPC that counts phones with >1 order.
-
-## Files Modified
-
-| File | Change |
-|---|---|
-| `src/contexts/ProductContext.tsx` | Add pagination params, use `.range()` + `count: 'exact'` |
-| `src/pages/Products.tsx` | Remove client-side filter, use context pagination, add page controls |
-| `src/hooks/useOrders.ts` | Replace `useOrderCounts` with parallel head-count queries, replace `useRepeatCustomers` with RPC |
-| `src/hooks/useCustomers.ts` | Use new `get_customer_stats` DB function |
-| Migration SQL | Create `get_customer_stats` and `get_repeat_customer_count` functions |
+Replace the two direct `supabase.from()` queries with calls to the edge function via `supabase.functions.invoke('storefront-cache', ...)`. Keep the same `useQuery` wrappers with `staleTime: 60_000` for client-side caching on top.
 
 ## Technical Details
 
-### ProductContext query change
+| Layer | TTL | Purpose |
+|---|---|---|
+| Edge Function in-memory | 5min (shop) / 2min (products) | Reduce DB queries across all visitors |
+| React Query `staleTime` | 60s | Reduce edge function calls per user session |
 
-```text
-.select('*', { count: 'exact' })
-.eq('shop_id', shop.id)
-.ilike('name', `%${search}%`)       // if search provided
-.eq('is_active', statusFilter)       // if filter provided
-.order('created_at', { ascending: false })
-.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
-```
+The edge function uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS (read-only, public data only — active shops + active products). No sensitive data is exposed.
 
-### useOrderCounts — parallel counts
+### Files Modified
 
-```text
-Promise.all([
-  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('is_archived', false),
-  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'pending'),
-  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'confirmed'),
-  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'delivered'),
-  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'cancelled'),
-])
-```
-
-### get_customer_stats DB function
-
-Groups orders by phone, computes total_orders, delivered, cancelled, total_amount, returns paginated results with optional search filter on name/phone.
+| File | Change |
+|---|---|
+| `supabase/functions/storefront-cache/index.ts` | New edge function with in-memory cache |
+| `supabase/config.toml` | Add function config |
+| `src/pages/ShopStorefront.tsx` | Call edge function instead of direct DB |
 
