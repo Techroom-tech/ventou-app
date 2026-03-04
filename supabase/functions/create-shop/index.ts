@@ -58,19 +58,26 @@ Deno.serve(async (req) => {
 
     const result = data ?? { success: false, error_code: 'INTERNAL_ERROR' };
 
-    console.log(
-      JSON.stringify({
-        event: 'create_shop_attempt',
-        user_id: authData.user.id,
-        subdomain: body?.slug ?? null,
-        normalized_slug: result?.normalized_slug ?? null,
-        stores_count: result?.stores_count ?? null,
-        store_limit: result?.store_limit ?? null,
-        creation_attempt: true,
-        success: result?.success ?? false,
-        error_code: result?.error_code ?? null,
-      })
-    );
+    const logDetails = {
+      user_id: authData.user.id,
+      subdomain: body?.slug ?? null,
+      normalized_slug: result?.normalized_slug ?? null,
+      stores_count: result?.stores_count ?? null,
+      store_limit: result?.store_limit ?? null,
+      success: result?.success ?? false,
+      error_code: result?.error_code ?? null,
+    };
+
+    console.log(JSON.stringify({ event: 'create_shop_attempt', ...logDetails }));
+
+    // Persist to admin_audit_logs for the diagnostic panel
+    await admin.from('admin_audit_logs').insert({
+      admin_id: authData.user.id,
+      action: 'shop_creation_attempt',
+      target_type: 'shop',
+      target_id: (result?.shop_id as string) ?? null,
+      details: logDetails,
+    }).then(() => {}).catch(() => {});
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error_code: 'INTERNAL_ERROR' }), {
