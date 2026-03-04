@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BarChart3, AlertCircle } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { useShop } from '@/hooks/useShop';
 import { useProductAnalytics } from '@/hooks/useProductAnalytics';
 import { useHourlyAnalytics } from '@/hooks/useHourlyAnalytics';
@@ -21,7 +21,7 @@ export default function MarketingAnalytics() {
   const { data: hourly, isLoading: loadingHourly } = useHourlyAnalytics(shop?.id, days);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -151,6 +151,6 @@ export default function MarketingAnalytics() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, Rocket, ChevronDown, Loader2,
   Package, Globe, Search, Eye, EyeOff, FileText, AlertTriangle,
 } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -368,7 +368,7 @@ export default function EditProduct() {
   // Loading skeleton
   if (shopLoading || productLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-6xl mx-auto space-y-6 p-4">
           <Skeleton className="h-8 w-48" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -382,14 +382,14 @@ export default function EditProduct() {
             </div>
           </div>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   // Not found fallback — never show blank page
   if (notFound) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-6xl mx-auto p-4">
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/products')}>
@@ -407,12 +407,12 @@ export default function EditProduct() {
             </Button>
           </div>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-6xl mx-auto pb-24 lg:pb-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -693,6 +693,6 @@ export default function EditProduct() {
           </Button>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

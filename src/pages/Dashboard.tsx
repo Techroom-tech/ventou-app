@@ -10,7 +10,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -337,7 +337,7 @@ export default function Dashboard() {
   const fmtNumber = (val: number) => maskValue(String(val), isMasked);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* ── Hero Greeting ── */}
@@ -434,6 +434,6 @@ export default function Dashboard() {
         )}
 
       </div>
-    </DashboardLayout>
+    </>
   );
 }

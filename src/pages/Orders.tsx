@@ -7,7 +7,7 @@ import {
   Search, Download, Plus, ChevronLeft, ChevronRight,
   Phone, MessageCircle, Check, X, Trash2, Zap,
 } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
 import { CreateOrderModal } from '@/components/dashboard/CreateOrderModal';
 import { Button } from '@/components/ui/button';
@@ -258,7 +258,7 @@ export default function Orders() {
   const getNextStatuses = (status: OrderStatus): OrderStatus[] => ORDER_TRANSITIONS[status] ?? [];
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[1200px] mx-auto space-y-4">
         {/* Page header */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -704,6 +704,6 @@ export default function Orders() {
       </div>
 
       <CreateOrderModal open={createOpen} onClose={() => setCreateOpen(false)} />
-    </DashboardLayout>
+    </>
   );
 }

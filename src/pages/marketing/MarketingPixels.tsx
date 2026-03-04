@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, AlertCircle, X } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { useShop } from '@/hooks/useShop';
 import { useTrackingSettings, useUpdateTrackingSettings } from '@/hooks/useTrackingSettings';
 import { Button } from '@/components/ui/button';
@@ -99,7 +99,7 @@ export default function MarketingPixels() {
   ];
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[960px] mx-auto px-4 md:px-8 pb-12">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -314,6 +314,6 @@ export default function MarketingPixels() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

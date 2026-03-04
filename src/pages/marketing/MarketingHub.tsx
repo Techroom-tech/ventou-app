@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Tag, Zap, Link2, Activity, ChevronRight } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +26,7 @@ export default function MarketingHub() {
   const { t } = useTranslation();
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12">
         {/* Header */}
         <div className="mb-10">
@@ -69,6 +69,6 @@ export default function MarketingHub() {
           ))}
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

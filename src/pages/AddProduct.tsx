@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, Rocket, ChevronDown, Loader2,
   Package, Globe, Search, Eye, EyeOff, FileText,
 } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -341,7 +341,7 @@ export default function AddProduct() {
 
   if (shopLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-6xl mx-auto space-y-6 p-4">
           <Skeleton className="h-8 w-48" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -355,12 +355,12 @@ export default function AddProduct() {
             </div>
           </div>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-6xl mx-auto pb-24 lg:pb-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -646,6 +646,6 @@ export default function AddProduct() {
           </Button>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

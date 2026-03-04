@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Tag } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { useShop } from '@/hooks/useShop';
 import { useDiscountCodes, useCreateDiscountCode, useToggleDiscountCode, useDeleteDiscountCode } from '@/hooks/useDiscountCodes';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ export default function MarketingCoupons() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')} className="shrink-0">
@@ -173,6 +173,6 @@ export default function MarketingCoupons() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
