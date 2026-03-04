@@ -1,80 +1,70 @@
 
 
-# Plan: Fix White Screen on Dashboard Refresh + Session Persistence + Auto-redirect
+# Plan: Server-Side Pagination for Products, Orders Counts & Customers
 
-## Root Cause Analysis
+## Current Issues
 
-### Why dashboard shows white screen on refresh
-
-**Critical bug found** in `src/contexts/AuthContext.tsx` line 73:
-
-```typescript
-const storedSession = localStorage.getItem('ventou-auth-token');
-```
-
-This key **does not exist**. Supabase stores the session under `sb-chpplckgndznakuvcqbx-auth-token` (the default format: `sb-{project_ref}-auth-token`). Since `ventou-auth-token` is never found, every `SIGNED_OUT` event — including spurious ones from failed token refreshes (HTTP 429) — is treated as a genuine logout. The user state is cleared, `ProtectedRoute` sees `user === null`, and redirects to `/login`. On mobile or slow connections, this happens frequently on page refresh.
-
----
+1. **ProductContext** fetches ALL products with no limit — will silently truncate at 1000 rows for shops with many products
+2. **useOrderCounts** fetches ALL orders client-side just to count by status — hits the 1000 limit, producing wrong counts
+3. **useCustomers** fetches ALL orders to aggregate customers — same 1000 limit problem
+4. **useRepeatCustomers** fetches ALL orders — same issue
 
 ## Changes
 
-### 1. Fix the localStorage key in AuthContext
+### 1. Add server-side pagination to ProductContext + Products page
 
-Replace `'ventou-auth-token'` with the correct Supabase storage key: `sb-chpplckgndznakuvcqbx-auth-token`.
+**ProductContext** — add `page`, `search`, `statusFilter` params to the query. Use `.range()` with `count: 'exact'` like orders already do. Expose `page`, `setPage`, `totalCount`, `totalPages` in the context.
 
-**File:** `src/contexts/AuthContext.tsx`
+**Products.tsx** — remove client-side filtering. Pass search/status to `useProducts()`. Add pagination controls at the bottom (Previous/Next buttons).
 
-### 2. Implement "Rester connecté" (Remember Me)
+### 2. Replace useOrderCounts with server-side counts
 
-**Behavior:**
-- If "Rester connecté" is checked: session persists in `localStorage`, auto-expires after **72 hours**
-- If not checked: session stored in `sessionStorage` (cleared on browser close), auto-expires after **12 hours**
+Instead of fetching all orders and counting client-side, run 4 parallel `head: true` count queries (one per status + one for all non-archived). This bypasses the 1000 limit entirely and is far more efficient.
 
-**Implementation:**
-- `signIn` method accepts a `rememberMe` parameter
-- Stores a flag (`ventou_remember_me`) and timestamp (`ventou_session_start`) in localStorage
-- On app load, AuthContext checks if the session has exceeded its TTL (72h or 12h) and signs out if expired
-- Supabase client is configured with a dynamic storage adapter that checks the remember_me flag
+### 3. Add server-side pagination to useCustomers
 
-**Files:**
-- `src/contexts/AuthContext.tsx` — add `rememberMe` param to `signIn`, add TTL check on mount
-- `src/integrations/supabase/client.ts` — use a custom storage wrapper that delegates to localStorage or sessionStorage based on the remember_me flag
-- `src/pages/Login.tsx` — pass `rememberMe` value to `signIn`
+Create a **database function** `get_customer_stats(shop_id, search_term, page_size, page_offset)` that aggregates orders by phone server-side using `GROUP BY`, returning paginated customer stats with counts. This avoids fetching all orders to the client.
 
-### 3. Auto-redirect connected vendors from `/` to `/dashboard`
+### 4. Fix useRepeatCustomers with server-side count
 
-When a logged-in vendor visits the homepage (`/`), redirect them to `/dashboard` automatically.
+Replace the full-scan query with a DB function or a `GROUP BY` query via RPC that counts phones with >1 order.
 
-**File:** `src/pages/Index.tsx` — add `Navigate` redirect when `user` is truthy
-
----
-
-## Technical Details
-
-### Custom storage adapter (client.ts)
-
-```text
-VentouStorage {
-  getItem(key) → check localStorage first, then sessionStorage
-  setItem(key, value) → write to localStorage if remember_me, else sessionStorage
-  removeItem(key) → remove from both
-}
-```
-
-### Session TTL check (AuthContext)
-
-On `INITIAL_SESSION` or `SIGNED_IN`:
-1. Read `ventou_session_start` from localStorage
-2. Read `ventou_remember_me` flag
-3. Calculate elapsed time
-4. If exceeded (72h for remember_me, 12h otherwise) → call `signOut()`
-
-### Files Modified
+## Files Modified
 
 | File | Change |
 |---|---|
-| `src/integrations/supabase/client.ts` | Custom storage adapter for remember me |
-| `src/contexts/AuthContext.tsx` | Fix storage key, add rememberMe to signIn, add TTL check |
-| `src/pages/Login.tsx` | Pass rememberMe to signIn |
-| `src/pages/Index.tsx` | Redirect logged-in users to /dashboard |
+| `src/contexts/ProductContext.tsx` | Add pagination params, use `.range()` + `count: 'exact'` |
+| `src/pages/Products.tsx` | Remove client-side filter, use context pagination, add page controls |
+| `src/hooks/useOrders.ts` | Replace `useOrderCounts` with parallel head-count queries, replace `useRepeatCustomers` with RPC |
+| `src/hooks/useCustomers.ts` | Use new `get_customer_stats` DB function |
+| Migration SQL | Create `get_customer_stats` and `get_repeat_customer_count` functions |
+
+## Technical Details
+
+### ProductContext query change
+
+```text
+.select('*', { count: 'exact' })
+.eq('shop_id', shop.id)
+.ilike('name', `%${search}%`)       // if search provided
+.eq('is_active', statusFilter)       // if filter provided
+.order('created_at', { ascending: false })
+.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+```
+
+### useOrderCounts — parallel counts
+
+```text
+Promise.all([
+  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('is_archived', false),
+  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'pending'),
+  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'confirmed'),
+  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'delivered'),
+  supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', 'cancelled'),
+])
+```
+
+### get_customer_stats DB function
+
+Groups orders by phone, computes total_orders, delivered, cancelled, total_amount, returns paginated results with optional search filter on name/phone.
 
