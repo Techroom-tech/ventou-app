@@ -17,6 +17,8 @@ import {
 import { LogOut, User, Search, Store, Copy, Eye, EyeOff, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { getStorefrontUrl } from '@/lib/domain';
+import { CommandPalette } from './CommandPalette';
+import { useState, useEffect } from 'react';
 
 export function DashboardHeader() {
   const { t, i18n } = useTranslation();
@@ -24,6 +26,18 @@ export function DashboardHeader() {
   const { profile, user, signOut } = useAuth();
   const { shop } = useShop();
   const { isMasked, toggleMask } = useDataMask();
+  const [cmdOpen, setCmdOpen] = useState(false);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCmdOpen((o) => !o);
+      }
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -66,18 +80,23 @@ export function DashboardHeader() {
         <span className="text-base font-bold text-foreground">VENTOU</span>
       </div>
 
-      {/* Search bar - desktop */}
+      {/* Search trigger - desktop */}
       <div className="hidden lg:flex flex-1 max-w-md">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            readOnly
-            placeholder={t('dashboard.header.search', 'Trouvez n\'importe quoi : ⌘K')}
-            className="w-full h-9 pl-9 pr-4 rounded-lg bg-muted border-0 text-xs text-muted-foreground cursor-pointer focus:outline-none"
-          />
-        </div>
+        <button
+          onClick={() => setCmdOpen(true)}
+          className="w-full h-9 flex items-center gap-2 px-3 rounded-lg bg-muted text-xs text-muted-foreground cursor-pointer hover:bg-muted/80 transition-colors"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left truncate">
+            {t('dashboard.header.search', 'Trouvez n\'importe quoi…')}
+          </span>
+          <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-border bg-background px-1.5 font-mono text-[10px] text-muted-foreground">
+            ⌘K
+          </kbd>
+        </button>
       </div>
+
+      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
 
       {/* Right actions */}
       <div className="flex items-center gap-1.5 ml-auto">
