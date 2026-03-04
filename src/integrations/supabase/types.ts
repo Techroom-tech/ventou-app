@@ -688,6 +688,45 @@ export type Database = {
           },
         ]
       }
+      product_reviews: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          full_name: string
+          id: string
+          is_approved: boolean | null
+          phone: string | null
+          product_id: string
+          rating: number
+          review_text: string | null
+          shop_id: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string | null
+          full_name: string
+          id?: string
+          is_approved?: boolean | null
+          phone?: string | null
+          product_id: string
+          rating: number
+          review_text?: string | null
+          shop_id: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          is_approved?: boolean | null
+          phone?: string | null
+          product_id?: string
+          rating?: number
+          review_text?: string | null
+          shop_id?: string
+        }
+        Relationships: []
+      }
       product_variants: {
         Row: {
           created_at: string | null
