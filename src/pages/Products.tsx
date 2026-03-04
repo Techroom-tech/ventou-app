@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, MoreVertical, Pencil, Copy, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { ProductsEmptyState } from '@/components/dashboard/ProductsEmptyState';
 import { ProductCardSkeleton } from '@/components/dashboard/ProductCardSkeleton';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,6 @@ export default function Products() {
   };
 
   return (
-    <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -191,6 +189,5 @@ export default function Products() {
           </>
         )}
       </div>
-    </DashboardLayout>
   );
 }

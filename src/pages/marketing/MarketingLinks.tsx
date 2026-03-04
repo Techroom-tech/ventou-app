@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Link2, Copy } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { useShop } from '@/hooks/useShop';
 import { useTrackedLinks, useCreateTrackedLink, useDeleteTrackedLink } from '@/hooks/useTrackedLinks';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ export default function MarketingLinks() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 pb-12 space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/marketing')} className="shrink-0">
@@ -157,6 +157,6 @@ export default function MarketingLinks() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

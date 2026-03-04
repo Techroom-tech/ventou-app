@@ -4,7 +4,7 @@ import {
   Search, BarChart2, Bell, Headphones, User, Users,
   Receipt, Code2, ChevronRight, Settings2,
 } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { cn } from '@/lib/utils';
 
 interface SettingCard {
@@ -224,7 +224,7 @@ function SettingCardItem({ card }: { card: SettingCard }) {
 
 export default function SettingsHub() {
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto pb-12">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -253,6 +253,6 @@ export default function SettingsHub() {
           ))}
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { useShop } from '@/hooks/useShop';
 import { useCustomers, Customer } from '@/hooks/useCustomers';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -126,7 +126,7 @@ export default function Customers() {
   const currency = shop?.currency ?? 'XOF';
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-[1200px] mx-auto space-y-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -278,6 +278,6 @@ export default function Customers() {
         onClose={() => setSelectedCustomer(null)}
         currency={currency}
       />
-    </DashboardLayout>
+    </>
   );
 }

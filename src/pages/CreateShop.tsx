@@ -10,7 +10,7 @@ import {
   Palette, Globe, Camera, ShieldAlert, ArrowLeft, Eye,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -142,7 +142,7 @@ function ShopPreview({
 function AlreadyHasShop() {
   const navigate = useNavigate();
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-md mx-auto mt-20 text-center space-y-6 animate-in fade-in duration-500">
         <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
           <ShieldAlert className="h-8 w-8 text-accent" />
@@ -156,7 +156,7 @@ function AlreadyHasShop() {
           Retour au dashboard
         </Button>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 
@@ -333,11 +333,11 @@ export default function CreateShop() {
   // ─── Loading state ─────────────────────────────────────────
   if (shopLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="min-h-[60vh] flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -351,7 +351,7 @@ export default function CreateShop() {
 
   // ─── Render ────────────────────────────────────────────────
   return (
-    <DashboardLayout>
+    <>
       <ErrorBoundary fallbackMessage="Erreur lors du chargement du formulaire">
         <div className="max-w-6xl mx-auto animate-in fade-in duration-300">
           {/* Header */}
@@ -763,6 +763,6 @@ export default function CreateShop() {
           </div>
         </div>
       </ErrorBoundary>
-    </DashboardLayout>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings2, Truck, MessageCircle, DollarSign, Loader2, CheckCircle2 } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -60,18 +60,18 @@ export default function Settings() {
 
   if (shopLoading || settingsLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-2xl mx-auto space-y-6 p-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-56" />
           <Skeleton className="h-10 w-32" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -192,6 +192,6 @@ export default function Settings() {
           </Button>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -7,7 +7,7 @@ import {
   ArrowLeft, Phone, MessageCircle, MapPin,
   Send, Star, ChevronDown, Trash2,
 } from 'lucide-react';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,14 +64,14 @@ function parseNotes(raw: string | null | undefined): Array<{ date: string; text:
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function OrderDetailSkeleton() {
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-3xl mx-auto space-y-4 animate-pulse">
         <Skeleton className="h-12 w-full rounded-xl" />
         <Skeleton className="h-32 w-full rounded-xl" />
         <Skeleton className="h-48 w-full rounded-xl" />
         <Skeleton className="h-36 w-full rounded-xl" />
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 
@@ -176,7 +176,7 @@ export default function OrderDetail() {
   if (isLoading) return <OrderDetailSkeleton />;
   if (error || !order) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-3xl mx-auto py-16 text-center space-y-3">
           <div className="text-4xl">🔍</div>
           <p className="font-semibold text-foreground">Commande introuvable</p>
@@ -186,7 +186,7 @@ export default function OrderDetail() {
             Retour aux commandes
           </Button>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -197,7 +197,7 @@ export default function OrderDetail() {
   const nextStatuses = ORDER_TRANSITIONS[order.status];
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-3xl mx-auto pb-32 lg:pb-8">
 
         {/* ─── STICKY HEADER ─────────────────────────────────────────────── */}
@@ -470,6 +470,6 @@ export default function OrderDetail() {
           </Button>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }
