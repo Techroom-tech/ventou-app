@@ -145,14 +145,13 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const { data: shop, isLoading: shopLoading, error: shopError } = useQuery({
     queryKey: ['storefront-shop', slug],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shops')
-        .select('*')
-        .eq('slug', slug)
-        .maybeSingle();
+      const { data: res, error } = await supabase.functions.invoke('storefront-cache', {
+        body: { action: 'shop', slug },
+      });
       if (error) throw error;
-      return data as Shop | null;
+      return (res?.data ?? null) as Shop | null;
     },
+    staleTime: 60_000,
   });
 
   // ── Inject tracking pixels (FB, TikTok, GTM) on public storefront only ──
@@ -161,23 +160,15 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['storefront-products', shop?.id, shop?.products_sort_order],
     queryFn: async () => {
-      let query = supabase
-        .from('products')
-        .select('*')
-        .eq('shop_id', shop!.id)
-        .eq('is_active', true);
-
       const sort = (shop as any).products_sort_order ?? 'recent';
-      if (sort === 'alpha') query = query.order('name', { ascending: true });
-      else if (sort === 'price_asc') query = query.order('price', { ascending: true });
-      else if (sort === 'price_desc') query = query.order('price', { ascending: false });
-      else query = query.order('created_at', { ascending: false }); // recent & best_seller fallback
-
-      const { data, error } = await query;
+      const { data: res, error } = await supabase.functions.invoke('storefront-cache', {
+        body: { action: 'products', shop_id: shop!.id, sort },
+      });
       if (error) throw error;
-      return data as Product[];
+      return (res?.data ?? []) as Product[];
     },
     enabled: !!shop?.id,
+    staleTime: 60_000,
   });
 
   // ── Apply dark mode + fonts on initial load based on shop settings ──

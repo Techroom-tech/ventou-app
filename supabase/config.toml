@@ -2,3 +2,6 @@ project_id = "chpplckgndznakuvcqbx"
 
 [functions.track-event]
 verify_jwt = false
+
+[functions.storefront-cache]
+verify_jwt = false
