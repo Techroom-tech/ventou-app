@@ -1,0 +1,1 @@
+ALTER TABLE public.tracked_links ADD COLUMN last_clicked_at timestamptz DEFAULT NULL;

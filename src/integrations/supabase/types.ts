@@ -1037,6 +1037,7 @@ export type Database = {
           clicks: number | null
           created_at: string | null
           id: string
+          last_clicked_at: string | null
           name: string
           ref_code: string
           shop_id: string
@@ -1047,6 +1048,7 @@ export type Database = {
           clicks?: number | null
           created_at?: string | null
           id?: string
+          last_clicked_at?: string | null
           name: string
           ref_code: string
           shop_id: string
@@ -1057,6 +1059,7 @@ export type Database = {
           clicks?: number | null
           created_at?: string | null
           id?: string
+          last_clicked_at?: string | null
           name?: string
           ref_code?: string
           shop_id?: string
@@ -1232,6 +1235,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_tracked_link_click: {
+        Args: { _ref_code: string }
+        Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
