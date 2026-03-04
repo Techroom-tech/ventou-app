@@ -1,156 +1,146 @@
 
 
-## Full Campaign Attribution System
+## Premium Ecommerce Product Page for Ventou Stores
 
-This is a major feature spanning database, edge functions, storefront tracking, and a new analytics dashboard. Here is the implementation plan.
+This is a major rebuild of the current `ProductDetailSheet` (a side sheet/drawer) into a full-page, conversion-optimized product page with gallery, variants, reviews, related products, SEO structured data, and tracking.
 
----
+### Architecture Decision
 
-### Phase 1: Database Schema
+Currently, clicking a product opens a Sheet (desktop) or Drawer (mobile). The new design requires a **full page** at a route like `/produit/{slug}` within the storefront context. The existing Sheet behavior can remain as a quick-view option, but the primary product experience will be a dedicated page component.
 
-Create two new tables:
+### Files to Create
 
-**`campaign_clicks`** -- records every click on a campaign link with visitor metadata:
-- `id` (uuid, PK)
-- `link_id` (uuid, FK -> tracked_links)
-- `shop_id` (uuid, FK -> shops)
-- `visitor_id` (text) -- anonymous session ID stored in localStorage
-- `ip_address` (text)
-- `country` (text)
-- `city` (text)
-- `device` (text) -- mobile/desktop/tablet
-- `browser` (text)
-- `fbclid` (text, nullable)
-- `ttclid` (text, nullable)
-- `clicked_at` (timestamptz, default now())
+**`src/components/storefront/ProductPage.tsx`** — Main product page component (~600 lines), containing:
 
-**`campaign_events`** -- records funnel events (view_product, add_to_cart, checkout_started, purchase):
-- `id` (uuid, PK)
-- `click_id` (uuid, FK -> campaign_clicks)
-- `link_id` (uuid, FK -> tracked_links)
-- `shop_id` (uuid)
-- `visitor_id` (text)
-- `event_type` (text) -- view_product | add_to_cart | checkout_started | purchase
-- `product_id` (uuid, nullable)
-- `order_id` (uuid, nullable)
-- `revenue` (numeric, nullable)
-- `created_at` (timestamptz, default now())
+1. **Product Gallery**
+   - Fetches `product_images` table for multi-image support
+   - Desktop: Large main image + vertical thumbnails, hover zoom (CSS transform-origin on mousemove)
+   - Mobile: Horizontal swipe carousel using `embla-carousel-react` (already installed)
+   - Lazy loading with `loading="lazy"`, preload for main image via `<link rel="preload">`
 
-RLS: Public INSERT (for storefront visitors), owner SELECT (shop owner reads their data).
+2. **Product Info Column**
+   - Product title (text-3xl font-bold)
+   - Star rating (average from reviews, or placeholder)
+   - Price display: current price + crossed-out compare_at_price
+   - **Variant selectors**: Fetch `product_variants` grouped by `name` (e.g., "Couleur", "Taille"), render as selectable button chips. Hidden if no variants exist.
+   - Quantity selector: `[-] N [+]`
+   - "Acheter maintenant" primary CTA using store `button_color`
+   - Share icons: Facebook, WhatsApp, Twitter (X), Telegram — using Lucide `Share2`, `MessageCircle` + custom SVGs or web share API
 
-Add indexes on `link_id`, `shop_id`, `visitor_id`, `event_type`.
+3. **Product Tabs** (`Tabs` component)
+   - "Détails produit": Renders TipTap JSON as rich HTML (supporting images, videos, text). Use a simple recursive renderer that outputs `<p>`, `<img>`, `<iframe>` for YouTube embeds.
+   - "Avis clients": Reviews list + submission form
 
-Update `tracked_links.source` values to include: `facebook_ads`, `tiktok_ads`, `whatsapp`, `instagram`, `influencer`, `direct`.
+4. **Customer Reviews**
+   - New DB table `product_reviews` (id, product_id, shop_id, full_name, phone, rating 1-5, review_text, country, created_at)
+   - RLS: public INSERT, owner SELECT, public SELECT (approved reviews)
+   - Display: name, date, star rating, review text, country flag via `https://flagcdn.com/24x18/{code}.png`
+   - Form: full_name, phone, review_text, star rating (clickable stars). No email field.
 
----
+5. **Related Products**
+   - Query up to 4 products from same shop (same category preferred, fallback to any), excluding current product
+   - Render as horizontal card row, reusing existing product card style
 
-### Phase 2: Edge Function -- `track-link-click` (upgrade)
+6. **Store Footer** — Reuse existing footer from ShopStorefront
 
-Upgrade the existing edge function to:
-1. Accept extended payload: `{ ref_code, ip_address, country, city, device, browser, fbclid, ttclid, visitor_id }`
-2. Insert a row into `campaign_clicks`
-3. Continue incrementing `tracked_links.clicks` and `last_clicked_at`
-4. Return `{ click_id, link_id }` so the client can store it for subsequent event tracking
+7. **Sticky Mobile Buy Bar** — Fixed bottom bar on mobile with price + "Acheter maintenant" button
 
----
+### Files to Modify
 
-### Phase 3: New Edge Function -- `track-campaign-event`
+**`src/pages/ShopStorefront.tsx`**
+- Add route handling: when URL matches `/produit/{slug}` pattern, render `ProductPage` instead of the grid
+- Or better: add an internal state/URL param approach to show product page within the storefront
 
-Public endpoint (verify_jwt = false) that accepts:
-```json
-{
-  "visitor_id": "...",
-  "link_id": "...",
-  "click_id": "...",
-  "shop_id": "...",
-  "event_type": "view_product | add_to_cart | checkout_started | purchase",
-  "product_id": "...",
-  "order_id": "...",
-  "revenue": 0
-}
+**`src/App.tsx`**
+- Add storefront product route if using URL-based routing
+
+### New Database Migration
+
+```sql
+CREATE TABLE public.product_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id uuid NOT NULL,
+  shop_id uuid NOT NULL,
+  full_name text NOT NULL,
+  phone text,
+  rating smallint NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  review_text text,
+  country text,
+  is_approved boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.product_reviews ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can submit a review
+CREATE POLICY "public_insert_reviews" ON public.product_reviews
+  FOR INSERT WITH CHECK (true);
+
+-- Anyone can read approved reviews
+CREATE POLICY "public_read_approved_reviews" ON public.product_reviews
+  FOR SELECT USING (is_approved = true);
+
+-- Shop owner can manage reviews
+CREATE POLICY "owner_manage_reviews" ON public.product_reviews
+  FOR ALL USING (shop_id IN (SELECT id FROM shops WHERE owner_id = auth.uid()));
+
+CREATE INDEX idx_reviews_product ON public.product_reviews(product_id);
+CREATE INDEX idx_reviews_shop ON public.product_reviews(shop_id);
 ```
-Inserts into `campaign_events`.
 
----
+### SEO & Meta
 
-### Phase 4: Storefront Client-Side Tracking
+**`src/components/storefront/ProductSEO.tsx`** — Injects into `<head>`:
+- JSON-LD `schema.org/Product` with name, description, image, brand (shop name), price, currency, availability
+- OpenGraph tags: og:title, og:description, og:image, og:image:width, og:image:height, og:url
+- Twitter card tags
 
-**On link click landing (`ShopStorefront.tsx`)**:
-- When `?ref=` is detected, extract `fbclid`, `ttclid` from URL params
-- Detect device/browser from `navigator.userAgent`
-- Generate/retrieve `visitor_id` from localStorage (`ventou-visitor-{shopId}`)
-- Call upgraded `track-link-click` with full metadata
-- Store `{ click_id, link_id, visitor_id }` in localStorage as `ventou-campaign-{shopId}`
+Uses `useEffect` to dynamically create/update `<meta>` and `<script type="application/ld+json">` elements.
 
-**On product view** (when `ProductDetailSheet` opens):
-- If campaign session exists in localStorage, fire `track-campaign-event` with `event_type: 'view_product'`
+### Tracking Integration
 
-**On add to cart** (in `CartContext.addToCart`):
-- Fire `track-campaign-event` with `event_type: 'add_to_cart'`
+- `ViewContent` fires on product page mount (already partially exists)
+- `AddToCart` fires on CTA click
+- `Purchase` fires in CheckoutDrawer (already exists)
+- Campaign attribution from `campaignTracking.ts` continues to work
 
-**On checkout started** (when `CheckoutDrawer` opens):
-- Fire `track-campaign-event` with `event_type: 'checkout_started'`
+### DOM Stability
 
-**On purchase** (after order is inserted in `CheckoutDrawer`):
-- Fire `track-campaign-event` with `event_type: 'purchase'`, `order_id`, `revenue`
+Add a small utility that patches `Node.prototype.removeChild` and `Node.prototype.insertBefore` with try/catch wrappers to prevent crashes from Google Translate / browser extensions. Inject in `main.tsx`.
 
-Create a helper module `src/lib/campaignTracking.ts` to centralize all this logic.
+### Country Flags
 
----
+Use `https://flagcdn.com/24x18/{code}.png` in:
+- Review display (reviewer's country)
+- Already available for campaign analytics
 
-### Phase 5: Campaign Link Redirect
+### Performance
 
-Campaign links should go directly to the product page. Currently the `target_url` already points to `/produit/{slug}`. No change needed for product-destination links. For the shortlink format `/l/{ref_code}`:
-- Not implementing a server redirect (would need a separate service). Instead, the existing `?ref=` mechanism already lands on the product page since `target_url` is the product URL.
+- Main product image: `<link rel="preload" as="image">`
+- All other images: `loading="lazy"`
+- Component is lazy-loaded via `React.lazy`
+- Embla carousel only loaded on mobile
 
----
+### Responsive Breakpoints
 
-### Phase 6: Update Source Options in Create Dialog
+- **Desktop (≥1024px)**: 2-column grid (gallery left, info right)
+- **Tablet (768-1023px)**: Gallery stacked on top, info below
+- **Mobile (<768px)**: Full-width gallery slider, stacked content, sticky bottom buy bar
 
-In `MarketingLinks.tsx`, update the source dropdown to use the new values: `facebook_ads`, `tiktok_ads`, `whatsapp`, `instagram`, `influencer`, `direct`.
-
----
-
-### Phase 7: Campaign Analytics Dashboard
-
-**New page: `src/pages/marketing/CampaignDetail.tsx`** (`/dashboard/marketing/liens/:linkId`)
-
-Shows for a single campaign link:
-- KPI cards: Clicks, Add to Cart, Purchases, Conversion Rate (purchases/clicks), Revenue
-- Top countries (from campaign_clicks)
-- Event log table: Time, Country, Device, Action (event_type)
-
-**Update `MarketingLinks.tsx`**:
-- Make each link row clickable to navigate to the detail page
-- Add summary stats columns: Conversions, Revenue
-
-**New route** in `App.tsx`: `marketing/liens/:linkId`
-
----
-
-### Phase 8: Hooks
-
-- `src/hooks/useCampaignAnalytics.ts` -- fetches aggregated stats for a link (clicks, events by type, top countries)
-- `src/hooks/useCampaignEvents.ts` -- fetches event log for the detail view
-
----
-
-### Files to Create/Modify
+### Summary of All Files
 
 | File | Action |
 |------|--------|
-| Migration SQL | Create `campaign_clicks` + `campaign_events` tables with RLS |
-| `supabase/functions/track-link-click/index.ts` | Upgrade to insert `campaign_clicks` |
-| `supabase/functions/track-campaign-event/index.ts` | New edge function |
-| `supabase/config.toml` | Add `track-campaign-event` config |
-| `src/lib/campaignTracking.ts` | New -- client-side campaign session + event helpers |
-| `src/pages/ShopStorefront.tsx` | Upgrade ref detection to full attribution |
-| `src/components/storefront/ProductDetailSheet.tsx` | Fire `view_product` event |
-| `src/components/storefront/CartContext.tsx` | Fire `add_to_cart` event |
-| `src/components/storefront/CheckoutDrawer.tsx` | Fire `checkout_started` + `purchase` events |
-| `src/pages/marketing/MarketingLinks.tsx` | Update sources, add clickable rows + stats |
-| `src/pages/marketing/CampaignDetail.tsx` | New analytics detail page |
-| `src/hooks/useCampaignAnalytics.ts` | New hook |
-| `src/hooks/useCampaignEvents.ts` | New hook |
-| `src/App.tsx` | Add route for campaign detail |
+| Migration SQL | Create `product_reviews` table |
+| `src/components/storefront/ProductPage.tsx` | New — full product page |
+| `src/components/storefront/ProductSEO.tsx` | New — SEO meta/JSON-LD |
+| `src/components/storefront/ProductGallery.tsx` | New — gallery with zoom + carousel |
+| `src/components/storefront/ProductReviews.tsx` | New — reviews list + form |
+| `src/components/storefront/RelatedProducts.tsx` | New — related products section |
+| `src/components/storefront/ShareButtons.tsx` | New — social share icons |
+| `src/components/storefront/TipTapRenderer.tsx` | New — rich description renderer |
+| `src/hooks/useProductReviews.ts` | New — fetch/submit reviews |
+| `src/pages/ShopStorefront.tsx` | Modify — add product page routing |
+| `src/App.tsx` | Possibly add route |
+| `src/main.tsx` | Add DOM stability patch |
 
