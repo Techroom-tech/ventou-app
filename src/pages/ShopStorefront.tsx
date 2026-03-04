@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +21,8 @@ import { CountryProvider, useCountry } from '@/contexts/CountryContext';
 import CountrySelector from '@/components/storefront/CountrySelector';
 import { getPlatformUrl } from '@/lib/domain';
 import { useStorefrontTracking, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase } from '@/hooks/useStorefrontTracking';
+
+const ProductPage = lazy(() => import('@/components/storefront/ProductPage'));
 interface ShopStorefrontProps {
   slug: string;
 }
@@ -60,6 +62,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [productPageProduct, setProductPageProduct] = useState<Product | null>(null);
 
   // ── postMessage listener for live preview mode ──
   useEffect(() => {
@@ -280,6 +283,92 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const showLogo = displayMode === 'logo-only' || displayMode === 'logo-name';
   const showName = displayMode === 'name-only' || displayMode === 'logo-name';
 
+  // If a product is selected for full page view
+  if (productPageProduct && shop) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b">
+          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              {showLogo && (
+                shop.logo_url ? (
+                  <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
+                    <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <ShopAvatar name={shop.name} color={primaryColor} size="md" />
+                )
+              )}
+              {showName && (
+                <span className="font-bold text-lg truncate cursor-pointer" onClick={() => setProductPageProduct(null)}>{shop.name}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <CountrySelector />
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
+                <ShoppingCart className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+          <ProductPage
+            product={productPageProduct}
+            shop={shop}
+            onBack={() => setProductPageProduct(null)}
+            onProductClick={(p) => {
+              setProductPageProduct(p);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        </Suspense>
+
+        {/* Footer */}
+        <footer className="mt-auto border-t py-8">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                {shop.logo_url ? (
+                  <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex items-center justify-center">
+                    <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <ShopAvatar name={shop.name} color={primaryColor} size="sm" />
+                )}
+                <span className="text-sm font-medium">{shop.name}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                © {new Date().getFullYear()} {shop.name}. {t('storefront.allRights')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('storefront.poweredBy')}{' '}
+                <a href={getPlatformUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>
+                  Ventou
+                </a>
+              </p>
+            </div>
+          </div>
+        </footer>
+
+        <CartButton onClick={() => setCartOpen(true)} />
+        <CartDrawer
+          open={cartOpen}
+          onOpenChange={setCartOpen}
+          onCheckout={() => {
+            setCheckoutOpen(true);
+            trackInitiateCheckout({ currency: shop.currency ?? 'XOF' });
+          }}
+          currency={shop.currency}
+          shopName={shop.name}
+        />
+        <CheckoutDrawer open={checkoutOpen} onOpenChange={setCheckoutOpen} shop={shop} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -462,8 +551,8 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                         data-card-bg
                         className={cardClass}
                         onClick={() => {
-                          setSelectedProduct(product);
-                          setDetailOpen(true);
+                          setProductPageProduct(product);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                           trackViewContent({
                             content_name: product.name,
                             content_id: product.id,
