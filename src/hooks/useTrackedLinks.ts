@@ -10,6 +10,7 @@ export interface TrackedLink {
   ref_code: string;
   clicks: number;
   created_at: string | null;
+  last_clicked_at: string | null;
 }
 
 export interface CreateTrackedLink {

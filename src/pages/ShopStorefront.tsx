@@ -206,6 +206,20 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
     return () => { document.documentElement.classList.remove('dark'); };
   }, [shop]);
 
+  // ── Track ?ref= link clicks ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (!ref) return;
+    // Fire-and-forget, no need to await
+    supabase.functions.invoke('track-link-click', { body: { ref_code: ref } }).catch(() => {});
+    // Remove ref from URL to avoid double-counting on navigation
+    params.delete('ref');
+    const newSearch = params.toString();
+    const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
+    window.history.replaceState({}, '', newUrl);
+  }, []);
+
   const filteredProducts = useMemo(() => {
     if (!products) return [];
     if (!searchQuery.trim()) return products;

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Link2, Copy } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 import { useShop } from '@/hooks/useShop';
 import { useTrackedLinks, useCreateTrackedLink, useDeleteTrackedLink } from '@/hooks/useTrackedLinks';
@@ -20,6 +22,19 @@ import { useTranslation } from 'react-i18next';
 
 function genRefCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function buildFullUrl(link: { target_url: string; ref_code: string }) {
+  return `${link.target_url}${link.target_url.includes('?') ? '&' : '?'}ref=${link.ref_code}`;
+}
+
+function LastActivity({ date }: { date: string | null }) {
+  if (!date) return <span className="text-muted-foreground text-xs">Jamais</span>;
+  return (
+    <span className="text-xs text-muted-foreground">
+      {formatDistanceToNow(new Date(date), { addSuffix: true, locale: fr })}
+    </span>
+  );
 }
 
 export default function MarketingLinks() {
@@ -73,9 +88,8 @@ export default function MarketingLinks() {
     setName(''); setTargetUrl(''); setSelectedProductId('');
   };
 
-  const copyLink = (link: any) => {
-    const url = `${link.target_url}${link.target_url.includes('?') ? '&' : '?'}ref=${link.ref_code}`;
-    navigator.clipboard.writeText(url);
+  const copyLink = (link: { target_url: string; ref_code: string }) => {
+    navigator.clipboard.writeText(buildFullUrl(link));
     toast.success(t('dashboard.actions.shareCopied'));
   };
 
@@ -98,14 +112,12 @@ export default function MarketingLinks() {
             <DialogContent className="max-w-[600px]">
               <DialogHeader><DialogTitle>{t('marketing.links.create')}</DialogTitle></DialogHeader>
               <div className="space-y-5">
-                {/* Nom */}
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">{t('marketing.links.campaignName', 'Nom de la campagne')}</Label>
                   <Input placeholder="Ex: Promo été Facebook" value={name} onChange={(e) => setName(e.target.value)} />
                   <p className="text-xs text-muted-foreground">{t('marketing.links.campaignHint', 'Donnez un nom pour identifier cette campagne')}</p>
                 </div>
 
-                {/* Destination */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Destination</Label>
                   <p className="text-xs text-muted-foreground">{t('marketing.links.destHint', 'Choisissez un produit ou entrez un lien personnalisé')}</p>
@@ -132,7 +144,6 @@ export default function MarketingLinks() {
                   )}
                 </div>
 
-                {/* Source */}
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">{t('marketing.links.trafficSource', 'Source de trafic')}</Label>
                   <p className="text-xs text-muted-foreground">{t('marketing.links.sourceHint', "D'où viendront les visiteurs ?")}</p>
@@ -171,52 +182,68 @@ export default function MarketingLinks() {
                       <TableRow>
                         <TableHead>{t('marketing.links.name')}</TableHead>
                         <TableHead>Source</TableHead>
-                        <TableHead>Ref</TableHead>
+                        <TableHead>{t('marketing.links.trackingLink', 'Lien')}</TableHead>
                         <TableHead className="text-center">{t('marketing.links.clicks')}</TableHead>
+                        <TableHead>{t('marketing.links.lastActivity', 'Dernière activité')}</TableHead>
                         <TableHead className="text-right"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {links.map((l) => (
-                        <TableRow key={l.id}>
-                          <TableCell className="font-medium">{l.name}</TableCell>
-                          <TableCell><Badge variant="secondary">{l.source}</Badge></TableCell>
-                          <TableCell className="font-mono text-xs">{l.ref_code}</TableCell>
-                          <TableCell className="text-center">{l.clicks}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                               <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
-                                <Copy className="h-4 w-4 icon-interactive" />
-                              </Button>
+                      {links.map((l) => {
+                        const fullUrl = buildFullUrl(l);
+                        return (
+                          <TableRow key={l.id}>
+                            <TableCell className="font-medium">{l.name}</TableCell>
+                            <TableCell><Badge variant="secondary">{l.source}</Badge></TableCell>
+                            <TableCell className="max-w-[260px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-mono text-muted-foreground truncate">{fullUrl}</span>
+                                <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7" onClick={() => copyLink(l)}>
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">{l.clicks}</TableCell>
+                            <TableCell><LastActivity date={l.last_clicked_at} /></TableCell>
+                            <TableCell className="text-right">
                               <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
                                 <Trash2 className="h-4 w-4 text-destructive icon-interactive" />
                               </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
                 {/* Mobile */}
                 <div className="md:hidden space-y-3">
-                  {links.map((l) => (
-                    <div key={l.id} className="flex items-center gap-3 p-3 rounded-xl border border-border">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{l.name}</span>
-                          <Badge variant="secondary" className="text-[10px]">{l.source}</Badge>
+                  {links.map((l) => {
+                    const fullUrl = buildFullUrl(l);
+                    return (
+                      <div key={l.id} className="p-3 rounded-xl border border-border space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-semibold text-sm truncate">{l.name}</span>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{l.source}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyLink(l)}>
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate font-mono">{l.ref_code} · {l.clicks} {t('marketing.links.clicks')}</p>
+                        <p className="text-[11px] font-mono text-muted-foreground truncate">{fullUrl}</p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{l.clicks} {t('marketing.links.clicks')}</span>
+                          <LastActivity date={l.last_clicked_at} />
+                        </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => copyLink(l)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
