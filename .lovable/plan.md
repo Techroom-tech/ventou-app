@@ -1,31 +1,52 @@
 
 
-## Plan: Optimize Product Page & Clean Up Storefront Header
+## Plan: SSR OG Meta Tags via Cloudflare Worker
 
-### Issues to Fix
+### Problem
 
-1. **Product page slow loading** — Currently there's a waterfall: shop loads → then product fetched by slug. The product query depends on `shop.id` being available. We can prefetch the product by slug without waiting for the shop, or fetch both in parallel.
+WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
 
-2. **Product cards show fake static ratings** — Lines 638-650 render hardcoded 4 filled stars + "0 avis" for every product. Replace with real review data fetched in batch for all products.
+### Solution
 
-3. **Remove ThemeToggle from storefront header** — Remove from both the store homepage header (line 441) and the product page header (line 347).
+Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
 
-4. **Remove cart icon from storefront header** — Remove the ShoppingCart button from both headers (lines 348-349, 442-444). The floating `CartButton` component at the bottom already handles cart access.
+### Architecture
 
----
+```text
+Bot request: test.ventou.shop/p/airpods-pro
+    │
+    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
+    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
+    │           ──► Fetches HTML from origin
+    │           ──► Rewrites <head> with OG tags + JSON-LD
+    │           ──► Returns modified HTML
+    │
+    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
+```
 
-### Technical Changes
+### Changes
 
-**`src/pages/ShopStorefront.tsx`**
+**`cloudflare-worker/ventou-wildcard-proxy.js`**
 
-- Remove `ThemeToggle` import and both usages (product page header line 347, store header line 441).
-- Remove the `ShoppingCart` icon button from both headers (product page header lines 348-349, store header lines 442-444).
-- Replace static star ratings in product cards (lines 638-650) with real review data. Add a query to batch-fetch review stats (count + avg rating) for all products in the shop, then display actual values per card.
-- Optimize product-by-slug fetch: run it in parallel with the shop query by fetching using `slug` + `productSlug` together, querying products joined with shops on slug match, removing the dependency on `shop.id`.
+1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
 
-**New batch reviews query** — Single query to get `product_id`, `count`, `avg(rating)` grouped by product for the shop, used to show real ratings on product cards.
+2. Add a `handleProductOG` async function that:
+   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
+   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
+   - Fetches the origin HTML
+   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
+   - Returns the modified HTML response
+
+3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+
+4. Worker environment variables needed (set in Cloudflare dashboard):
+   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
+   - `SUPABASE_ANON_KEY` = the anon key
+
+**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
 
 | File | Change |
 |------|--------|
-| `src/pages/ShopStorefront.tsx` | Remove ThemeToggle, remove header cart buttons, add batch review stats query, optimize product slug fetch |
+| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
+| `index.html` | Update default OG meta tags to Ventou branding |
 
