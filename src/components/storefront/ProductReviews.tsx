@@ -115,6 +115,12 @@ export default function ProductReviews({ productId, shopId }: ProductReviewsProp
               {review.review_text && (
                 <p className="text-sm text-muted-foreground">{review.review_text}</p>
               )}
+              {review.vendor_reply && (
+                <div className="ml-4 mt-2 border-l-2 border-primary/30 pl-3 py-1">
+                  <p className="text-xs font-semibold text-foreground mb-0.5">Réponse du vendeur</p>
+                  <p className="text-sm text-muted-foreground">{review.vendor_reply}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
