@@ -11,6 +11,7 @@
  * 2. Analytics/tracking requests are proxied with proper CORS
  * 3. All other requests (HTML SPA) pass through normally
  * 4. Correct MIME types and caching headers are preserved
+ * 5. SSR OG meta tags for product pages when bot crawlers are detected
  * 
  * DEPLOYMENT:
  * 1. Go to Cloudflare Dashboard → Workers & Pages → Create Worker
@@ -21,6 +22,10 @@
  *    Zone: ventou.shop
  * 5. IMPORTANT: Do NOT add a route for ventou.shop/* (root domain works fine without worker)
  *    Only subdomains need the proxy.
+ * 
+ * ENVIRONMENT VARIABLES (set in Cloudflare dashboard → Worker Settings → Variables):
+ * - SUPABASE_URL = https://chpplckgndznakuvcqbx.supabase.co
+ * - SUPABASE_ANON_KEY = your anon key
  * 
  * DNS REQUIREMENTS (already configured):
  * - *.ventou.shop → CNAME → ventouci.lovable.app (Proxied through Cloudflare)
@@ -73,6 +78,12 @@ const PROXY_PATH_PREFIXES = [
 // CORS: allowed origin pattern for *.ventou.shop
 const ALLOWED_ORIGIN_RE = /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*ventou\.shop$/i;
 
+// Bot user-agent patterns for SSR OG meta tag injection
+const BOT_UA_RE = /facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Googlebot|bingbot|Slackbot|Discordbot|PinterestBot|Applebot/i;
+
+// Product page pattern: /p/{slug}
+const PRODUCT_PAGE_RE = /^\/p\/([a-z0-9][a-z0-9-]*[a-z0-9]?)$/i;
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function shouldProxy(pathname) {
@@ -110,6 +121,183 @@ function getCacheControl(pathname) {
   return 'public, max-age=3600, s-maxage=86400';
 }
 
+function isBot(userAgent) {
+  return BOT_UA_RE.test(userAgent || '');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripHtmlTags(str) {
+  if (!str) return '';
+  return str.replace(/<[^>]*>/g, '').trim();
+}
+
+/**
+ * Extract a plain-text description from product description field.
+ * The description can be a JSON TipTap document or a plain string.
+ */
+function extractDescription(desc) {
+  if (!desc) return '';
+  if (typeof desc === 'string') return stripHtmlTags(desc).slice(0, 200);
+  // TipTap JSON: extract text from content nodes recursively
+  try {
+    const texts = [];
+    function walk(node) {
+      if (node.text) texts.push(node.text);
+      if (node.content) node.content.forEach(walk);
+    }
+    walk(desc);
+    return texts.join(' ').slice(0, 200);
+  } catch {
+    return '';
+  }
+}
+
+// ─── SSR OG Meta Tags for Product Pages ─────────────────────
+
+async function handleProductOG(request, env, shopSlug, productSlug) {
+  const supabaseUrl = env.SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    // No Supabase config → fall through to normal proxy
+    return null;
+  }
+
+  const headers = {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Fetch shop + product + product image in parallel
+  const [shopRes, productRes] = await Promise.all([
+    fetch(`${supabaseUrl}/rest/v1/shops?slug=eq.${encodeURIComponent(shopSlug)}&is_active=eq.true&deleted_at=is.null&select=id,name,slug,logo_url,description,currency&limit=1`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/products?slug=eq.${encodeURIComponent(productSlug)}&is_active=eq.true&select=id,name,slug,price,compare_at_price,image_url,description,meta_title,meta_description,shop_id&limit=10`, { headers }),
+  ]);
+
+  if (!shopRes.ok || !productRes.ok) return null;
+
+  const shops = await shopRes.json();
+  const products = await productRes.json();
+
+  if (!shops.length) return null;
+  const shop = shops[0];
+
+  // Find the product that belongs to this shop
+  const product = products.find(p => p.shop_id === shop.id);
+  if (!product) return null;
+
+  // Fetch first product image for better quality OG image
+  let ogImage = product.image_url || '';
+  try {
+    const imgRes = await fetch(
+      `${supabaseUrl}/rest/v1/product_images?product_id=eq.${product.id}&order=position.asc&limit=1&select=image_url`,
+      { headers }
+    );
+    if (imgRes.ok) {
+      const imgs = await imgRes.json();
+      if (imgs.length && imgs[0].image_url) ogImage = imgs[0].image_url;
+    }
+  } catch { /* ignore */ }
+
+  // Build meta values
+  const title = escapeHtml(product.meta_title || product.name);
+  const description = escapeHtml(
+    product.meta_description || extractDescription(product.description) || `${product.name} - ${shop.name}`
+  );
+  const currency = shop.currency || 'XOF';
+  const price = product.price;
+  const canonicalUrl = `https://${shopSlug}.ventou.shop/p/${product.slug}`;
+  const shopName = escapeHtml(shop.name);
+  const safeImage = escapeHtml(ogImage);
+
+  // JSON-LD structured data
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: stripHtmlTags(product.meta_description || extractDescription(product.description) || ''),
+    image: ogImage || undefined,
+    url: canonicalUrl,
+    brand: { '@type': 'Brand', name: shop.name },
+    offers: {
+      '@type': 'Offer',
+      price: price,
+      priceCurrency: currency,
+      availability: 'https://schema.org/InStock',
+      url: canonicalUrl,
+    },
+  });
+
+  // Build the OG meta tags block
+  const ogMetaBlock = `
+    <title>${title} | ${shopName}</title>
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:type" content="product" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:site_name" content="${shopName}" />
+    ${safeImage ? `<meta property="og:image" content="${safeImage}" />` : ''}
+    ${safeImage ? `<meta property="og:image:width" content="1200" />` : ''}
+    ${safeImage ? `<meta property="og:image:height" content="630" />` : ''}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title}" />
+    <meta name="twitter:description" content="${description}" />
+    ${safeImage ? `<meta name="twitter:image" content="${safeImage}" />` : ''}
+    <meta name="description" content="${description}" />
+    <link rel="canonical" href="${canonicalUrl}" />
+    <meta property="product:price:amount" content="${price}" />
+    <meta property="product:price:currency" content="${currency}" />
+    <script type="application/ld+json">${jsonLd}</script>`;
+
+  // Fetch the origin HTML
+  const originUrl = `${ORIGIN_URL}/p/${productSlug}`;
+  const originHeaders = new Headers(request.headers);
+  originHeaders.set('Host', ORIGIN_HOST);
+  originHeaders.delete('CF-Connecting-IP');
+  originHeaders.delete('CF-RAY');
+
+  let originResponse;
+  try {
+    originResponse = await fetch(originUrl, {
+      method: 'GET',
+      headers: originHeaders,
+      redirect: 'follow',
+    });
+  } catch {
+    return null;
+  }
+
+  let html = await originResponse.text();
+
+  // Replace existing meta tags in <head> — remove old OG/twitter tags then inject new ones
+  // Remove existing og:, twitter:, and description meta tags
+  html = html.replace(/<meta\s+(?:property|name)="(?:og:|twitter:|description)[^"]*"\s+content="[^"]*"\s*\/?>/gi, '');
+  // Remove existing <title> tag
+  html = html.replace(/<title>[^<]*<\/title>/i, '');
+
+  // Inject our OG block right after <head>
+  html = html.replace(/<head>/i, `<head>${ogMetaBlock}`);
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=300, s-maxage=3600',
+      'X-Robots-Tag': 'index, follow',
+    },
+  });
+}
+
 // ─── Main Handler ────────────────────────────────────────────
 
 export default {
@@ -117,6 +305,7 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin') || '';
     const pathname = url.pathname;
+    const userAgent = request.headers.get('User-Agent') || '';
 
     // Detect country from Cloudflare (preserves your old Worker's feature)
     const country = request.cf?.country || 'BF';
@@ -131,6 +320,27 @@ export default {
         status: 204,
         headers: corsHeaders,
       });
+    }
+
+    // ── SSR OG Meta Tags for bot crawlers on product pages ──
+    const productMatch = pathname.match(PRODUCT_PAGE_RE);
+    if (productMatch && isBot(userAgent) && request.method === 'GET') {
+      const hostname = url.hostname; // e.g. "myshop.ventou.shop"
+      const shopSlug = hostname.split('.')[0]; // first label = shop slug
+      const productSlug = productMatch[1];
+
+      try {
+        const ogResponse = await handleProductOG(request, env, shopSlug, productSlug);
+        if (ogResponse) {
+          // Add country header
+          ogResponse.headers.set('X-User-Country', country);
+          ogResponse.headers.set('X-Content-Type-Options', 'nosniff');
+          return ogResponse;
+        }
+      } catch (err) {
+        // On error, fall through to normal proxy
+        console.error('SSR OG error:', err.message);
+      }
     }
 
     // ── ALL requests must be proxied to the real origin ──
