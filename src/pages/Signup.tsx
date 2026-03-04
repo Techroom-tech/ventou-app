@@ -258,6 +258,7 @@ export default function Signup() {
 
               <Button
                 type="submit"
+                size="cta"
                 className="w-full bg-accent hover:bg-accent/90"
                 disabled={isLoading}
               >

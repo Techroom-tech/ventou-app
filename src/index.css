@@ -3,109 +3,109 @@
 @tailwind utilities;
 
 /* VENTOU Design System
-   Palette: Bleu profond (#1E3A5F), Orange CTA (#FF6B35), Blanc
+   Palette: Orange CTA (#F97316), Bleu foncé (#1E3A8A), Fond (#F8FAFC)
    All colors in HSL format
 */
 
 @layer base {
   :root {
-    /* VENTOU Primary: Deep Blue */
-    --primary: 212 52% 24%;
+    /* VENTOU Primary: Blue */
+    --primary: 224 71% 33%;
     --primary-foreground: 0 0% 100%;
     
     /* VENTOU Accent: Orange CTA */
-    --accent: 17 100% 60%;
+    --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
     
     /* Backgrounds */
-    --background: 0 0% 100%;
-    --foreground: 212 52% 15%;
+    --background: 210 40% 98%;
+    --foreground: 220 13% 12%;
 
     /* Cards */
     --card: 0 0% 100%;
-    --card-foreground: 212 52% 15%;
+    --card-foreground: 220 13% 12%;
 
     /* Popovers */
     --popover: 0 0% 100%;
-    --popover-foreground: 212 52% 15%;
+    --popover-foreground: 220 13% 12%;
 
-    /* Secondary: Light Blue */
+    /* Secondary */
     --secondary: 210 40% 96%;
-    --secondary-foreground: 212 52% 24%;
+    --secondary-foreground: 224 71% 33%;
 
     /* Muted */
     --muted: 210 40% 96%;
-    --muted-foreground: 212 20% 46%;
+    --muted-foreground: 220 9% 46%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders & Inputs */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 212 52% 24%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 71% 33%;
 
     --radius: 0.5rem;
 
     /* Sidebar */
-    --sidebar-background: 212 52% 24%;
+    --sidebar-background: 224 71% 33%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 17 100% 60%;
+    --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 212 52% 30%;
+    --sidebar-accent: 224 71% 40%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 212 52% 20%;
-    --sidebar-ring: 17 100% 60%;
+    --sidebar-border: 224 71% 28%;
+    --sidebar-ring: 25 95% 53%;
 
     /* VENTOU Custom tokens */
-    --ventou-blue: 212 52% 24%;
-    --ventou-blue-light: 212 52% 35%;
-    --ventou-blue-dark: 212 52% 15%;
-    --ventou-orange: 17 100% 60%;
-    --ventou-orange-hover: 17 100% 55%;
+    --ventou-blue: 224 71% 33%;
+    --ventou-blue-light: 224 71% 45%;
+    --ventou-blue-dark: 224 71% 22%;
+    --ventou-orange: 25 95% 53%;
+    --ventou-orange-hover: 25 95% 48%;
     --ventou-success: 142 76% 36%;
     --ventou-warning: 38 92% 50%;
   }
 
   .dark {
     /* Dark mode - VENTOU branded */
-    --background: 212 52% 8%;
+    --background: 224 71% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 212 52% 10%;
+    --card: 224 71% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 212 52% 10%;
+    --popover: 224 71% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 17 100% 60%;
+    --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 212 52% 18%;
+    --secondary: 224 71% 18%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 212 52% 18%;
+    --muted: 224 71% 18%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 17 100% 60%;
+    --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 212 52% 18%;
-    --input: 212 52% 18%;
-    --ring: 17 100% 60%;
+    --border: 224 71% 18%;
+    --input: 224 71% 18%;
+    --ring: 25 95% 53%;
 
-    --sidebar-background: 212 52% 6%;
+    --sidebar-background: 224 71% 6%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 17 100% 60%;
+    --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 212 52% 15%;
+    --sidebar-accent: 224 71% 15%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 212 52% 15%;
-    --sidebar-ring: 17 100% 60%;
+    --sidebar-border: 224 71% 15%;
+    --sidebar-ring: 25 95% 53%;
   }
 }
 
@@ -203,9 +203,10 @@
   padding: 10px 12px !important;
   white-space: normal !important;
   text-align: center !important;
-  min-height: 44px !important;
+  min-height: 48px !important;
   line-height: 1.3 !important;
   height: auto !important;
+  border-radius: 10px !important;
 }
 
 /* ── Storefront CTA button animations ── */
