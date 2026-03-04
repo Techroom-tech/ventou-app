@@ -1,32 +1,47 @@
 
 
-## Refonte du dialog "Nouveau lien" — Aide contextuelle + Sélection de produit
+## Afficher le lien final + colonne "Dernière activité" (vraie date du dernier clic)
 
-### Changements
+### 1. Migration DB : ajouter `last_clicked_at` à `tracked_links`
 
-**`src/pages/marketing/MarketingLinks.tsx`** :
+```sql
+ALTER TABLE public.tracked_links
+ADD COLUMN last_clicked_at timestamptz DEFAULT NULL;
+```
 
-1. **Mode de destination** : Ajouter un toggle/tabs "Lien personnalisé" vs "Produit de ma boutique"
-   - Mode "Produit" : afficher un Select qui liste les produits du shop (query Supabase `products` filtré par `shop_id`, `is_active = true`)
-   - Mode "Lien" : garder l'input URL actuel
-   - Quand un produit est sélectionné, construire automatiquement le `target_url` : `https://{shop.slug}.ventou.shop/produit/{product.slug}`
+### 2. Mettre à jour la logique de comptage des clics
 
-2. **Textes d'aide** : Ajouter des labels et descriptions explicatives pour chaque champ :
-   - Nom : label "Nom de la campagne" + placeholder "Ex: Promo été Facebook"  + sous-texte "Donnez un nom pour identifier cette campagne"
-   - Destination : sous-texte "Choisissez un produit ou entrez un lien personnalisé"
-   - Source : label "Source de trafic" + sous-texte "D'où viendront les visiteurs ?"
+Le storefront doit déjà incrémenter `clicks` quelque part quand `?ref=XXX` est détecté. Actuellement, je ne vois **aucun** code qui incrémente `clicks` sur `tracked_links` — ni dans le storefront, ni dans une edge function. Il faudra donc aussi ajouter cette logique.
 
-3. **Placeholders améliorés** :
-   - Input nom : `Ex: Promo été Facebook`
-   - Input URL : `Ex: https://monshop.ventou.shop/produit/...`
+**Approche** : Ajouter dans `ShopStorefront.tsx` (ou `StorefrontContext`) un `useEffect` qui, au chargement, détecte `?ref=XXX` dans l'URL et appelle un RPC ou une edge function pour incrémenter `clicks` et mettre à jour `last_clicked_at`.
 
-4. **Logique produit** : Utiliser une query `useQuery` inline pour charger les produits actifs du shop (simple select `id, name, slug` depuis `products` où `shop_id` et `is_active = true`)
+Pour rester simple et ne pas créer une edge function dédiée, on fera un appel direct Supabase avec le service anonyme (RLS autorise le public à lire `tracked_links` mais pas à le modifier). Donc on va créer une **petite edge function `track-link-click`** qui :
+- Reçoit `{ ref_code: string }`
+- Fait `UPDATE tracked_links SET clicks = clicks + 1, last_clicked_at = now() WHERE ref_code = ref_code`
+- Retourne 200
 
-5. **Construction URL** : Quand mode produit, le `target_url` est auto-généré à partir du slug du shop + slug du produit
+### 3. Appeler la fonction depuis le storefront
+
+Dans `ShopStorefront.tsx`, ajouter un `useEffect` qui détecte `?ref=...` au chargement et appelle `track-link-click`.
+
+### 4. Mettre à jour `useTrackedLinks.ts`
+
+- Ajouter `last_clicked_at: string | null` à l'interface `TrackedLink`
+
+### 5. Mettre à jour `MarketingLinks.tsx`
+
+**Desktop (table)** :
+- Remplacer la colonne "Ref" par une colonne "Lien" qui affiche l'URL complète (tronquée) avec un bouton copier bien visible
+- Ajouter une colonne "Dernière activité" qui affiche `last_clicked_at` formaté avec `date-fns` (`formatDistanceToNow`) ou "Jamais" si null
+
+**Mobile (cards)** :
+- Afficher l'URL complète tronquée
+- Afficher la dernière activité
 
 ### Fichiers modifiés
-- `src/pages/marketing/MarketingLinks.tsx` — refonte du dialog uniquement
-
-### Aucun changement backend
-- Les produits sont déjà accessibles via la table `products` avec RLS existant
+- `supabase/functions/track-link-click/index.ts` — nouvelle edge function
+- `supabase/config.toml` — déclarer la fonction avec `verify_jwt = false`
+- `src/pages/ShopStorefront.tsx` — useEffect pour détecter `?ref=` et appeler l'edge function
+- `src/hooks/useTrackedLinks.ts` — ajouter `last_clicked_at` au type
+- `src/pages/marketing/MarketingLinks.tsx` — refonte de la liste (lien visible, colonne dernière activité)
 
