@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { invalidateStorefrontCache } from '@/lib/invalidateStorefrontCache';
 import { AdvancedColorPicker } from '@/components/settings/AdvancedColorPicker';
 import { ShopAssetUploader } from '@/components/settings/ShopAssetUploader';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -328,6 +329,7 @@ export default function SettingsApparence() {
 
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ['shop'] });
+      invalidateStorefrontCache(shop.id, shop.slug);
       savedFormRef.current = { ...form };
       setIframeKey(k => k + 1);
       toast.success('Apparence sauvegardée ✨');

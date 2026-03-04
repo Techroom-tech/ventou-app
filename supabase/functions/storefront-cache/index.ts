@@ -93,6 +93,23 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ data, cached: false }), { headers: jsonHeaders });
     }
 
+    if (action === 'invalidate') {
+      const { shop_id, slug } = body;
+      let cleared = 0;
+
+      for (const key of cache.keys()) {
+        if (
+          (slug && key === `shop:${slug}`) ||
+          (shop_id && key.startsWith(`products:${shop_id}:`))
+        ) {
+          cache.delete(key);
+          cleared++;
+        }
+      }
+
+      return new Response(JSON.stringify({ cleared }), { headers: jsonHeaders });
+    }
+
     return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: jsonHeaders });
   } catch (_err) {
     return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

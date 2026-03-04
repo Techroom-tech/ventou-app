@@ -4,6 +4,7 @@ import { Product } from '@/types/shop';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/hooks/useShop';
 import { useToast } from '@/hooks/use-toast';
+import { invalidateStorefrontCache } from '@/lib/invalidateStorefrontCache';
 
 const PAGE_SIZE = 20;
 
@@ -112,7 +113,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const totalCount = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products', shop?.id] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['products', shop?.id] });
+    if (shop?.id) invalidateStorefrontCache(shop.id, shop.slug);
+  };
 
   const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     if (!shop?.id) return;
