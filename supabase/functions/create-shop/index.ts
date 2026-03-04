@@ -44,8 +44,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
-    const { data, error } = await admin.rpc('create_shop_with_validation', {
+    // Use authenticated client so auth.uid() works inside the RPC
+    const { data, error } = await authClient.rpc('create_shop_with_validation', {
       _name: body?.name ?? null,
       _slug: body?.slug ?? null,
       _description: body?.description ?? null,
@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
       _whatsapp: body?.whatsapp ?? null,
       _primary_color: body?.primary_color ?? null,
     }).single();
+
+    const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const result = data ?? { success: false, error_code: 'INTERNAL_ERROR' };
 
