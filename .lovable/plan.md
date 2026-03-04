@@ -1,85 +1,80 @@
 
 
-# Plan: Fix Multi-Tenant Tracking System
+# Plan: Fix White Screen on Dashboard Refresh + Session Persistence + Auto-redirect
 
-## Root Cause
+## Root Cause Analysis
 
-The `tracking_settings` table has RLS that only allows authenticated shop owners to read. Public storefront visitors (anonymous) cannot query tracking settings, so pixels are never injected on `test.ventou.shop`.
+### Why dashboard shows white screen on refresh
+
+**Critical bug found** in `src/contexts/AuthContext.tsx` line 73:
+
+```typescript
+const storedSession = localStorage.getItem('ventou-auth-token');
+```
+
+This key **does not exist**. Supabase stores the session under `sb-chpplckgndznakuvcqbx-auth-token` (the default format: `sb-{project_ref}-auth-token`). Since `ventou-auth-token` is never found, every `SIGNED_OUT` event — including spurious ones from failed token refreshes (HTTP 429) — is treated as a genuine logout. The user state is cleared, `ProtectedRoute` sees `user === null`, and redirects to `/login`. On mobile or slow connections, this happens frequently on page refresh.
+
+---
 
 ## Changes
 
-### 1. Add public SELECT RLS policy on `tracking_settings`
+### 1. Fix the localStorage key in AuthContext
 
-SQL migration:
-```sql
-CREATE POLICY "public_read_tracking_settings"
-ON public.tracking_settings
-FOR SELECT
-TO anon, authenticated
-USING (true);
+Replace `'ventou-auth-token'` with the correct Supabase storage key: `sb-chpplckgndznakuvcqbx-auth-token`.
+
+**File:** `src/contexts/AuthContext.tsx`
+
+### 2. Implement "Rester connecté" (Remember Me)
+
+**Behavior:**
+- If "Rester connecté" is checked: session persists in `localStorage`, auto-expires after **72 hours**
+- If not checked: session stored in `sessionStorage` (cleared on browser close), auto-expires after **12 hours**
+
+**Implementation:**
+- `signIn` method accepts a `rememberMe` parameter
+- Stores a flag (`ventou_remember_me`) and timestamp (`ventou_session_start`) in localStorage
+- On app load, AuthContext checks if the session has exceeded its TTL (72h or 12h) and signs out if expired
+- Supabase client is configured with a dynamic storage adapter that checks the remember_me flag
+
+**Files:**
+- `src/contexts/AuthContext.tsx` — add `rememberMe` param to `signIn`, add TTL check on mount
+- `src/integrations/supabase/client.ts` — use a custom storage wrapper that delegates to localStorage or sessionStorage based on the remember_me flag
+- `src/pages/Login.tsx` — pass `rememberMe` value to `signIn`
+
+### 3. Auto-redirect connected vendors from `/` to `/dashboard`
+
+When a logged-in vendor visits the homepage (`/`), redirect them to `/dashboard` automatically.
+
+**File:** `src/pages/Index.tsx` — add `Navigate` redirect when `user` is truthy
+
+---
+
+## Technical Details
+
+### Custom storage adapter (client.ts)
+
+```text
+VentouStorage {
+  getItem(key) → check localStorage first, then sessionStorage
+  setItem(key, value) → write to localStorage if remember_me, else sessionStorage
+  removeItem(key) → remove from both
+}
 ```
 
-This allows the storefront to fetch pixel IDs for any shop. The data is non-sensitive (pixel IDs are public by nature — they're meant to be in page source).
+### Session TTL check (AuthContext)
 
-### 2. Refactor `useStorefrontTracking.ts` — Unified tracker + event_id deduplication
+On `INITIAL_SESSION` or `SIGNED_IN`:
+1. Read `ventou_session_start` from localStorage
+2. Read `ventou_remember_me` flag
+3. Calculate elapsed time
+4. If exceeded (72h for remember_me, 12h otherwise) → call `signOut()`
 
-- Add `event_id` (crypto.randomUUID) to every event call for CAPI deduplication
-- Create `window.VentouTracker` global object with methods: `trackPageView`, `trackViewContent`, `trackAddToCart`, `trackInitiateCheckout`, `trackPurchase`
-- Each method fires fbq + ttq + gtag with unique event_id
-- Sanitize custom_scripts: strip `<iframe>`, `eval(`, `document.write` before injection
-- Remove the `container.innerHTML = scripts` XSS vector — parse and only allow `<script src="...">` or inline text content after sanitization
-
-### 3. Refactor `CheckoutDrawer.tsx` — Add `trackPurchase` on order success
-
-After successful order insert, call `window.VentouTracker.trackPurchase()` with order value, currency, content_ids, and event_id.
-
-### 4. Create Edge Function `supabase/functions/track-event/index.ts` — Server-side CAPI
-
-- Receives: `event_name`, `event_id`, `shop_id`, `user_data` (hashed), `custom_data`
-- Fetches `tracking_settings` for the shop using service role
-- If `facebook_pixel` exists: POST to `https://graph.facebook.com/v18.0/{pixel_id}/events` with the CAPI token (stored in a new `facebook_capi_token` column)
-- If `tiktok_pixel` exists: POST to TikTok Events API
-- Returns success/failure
-- Uses SUPABASE_SERVICE_ROLE_KEY to bypass RLS
-
-### 5. Add `facebook_capi_token` column to `tracking_settings`
-
-SQL migration:
-```sql
-ALTER TABLE tracking_settings ADD COLUMN IF NOT EXISTS facebook_capi_token text;
-```
-
-### 6. Update `MarketingPixels.tsx` — Save CAPI token
-
-The fbApiToken state already exists but isn't persisted. Wire it to the new `facebook_capi_token` column in the save handler and load it from settings.
-
-### 7. Update `supabase/config.toml` — Register edge function
-
-Add `[functions.track-event]` with `verify_jwt = false` (called from storefront without auth).
-
-## Files Modified
+### Files Modified
 
 | File | Change |
 |---|---|
-| Migration SQL | Add public read policy + `facebook_capi_token` column |
-| `src/hooks/useStorefrontTracking.ts` | Unified VentouTracker, event_id dedup, XSS sanitization |
-| `src/components/storefront/CheckoutDrawer.tsx` | Call trackPurchase on success |
-| `src/pages/marketing/MarketingPixels.tsx` | Persist CAPI token |
-| `src/hooks/useTrackingSettings.ts` | Add facebook_capi_token field |
-| `supabase/functions/track-event/index.ts` | Server-side CAPI relay |
-| `supabase/config.toml` | Register track-event function |
-
-## What stays the same
-
-- DB table structure (tracking_settings) — just adding 1 column + 1 policy
-- Subdomain detection (lib/subdomain.ts) — already works correctly
-- App.tsx routing — already renders ShopStorefront for subdomain hosts
-- StorefrontContext — already resolves slug from hostname
-
-## Security
-
-- CAPI token never exposed client-side (only used in edge function)
-- Custom scripts sanitized (no iframe, eval, document.write)
-- Pixel IDs are inherently public (visible in page source on any website)
-- Edge function validates input with zod before forwarding to Meta/TikTok APIs
+| `src/integrations/supabase/client.ts` | Custom storage adapter for remember me |
+| `src/contexts/AuthContext.tsx` | Fix storage key, add rememberMe to signIn, add TTL check |
+| `src/pages/Login.tsx` | Pass rememberMe to signIn |
+| `src/pages/Index.tsx` | Redirect logged-in users to /dashboard |
 
