@@ -1,21 +1,18 @@
 
 
-## Refonte Command Palette — Style Chariow/Stripe Premium
+## Command Palette — Supprimer la section Pages par défaut
 
-### Changements
+### Changement unique
 
-**`src/components/dashboard/CommandPalette.tsx`** — Refonte visuelle complète :
+**`src/components/dashboard/CommandPalette.tsx`** :
 
-1. **Overlay** : Remplacer le DialogContent par un style avec `backdrop-blur-sm` et fond semi-transparent sombre (`bg-black/35`)
-2. **Container** : `max-w-[560px]`, `rounded-2xl`, shadow premium (`shadow-[0_24px_80px_rgba(0,0,0,0.18)]`), `overflow-hidden`
-3. **Animation** : Ajouter framer-motion `scale 0.97→1`, `opacity 0→1`, durée 150ms ease-out
-4. **Quick Actions** : Icônes dans des carrés `h-8 w-8 bg-gray-100 rounded-lg` avec `strokeWidth 1.8`, chevron `ChevronRight` à droite de chaque item, padding `10px 14px`, hover `bg-gray-50`
-5. **Footer** : Style `border-t`, `text-xs`, aligné à droite avec `esc` dans un `kbd`
-6. **Pages section** : Même traitement avec chevrons et icônes carrées
-7. **Réduire les quick actions visibles par défaut à 3** (Ajouter produit, Créer réduction, Voir commandes) + garder les autres dans la section Pages
-8. **Search input** : `h-12`, icône Search `18px gray-400`, placeholder `14px`
+- Masquer le groupe "📄 Pages" par défaut quand le champ de recherche est vide
+- Afficher les pages **uniquement** quand l'utilisateur tape du texte dans la recherche
+- Par défaut, seules les 3 actions rapides sont visibles : Ajouter un produit, Créer une réduction, Voir les commandes
+- Ajouter un état pour tracker la valeur de recherche via `onValueChange` du `CommandInput`
+- Conditionner le rendu du `CommandGroup` Pages avec `{searchValue.length > 0 && (...)}`
 
-**`src/components/ui/dialog.tsx`** — Aucun changement (on override via className)
-
-**Aucun changement backend ou logique** — Seulement du restyling CSS/Tailwind + ajout de `ChevronRight` et framer-motion wrapper.
+### Résultat
+- Ouverture ⌘K → seulement ⚡ Actions rapides (3 items)
+- Dès qu'on tape → les pages apparaissent en résultats filtrés
 
