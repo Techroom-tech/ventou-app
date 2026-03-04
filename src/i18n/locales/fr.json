@@ -689,7 +689,8 @@
       "subscriptions": "Abonnements",
       "users": "Utilisateurs",
       "settings": "Paramètres",
-      "shop-diagnostic": "Diagnostic boutiques"
+      "shop-diagnostic": "Diagnostic boutiques",
+      "deleted-stores": "Boutiques supprimées"
     },
     "login": {
       "title": "Connexion",

@@ -66,6 +66,7 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminVendors = lazy(() => import("./pages/admin/AdminVendors"));
 const AdminVendorDetail = lazy(() => import("./pages/admin/AdminVendorDetail"));
 const AdminStores = lazy(() => import("./pages/admin/AdminStores"));
+const AdminDeletedStores = lazy(() => import("./pages/admin/AdminDeletedStores"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
@@ -201,6 +202,7 @@ const App = () => {
             <Route path="/admin/vendors" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminVendors /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/vendors/:id" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminVendorDetail /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/stores" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminStores /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/deleted-stores" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminDeletedStores /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/products" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminProducts /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminReports /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/subscriptions" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminSubscriptions /></AdminGuard></ProtectedRoute>} />
