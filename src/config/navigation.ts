@@ -1,7 +1,7 @@
 import {
-  LayoutDashboard,
+  Home,
   Package,
-  ShoppingCart,
+  ShoppingBag,
   Users,
   Megaphone,
   Settings,
@@ -17,9 +17,9 @@ export interface NavItem {
 
 /** Primary nav — visible in sidebar + mobile bottom bar */
 export const primaryNavItems: NavItem[] = [
-  { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { key: 'dashboard', icon: Home, path: '/dashboard' },
   { key: 'products', icon: Package, path: '/dashboard/products' },
-  { key: 'orders', icon: ShoppingCart, path: '/dashboard/orders' },
+  { key: 'orders', icon: ShoppingBag, path: '/dashboard/orders' },
 ];
 
 /** Secondary nav — visible in sidebar + mobile "Plus" drawer */
@@ -34,7 +34,7 @@ export const allNavItems: NavItem[] = [...primaryNavItems, ...secondaryNavItems]
 
 /** Onboarding nav — shown when user has no shop yet */
 export const onboardingNavItems: NavItem[] = [
-  { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { key: 'dashboard', icon: Home, path: '/dashboard' },
   { key: 'createShop', icon: Store, path: '/dashboard/create-shop' },
 ];
 

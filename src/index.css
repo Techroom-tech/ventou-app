@@ -48,14 +48,14 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar */
-    --sidebar-background: 224 71% 33%;
-    --sidebar-foreground: 0 0% 100%;
+    /* Sidebar — light/Chariow style */
+    --sidebar-background: 220 14% 96%;
+    --sidebar-foreground: 220 13% 18%;
     --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 71% 40%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 224 71% 28%;
+    --sidebar-accent: 220 13% 91%;
+    --sidebar-accent-foreground: 220 13% 18%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 25 95% 53%;
 
     /* VENTOU Custom tokens */

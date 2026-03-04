@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MoreHorizontal, User, LogOut, ExternalLink, Copy, HelpCircle, Users } from 'lucide-react';
+import { MoreHorizontal, User, LogOut, ExternalLink, Copy, LifeBuoy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShop } from '@/hooks/useShop';
 import { useAuth } from '@/contexts/AuthContext';
-import { primaryNavItems, secondaryNavItems, onboardingNavItems, isNavActive } from '@/config/navigation';
+import { primaryNavItems, secondaryNavItems, allNavItems, onboardingNavItems, isNavActive } from '@/config/navigation';
+import { StoreAvatar } from './StoreAvatar';
 import { ShopSwitcherModal } from './ShopSwitcherModal';
 import { toast } from 'sonner';
 import { getStorefrontUrl } from '@/lib/domain';
@@ -16,8 +17,6 @@ import {
   DrawerTitle,
   DrawerClose,
 } from '@/components/ui/drawer';
-
-// Override primary nav for mobile: show 4 items + Menu
 
 export function MobileBottomNav() {
   const { t } = useTranslation();
@@ -43,7 +42,7 @@ export function MobileBottomNav() {
                   isActive ? 'text-accent' : 'text-muted-foreground'
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon size={20} strokeWidth={1.8} />
                 <span>{t(`dashboard.nav.${item.key}`)}</span>
               </Link>
             );
@@ -53,12 +52,8 @@ export function MobileBottomNav() {
     );
   }
 
-  const bottomItems = [
-    primaryNavItems[0], // Dashboard
-    primaryNavItems[1], // Products
-    primaryNavItems[2], // Orders
-    { key: 'customers', icon: Users, path: '/dashboard/customers' },
-  ];
+  // Show first 3 primary + menu
+  const bottomItems = primaryNavItems.slice(0, 3);
 
   const isMenuActive = secondaryNavItems.some((item) =>
     isNavActive(item.path, location.pathname)
@@ -75,12 +70,12 @@ export function MobileBottomNav() {
     window.open(getStorefrontUrl(shop.slug), '_blank');
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!shop?.slug) return;
     navigator.clipboard.writeText(getStorefrontUrl(shop.slug)).then(() => {
       toast.success(t('dashboard.actions.shareCopied'));
     });
-    setDrawerOpen(false);
   };
 
   return (
@@ -98,7 +93,7 @@ export function MobileBottomNav() {
                   isActive ? 'text-accent' : 'text-muted-foreground'
                 )}
               >
-                <item.icon className="h-5 w-5 icon-interactive" />
+                <item.icon size={20} strokeWidth={1.8} />
                 <span>{t(`dashboard.nav.${item.key}`)}</span>
               </Link>
             );
@@ -112,7 +107,7 @@ export function MobileBottomNav() {
               isMenuActive || drawerOpen ? 'text-accent' : 'text-muted-foreground'
             )}
           >
-            <MoreHorizontal className="h-5 w-5 icon-interactive" />
+            <MoreHorizontal size={20} strokeWidth={1.8} />
             <span>{t('dashboard.nav.menu', 'Menu')}</span>
           </button>
         </div>
@@ -124,21 +119,39 @@ export function MobileBottomNav() {
             <DrawerTitle>{t('dashboard.nav.menu', 'Menu')}</DrawerTitle>
           </DrawerHeader>
           <div className="px-2 pb-6 pt-2">
-            {/* Secondary nav items */}
-            {secondaryNavItems.map((item) => {
+            {/* Store switcher */}
+            {shop && (
+              <>
+                <button
+                  onClick={() => { setDrawerOpen(false); setSwitcherOpen(true); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-lg hover:bg-muted transition-colors"
+                >
+                  <StoreAvatar name={shop.name} logoUrl={shop.logo_url} size={32} />
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-semibold text-foreground truncate">{shop.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{shop.slug}.ventou.shop</p>
+                  </div>
+                </button>
+                <div className="my-2 border-t border-border" />
+              </>
+            )}
+
+            {/* All nav items */}
+            {allNavItems.map((item) => {
               const isActive = isNavActive(item.path, location.pathname);
               return (
                 <DrawerClose asChild key={item.key}>
                   <Link
                     to={item.path}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium transition-colors',
                       isActive
                         ? 'bg-accent/10 text-accent'
                         : 'text-foreground hover:bg-muted'
                     )}
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon size={20} strokeWidth={1.8} />
                     {t(`dashboard.nav.${item.key}`)}
                   </Link>
                 </DrawerClose>
@@ -151,9 +164,9 @@ export function MobileBottomNav() {
             <DrawerClose asChild>
               <Link
                 to="/support"
-                className="flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                className="flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
-                <HelpCircle className="h-5 w-5" />
+                <LifeBuoy size={20} strokeWidth={1.8} />
                 {t('dashboard.sidebar.helpCenter', 'Centre d\'aide')}
               </Link>
             </DrawerClose>
@@ -162,9 +175,9 @@ export function MobileBottomNav() {
             <DrawerClose asChild>
               <Link
                 to="/dashboard/parametres/profil"
-                className="flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                className="flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
-                <User className="h-5 w-5" />
+                <User size={20} strokeWidth={1.8} />
                 {t('dashboard.nav.account', 'Mon compte')}
               </Link>
             </DrawerClose>
@@ -175,20 +188,20 @@ export function MobileBottomNav() {
             {shop?.slug && (
               <button
                 onClick={handleVisitShop}
-                className="flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors w-full"
+                className="flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors w-full"
               >
-                <ExternalLink className="h-5 w-5" />
+                <ExternalLink size={20} strokeWidth={1.8} />
                 {t('dashboard.header.visitShop', 'Visiter ma boutique')}
-                <Copy className="h-4 w-4 ml-auto text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleCopyLink(); }} />
+                <Copy className="h-4 w-4 ml-auto text-muted-foreground" onClick={handleCopyLink} />
               </button>
             )}
 
             {/* Déconnexion */}
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
+              className="flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut size={20} strokeWidth={1.8} />
               {t('nav.logout')}
             </button>
           </div>
