@@ -1,42 +1,81 @@
 
 
-# Plan: Cache Invalidation for Storefront Edge Function
+# Plan: Fix Dashboard Performance — Eliminate Page Blanche & Slow Navigation
 
-## Approach
+## Root Cause Analysis
 
-Add an `invalidate` action to the existing `storefront-cache` edge function, then call it from the client whenever a vendor modifies their shop or products.
+After reviewing the codebase, I identified **three compounding issues** causing the 3-5 second navigation and page blanche:
+
+1. **`base: "./"` in vite.config.ts** — On deep routes like `/dashboard/marketing/pixels`, the browser resolves CSS/JS assets relative to the current path (e.g., `/dashboard/marketing/assets/index.css`), which returns `index.html` as `text/plain` → page blanche on refresh.
+
+2. **No shared layout route** — Every dashboard page independently wraps in `<ProtectedRoute><DashboardGuard><Page /></DashboardGuard></ProtectedRoute>`. On each navigation, React unmounts and remounts the entire component tree (guards, sidebar, header, hooks). This triggers:
+   - Auth check → loading spinner
+   - Shop fetch → loading spinner  
+   - Page content mount
+   - All page-specific queries
+   
+   Total: 3-5 cascading async waterfalls per navigation.
+
+3. **No global query defaults** — `QueryClient` has no `staleTime`, so every hook refetches on mount even if data was fetched 100ms ago.
+
+4. **`ProductProvider` wraps ALL dashboard routes** — triggers product queries on Marketing, Settings, Customers pages where they're not needed.
 
 ## Changes
 
-### 1. Update `supabase/functions/storefront-cache/index.ts`
+### 1. Fix Vite base path (fixes page blanche)
+**File: `vite.config.ts`**
+- Change `base: "./"` to `base: "/"`
 
-Add a third action handler:
+**File: `cloudflare-worker/ventou-wildcard-proxy.js`**
+- Verify asset proxying handles absolute paths (already does based on memory).
+
+### 2. Create shared dashboard layout route
+**File: `src/App.tsx`**
+- Replace 30+ individually-wrapped `<ProtectedRoute><DashboardGuard>` routes with a single parent `<Route path="/dashboard" element={<DashboardShell />}>` that renders the guards and layout ONCE, with `<Outlet />` for child routes.
+- This means navigating between `/dashboard/products` and `/dashboard/orders` only swaps the inner content — sidebar, header, guards stay mounted. No re-auth, no re-fetch shop.
+
+**File: `src/components/dashboard/DashboardShell.tsx`** (new)
+- Combines `ProtectedRoute` + `DashboardGuard` + `DashboardLayout` + `Suspense` into a single wrapper with skeleton fallback.
+- Uses React Router `<Outlet />` for child content.
+
+### 3. Add QueryClient global defaults
+**File: `src/App.tsx`**
 ```
-{ action: "invalidate", shop_id: "uuid", slug?: "string" }
+staleTime: 30_000,        // 30s — prevent refetch storms
+gcTime: 5 * 60 * 1000,    // 5min garbage collection
+retry: 1,
+refetchOnWindowFocus: false
 ```
-This clears all cache entries matching the shop: `shop:{slug}`, `products:{shop_id}:*`. Since we may not always have the slug when invalidating, also accept `shop_id` and iterate the cache map to find matching keys.
 
-### 2. Create helper `src/lib/invalidateStorefrontCache.ts`
+### 4. Guard localStorage in AuthContext
+**File: `src/contexts/AuthContext.tsx`**
+- Wrap `isSessionExpired()` and `clearSessionFlags()` with `typeof window !== 'undefined'`.
 
-A small utility function that calls `supabase.functions.invoke('storefront-cache', { body: { action: 'invalidate', shop_id, slug } })`. Fire-and-forget (no await needed in most cases).
+### 5. Move ProductProvider to product routes only
+**File: `src/App.tsx`**
+- Remove `<ProductProvider>` from wrapping ALL routes. Instead, wrap only `/dashboard/products/*` routes.
 
-### 3. Call invalidation from mutation sites
+### 6. Add dashboard skeleton fallback
+**File: `src/components/dashboard/DashboardSkeleton.tsx`** (new)
+- A lightweight skeleton (sidebar placeholder + header bar + content area pulses) shown during Suspense instead of a blank spinner.
 
-| Location | Trigger |
-|---|---|
-| `src/contexts/ProductContext.tsx` — `addProduct`, `updateProduct`, `deleteProduct`, `duplicateProduct`, `toggleVisibility` | After successful product mutation, call `invalidateStorefrontCache(shop.id, shop.slug)` |
-| `src/pages/settings/SettingsIdentite.tsx` — save handler | After successful shop update |
-| `src/pages/settings/SettingsApparence.tsx` — save handler | After successful shop update |
-
-All calls are fire-and-forget — they don't block the UI or affect the vendor's save flow.
-
-### Files Modified
+## Files Modified
 
 | File | Change |
 |---|---|
-| `supabase/functions/storefront-cache/index.ts` | Add `invalidate` action that clears matching cache entries |
-| `src/lib/invalidateStorefrontCache.ts` | New utility — single function wrapping the edge function call |
-| `src/contexts/ProductContext.tsx` | Call invalidation after product mutations |
-| `src/pages/settings/SettingsIdentite.tsx` | Call invalidation after shop identity save |
-| `src/pages/settings/SettingsApparence.tsx` | Call invalidation after appearance save |
+| `vite.config.ts` | `base: "/"` |
+| `src/App.tsx` | Nested layout route, QueryClient defaults, ProductProvider scope |
+| `src/components/dashboard/DashboardShell.tsx` | New — shared guard+layout wrapper with Outlet |
+| `src/components/dashboard/DashboardSkeleton.tsx` | New — skeleton fallback |
+| `src/contexts/AuthContext.tsx` | Guard localStorage calls |
+
+## Expected Impact
+
+| Metric | Before | After |
+|---|---|---|
+| Page blanche on refresh | Yes (deep routes) | No |
+| Inter-page navigation | 3-5s (full remount) | <300ms (only content swap) |
+| Auth/Shop re-check per nav | Every page | Once on mount |
+| Product queries on non-product pages | Yes | No |
+| Refetch on every mount | Yes | Only after 30s stale |
 
