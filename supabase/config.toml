@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.storefront-cache]
 verify_jwt = false
+
+[functions.check-slug]
+verify_jwt = false
+
+[functions.create-shop]
+verify_jwt = false

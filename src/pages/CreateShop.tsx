@@ -63,6 +63,17 @@ function generateSlug(name: string): string {
     .slice(0, 40);
 }
 
+function normalizeSubdomain(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+}
+
 // ─── Shop Preview Component ─────────────────────────────────
 function ShopPreview({
   values,
@@ -205,69 +216,51 @@ export default function CreateShop() {
 
   // Debounced slug check
   const checkSlug = useCallback(async (slug: string) => {
-    if (!slug || slug.length < 3) {
-      setSlugStatus('idle');
-      return;
-    }
+    const normalizedSlug = normalizeSubdomain(slug);
 
-    // Normalize slug before checking
-    const normalizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-    if (normalizedSlug !== slug) {
-      return; // Let the form validation handle invalid format
+    if (!normalizedSlug || normalizedSlug.length < 3) {
+      setSlugStatus('idle');
+      setSlugSuggestions([]);
+      return;
     }
 
     setSlugStatus('checking');
     setSlugSuggestions([]);
 
     try {
-      // Primary: call edge function
       const { data, error } = await supabase.functions.invoke('check-slug', {
         body: { slug: normalizedSlug },
       });
 
-      if (error) {
-        console.warn('check-slug edge function error, falling back to direct query:', error);
-        // Fallback: direct database check
-        const { data: existing } = await supabase
-          .from('shops')
-          .select('slug')
-          .eq('slug', normalizedSlug)
-          .maybeSingle();
-        
-        setSlugStatus(existing ? 'taken' : 'available');
-        return;
-      }
+      if (error) throw error;
 
-      // Explicitly check for true to avoid falsy gotchas
-      if (data && data.available === true) {
+      if (data?.available === true) {
         setSlugStatus('available');
+      } else if (data?.error_code === 'INVALID_SUBDOMAIN') {
+        setSlugStatus('idle');
       } else {
         setSlugStatus('taken');
         setSlugSuggestions(data?.suggestions || []);
       }
     } catch (err) {
-      console.error('check-slug failed entirely, falling back:', err);
-      // Last resort fallback: direct DB query
-      try {
-        const { data: existing } = await supabase
-          .from('shops')
-          .select('slug')
-          .eq('slug', normalizedSlug)
-          .maybeSingle();
-        
-        setSlugStatus(existing ? 'taken' : 'available');
-      } catch {
-        setSlugStatus('error');
-      }
+      console.error('check-slug failed:', err);
+      setSlugStatus('error');
     }
   }, []);
 
   useEffect(() => {
+    const normalized = normalizeSubdomain(watchedValues.slug || '');
+    if ((watchedValues.slug || '') !== normalized) {
+      form.setValue('slug', normalized, { shouldValidate: true, shouldDirty: true });
+      return;
+    }
+
     const timer = setTimeout(() => {
-      checkSlug(watchedValues.slug);
+      checkSlug(normalized);
     }, 500);
+
     return () => clearTimeout(timer);
-  }, [watchedValues.slug, checkSlug]);
+  }, [watchedValues.slug, checkSlug, form]);
 
   const handleFileUpload = (type: 'logo' | 'banner', file: File) => {
     if (file.size > 2 * 1024 * 1024) {
@@ -289,43 +282,74 @@ export default function CreateShop() {
       toast({ title: 'Erreur d\'authentification', variant: 'destructive' });
       return;
     }
-    if (slugStatus !== 'available' && slugStatus !== 'error') {
+
+    if (slugStatus !== 'available') {
       toast({ title: 'Veuillez vérifier votre sous-domaine', variant: 'destructive' });
       return;
     }
 
     setIsSubmitting(true);
+    
 
     try {
-      const { data: shop, error: shopError } = await supabase
-        .from('shops')
-        .insert({
-          owner_id: user.id,
+      const normalizedSlug = normalizeSubdomain(values.slug);
+
+      const { data: creationData, error: creationError } = await supabase.functions.invoke('create-shop', {
+        body: {
           name: values.name,
-          slug: values.slug,
+          slug: normalizedSlug,
           description: values.description || null,
           category: values.category,
           country: values.country,
           city: values.city || null,
           whatsapp: values.whatsapp || null,
           primary_color: values.primary_color,
-          currency: 'XOF',
-        })
-        .select('id')
-        .single();
+        },
+      });
 
-      if (shopError) throw shopError;
+      if (creationError) throw creationError;
 
-      // Upload assets in parallel
+      if (!creationData?.success || !creationData?.shop_id) {
+        const code = creationData?.error_code || 'INTERNAL_ERROR';
+        
+
+        if (code === 'STORE_LIMIT_REACHED') {
+          toast({
+            title: 'Limite de boutiques atteinte',
+            description: `Vous avez atteint la limite (${creationData?.stores_count ?? '-'} / ${creationData?.store_limit ?? '-'}) pour votre plan.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        if (code === 'SUBDOMAIN_TAKEN') {
+          setSlugStatus('taken');
+          toast({ title: 'Ce sous-domaine est déjà pris', variant: 'destructive' });
+          await checkSlug(normalizedSlug);
+          return;
+        }
+
+        if (code === 'INVALID_SUBDOMAIN') {
+          setSlugStatus('idle');
+          toast({ title: 'Sous-domaine invalide', variant: 'destructive' });
+          return;
+        }
+
+        throw new Error(code);
+      }
+
+      const shopId = creationData.shop_id as string;
+      const finalSlug = (creationData.normalized_slug as string) || normalizedSlug;
+
       const uploads: Promise<void>[] = [];
 
       if (logoFile) {
         uploads.push(
-          supabase.storage.from('shop-assets').upload(`${shop.id}/logo`, logoFile, { upsert: true })
+          supabase.storage.from('shop-assets').upload(`${shopId}/logo`, logoFile, { upsert: true })
             .then(({ error }) => {
               if (!error) {
-                const { data: urlData } = supabase.storage.from('shop-assets').getPublicUrl(`${shop.id}/logo`);
-                return supabase.from('shops').update({ logo_url: urlData.publicUrl }).eq('id', shop.id).then(() => {});
+                const { data: urlData } = supabase.storage.from('shop-assets').getPublicUrl(`${shopId}/logo`);
+                return supabase.from('shops').update({ logo_url: urlData.publicUrl }).eq('id', shopId).then(() => {});
               }
             })
         );
@@ -333,11 +357,11 @@ export default function CreateShop() {
 
       if (bannerFile) {
         uploads.push(
-          supabase.storage.from('shop-assets').upload(`${shop.id}/banner`, bannerFile, { upsert: true })
+          supabase.storage.from('shop-assets').upload(`${shopId}/banner`, bannerFile, { upsert: true })
             .then(({ error }) => {
               if (!error) {
-                const { data: urlData } = supabase.storage.from('shop-assets').getPublicUrl(`${shop.id}/banner`);
-                return supabase.from('shops').update({ banner_url: urlData.publicUrl }).eq('id', shop.id).then(() => {});
+                const { data: urlData } = supabase.storage.from('shop-assets').getPublicUrl(`${shopId}/banner`);
+                return supabase.from('shops').update({ banner_url: urlData.publicUrl }).eq('id', shopId).then(() => {});
               }
             })
         );
@@ -347,16 +371,11 @@ export default function CreateShop() {
       await queryClient.invalidateQueries({ queryKey: ['shop'] });
 
       toast({ title: '🎉 Boutique créée avec succès !' });
-      navigate('/dashboard/shop-created', { state: { slug: values.slug } });
+      navigate('/dashboard/shop-created', { state: { slug: finalSlug } });
     } catch (error: any) {
       console.error('Error creating shop:', error);
-      if (error?.code === '23505') {
-        toast({ title: 'Ce sous-domaine est déjà pris', variant: 'destructive' });
-        setSlugStatus('taken');
-        checkSlug(values.slug);
-      } else {
-        toast({ title: 'Erreur lors de la création', description: error.message, variant: 'destructive' });
-      }
+      
+      toast({ title: 'Erreur lors de la création', description: error.message, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -375,7 +394,7 @@ export default function CreateShop() {
 
   // Guard handles hasShop redirect — no check needed here
 
-  const canSubmit = slugStatus === 'available' || slugStatus === 'error';
+  const canSubmit = slugStatus === 'available';
 
   const previewPanel = (
     <ShopPreview values={watchedValues} logoPreview={logoPreview} bannerPreview={bannerPreview} />
@@ -678,7 +697,11 @@ export default function CreateShop() {
                             <FormLabel>Sous-domaine</FormLabel>
                             <div className="flex items-center gap-2">
                               <FormControl>
-                                <Input {...field} className="font-mono" />
+                                <Input
+                                  {...field}
+                                  className="font-mono"
+                                  onBlur={(e) => field.onChange(normalizeSubdomain(e.target.value))}
+                                />
                               </FormControl>
                               <span className="text-sm text-muted-foreground whitespace-nowrap font-mono">
                                 .{BASE_DOMAIN}
@@ -705,6 +728,9 @@ export default function CreateShop() {
                             )}
                             {slugStatus === 'checking' && (
                               <p className="text-xs text-muted-foreground mt-1">Vérification...</p>
+                            )}
+                            {slugStatus === 'error' && (
+                              <p className="text-xs text-destructive mt-1">Erreur de vérification. Réessayez.</p>
                             )}
 
                             {/* Suggestions */}
@@ -773,6 +799,7 @@ export default function CreateShop() {
                     <p className="text-sm text-center text-muted-foreground">
                       {slugStatus === 'checking' && 'Vérification du sous-domaine...'}
                       {slugStatus === 'taken' && 'Choisissez un sous-domaine disponible'}
+                      {slugStatus === 'error' && 'Erreur de vérification. Réessayez.'}
                       {slugStatus === 'idle' && 'Remplissez le nom pour générer votre adresse'}
                     </p>
                   )}
