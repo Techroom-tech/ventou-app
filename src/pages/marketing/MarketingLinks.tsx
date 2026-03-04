@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Link2, Copy } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 import { useShop } from '@/hooks/useShop';
 import { useTrackedLinks, useCreateTrackedLink, useDeleteTrackedLink } from '@/hooks/useTrackedLinks';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -30,19 +34,43 @@ export default function MarketingLinks() {
   const [name, setName] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
   const [source, setSource] = useState('facebook');
+  const [destMode, setDestMode] = useState<'product' | 'link'>('product');
+  const [selectedProductId, setSelectedProductId] = useState('');
+
+  const { data: products } = useQuery({
+    queryKey: ['products-for-links', shop?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, slug')
+        .eq('shop_id', shop!.id)
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!shop?.id && open,
+  });
+
+  const resolvedUrl = (() => {
+    if (destMode === 'link') return targetUrl;
+    const prod = products?.find((p) => p.id === selectedProductId);
+    if (!prod?.slug || !shop?.slug) return '';
+    return `https://${shop.slug}.ventou.shop/produit/${prod.slug}`;
+  })();
 
   const handleCreate = async () => {
-    if (!shop || !name || !targetUrl) return;
+    if (!shop || !name || !resolvedUrl) return;
     await createMut.mutateAsync({
       shop_id: shop.id,
       name,
-      target_url: targetUrl,
+      target_url: resolvedUrl,
       source,
       ref_code: genRefCode(),
     });
     toast.success(t('common.success'));
     setOpen(false);
-    setName(''); setTargetUrl('');
+    setName(''); setTargetUrl(''); setSelectedProductId('');
   };
 
   const copyLink = (link: any) => {
@@ -69,21 +97,59 @@ export default function MarketingLinks() {
             </DialogTrigger>
             <DialogContent className="max-w-[600px]">
               <DialogHeader><DialogTitle>{t('marketing.links.create')}</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <Input placeholder={t('marketing.links.name')} value={name} onChange={(e) => setName(e.target.value)} />
-                <Input placeholder="https://..." value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} />
-                <Select value={source} onValueChange={setSource}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="facebook">Facebook</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="tiktok">TikTok</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="other">{t('marketing.links.other')}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button className="w-full bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white" onClick={handleCreate} disabled={createMut.isPending}>{t('common.save')}</Button>
+              <div className="space-y-5">
+                {/* Nom */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">{t('marketing.links.campaignName', 'Nom de la campagne')}</Label>
+                  <Input placeholder="Ex: Promo été Facebook" value={name} onChange={(e) => setName(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">{t('marketing.links.campaignHint', 'Donnez un nom pour identifier cette campagne')}</p>
+                </div>
+
+                {/* Destination */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Destination</Label>
+                  <p className="text-xs text-muted-foreground">{t('marketing.links.destHint', 'Choisissez un produit ou entrez un lien personnalisé')}</p>
+                  <Tabs value={destMode} onValueChange={(v) => setDestMode(v as 'product' | 'link')} className="w-full">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="product" className="flex-1">🛍️ {t('marketing.links.pickProduct', 'Produit')}</TabsTrigger>
+                      <TabsTrigger value="link" className="flex-1">🔗 {t('marketing.links.customLink', 'Lien personnalisé')}</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {destMode === 'product' ? (
+                    <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                      <SelectTrigger><SelectValue placeholder={t('marketing.links.selectProduct', 'Sélectionner un produit…')} /></SelectTrigger>
+                      <SelectContent>
+                        {products?.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input placeholder="Ex: https://monshop.ventou.shop/produit/..." value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} />
+                  )}
+                  {resolvedUrl && (
+                    <p className="text-xs text-muted-foreground truncate">→ {resolvedUrl}</p>
+                  )}
+                </div>
+
+                {/* Source */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">{t('marketing.links.trafficSource', 'Source de trafic')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('marketing.links.sourceHint', "D'où viendront les visiteurs ?")}</p>
+                  <Select value={source} onValueChange={setSource}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="other">{t('marketing.links.other')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button className="w-full bg-[hsl(25,100%,50%)] hover:bg-[hsl(25,100%,45%)] text-white" onClick={handleCreate} disabled={createMut.isPending || !resolvedUrl}>{t('common.save')}</Button>
               </div>
             </DialogContent>
           </Dialog>
