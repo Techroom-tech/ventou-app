@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Minus, Plus, ShoppingBag, ShoppingCart, MessageCircle, X,
@@ -254,11 +254,26 @@ export default function ProductDetailSheet({ product, shop, open, onOpenChange }
   const [quantity, setQuantity] = useState(1);
   const isMobile = useIsMobile();
 
+  // Track view_product when sheet opens
+  useEffect(() => {
+    if (open && product && shop?.id) {
+      import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
+        trackCampaignEvent(shop.id, 'view_product', { product_id: product.id });
+      });
+    }
+  }, [open, product?.id, shop?.id]);
+
   if (!product) return null;
 
   const isOutOfStock = product.track_stock && product.stock_quantity === 0;
 
   const handleAddToCart = () => {
+    // Track add_to_cart campaign event
+    if (shop?.id) {
+      import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
+        trackCampaignEvent(shop.id, 'add_to_cart', { product_id: product.id });
+      });
+    }
     addToCart(product, quantity);
     setQuantity(1);
     onOpenChange(false);

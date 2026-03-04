@@ -44,6 +44,127 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_clicks: {
+        Row: {
+          browser: string | null
+          city: string | null
+          clicked_at: string
+          country: string | null
+          device: string | null
+          fbclid: string | null
+          id: string
+          ip_address: string | null
+          link_id: string
+          shop_id: string
+          ttclid: string | null
+          visitor_id: string
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device?: string | null
+          fbclid?: string | null
+          id?: string
+          ip_address?: string | null
+          link_id: string
+          shop_id: string
+          ttclid?: string | null
+          visitor_id: string
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device?: string | null
+          fbclid?: string | null
+          id?: string
+          ip_address?: string | null
+          link_id?: string
+          shop_id?: string
+          ttclid?: string | null
+          visitor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_clicks_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_events: {
+        Row: {
+          click_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          link_id: string
+          order_id: string | null
+          product_id: string | null
+          revenue: number | null
+          shop_id: string
+          visitor_id: string
+        }
+        Insert: {
+          click_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          link_id: string
+          order_id?: string | null
+          product_id?: string | null
+          revenue?: number | null
+          shop_id: string
+          visitor_id: string
+        }
+        Update: {
+          click_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          link_id?: string
+          order_id?: string | null
+          product_id?: string | null
+          revenue?: number | null
+          shop_id?: string
+          visitor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_events_click_id_fkey"
+            columns: ["click_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_clicks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_events_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_events_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string

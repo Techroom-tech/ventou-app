@@ -206,19 +206,24 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
     return () => { document.documentElement.classList.remove('dark'); };
   }, [shop]);
 
-  // ── Track ?ref= link clicks ──
+  // ── Track ?ref= link clicks with full campaign attribution ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
-    if (!ref) return;
-    // Fire-and-forget, no need to await
-    supabase.functions.invoke('track-link-click', { body: { ref_code: ref } }).catch(() => {});
+    if (!ref || !shop?.id) return;
+    // Fire campaign click with full metadata
+    import('@/lib/campaignTracking').then(({ trackCampaignClick }) => {
+      trackCampaignClick(shop.id, ref);
+    });
     // Remove ref from URL to avoid double-counting on navigation
     params.delete('ref');
+    // Keep fbclid/ttclid removal too
+    params.delete('fbclid');
+    params.delete('ttclid');
     const newSearch = params.toString();
     const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
     window.history.replaceState({}, '', newUrl);
-  }, []);
+  }, [shop?.id]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];

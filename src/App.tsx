@@ -59,6 +59,7 @@ const MarketingAnalytics = lazy(() => import("./pages/marketing/MarketingAnalyti
 const MarketingCoupons = lazy(() => import("./pages/marketing/MarketingCoupons"));
 const MarketingPromos = lazy(() => import("./pages/marketing/MarketingPromos"));
 const MarketingLinks = lazy(() => import("./pages/marketing/MarketingLinks"));
+const CampaignDetail = lazy(() => import("./pages/marketing/CampaignDetail"));
 const MarketingPixels = lazy(() => import("./pages/marketing/MarketingPixels"));
 
 // Admin pages
@@ -174,6 +175,7 @@ const App = () => {
               <Route path="marketing/coupons" element={<MarketingCoupons />} />
               <Route path="marketing/promos" element={<MarketingPromos />} />
               <Route path="marketing/liens" element={<MarketingLinks />} />
+              <Route path="marketing/liens/:linkId" element={<CampaignDetail />} />
               <Route path="marketing/pixels" element={<MarketingPixels />} />
 
               {/* Settings V6 */}
