@@ -59,19 +59,21 @@ export function useOrderCounts(shopId: string | undefined) {
     queryFn: async () => {
       if (!shopId) return {} as Record<string, number>;
 
-      const { data, error } = await supabase
-        .from('orders')
-        .select('status, is_archived')
-        .eq('shop_id', shopId)
-        .eq('is_archived', false);
+      const [allRes, pendingRes, confirmedRes, deliveredRes, cancelledRes] = await Promise.all([
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('is_archived', false),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('status', 'pending').eq('is_archived', false),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('status', 'confirmed').eq('is_archived', false),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('status', 'delivered').eq('is_archived', false),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('status', 'cancelled').eq('is_archived', false),
+      ]);
 
-      if (error) throw error;
-
-      const counts: Record<string, number> = { all: data?.length ?? 0 };
-      for (const row of data ?? []) {
-        counts[row.status] = (counts[row.status] ?? 0) + 1;
-      }
-      return counts;
+      return {
+        all: allRes.count ?? 0,
+        pending: pendingRes.count ?? 0,
+        confirmed: confirmedRes.count ?? 0,
+        delivered: deliveredRes.count ?? 0,
+        cancelled: cancelledRes.count ?? 0,
+      } as Record<string, number>;
     },
     enabled: !!shopId,
     staleTime: 30_000,
@@ -371,31 +373,15 @@ export function useDeleteOrders() {
   });
 }
 
-// Count repeat customers (placed >1 order in this shop)
-export function useRepeatCustomers(shopId: string | undefined) {
+// Count repeat customers using server-side aggregation
+export function useRepeatCustomerCount(shopId: string | undefined) {
   return useQuery({
-    queryKey: ['repeat-customers', shopId],
+    queryKey: ['repeat-customer-count', shopId],
     queryFn: async () => {
-      if (!shopId) return new Set<string>();
-
-      const { data, error } = await supabase
-        .from('orders')
-        .select('customer_name, phone')
-        .eq('shop_id', shopId);
-
+      if (!shopId) return 0;
+      const { data, error } = await supabase.rpc('get_repeat_customer_count', { _shop_id: shopId });
       if (error) throw error;
-
-      const phoneCounts: Record<string, number> = {};
-      for (const row of data ?? []) {
-        const key = row.phone ?? row.customer_name;
-        phoneCounts[key] = (phoneCounts[key] ?? 0) + 1;
-      }
-
-      return new Set(
-        Object.entries(phoneCounts)
-          .filter(([, count]) => count > 1)
-          .map(([key]) => key)
-      );
+      return (data as number) ?? 0;
     },
     enabled: !!shopId,
     staleTime: 60_000,

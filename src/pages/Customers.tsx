@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { useShop } from '@/hooks/useShop';
-import { useCustomers, Customer, CustomerOrder } from '@/hooks/useCustomers';
+import { useCustomers, Customer } from '@/hooks/useCustomers';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatCurrency } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
 import { Search, Phone, MessageCircle, ChevronRight, ChevronLeft, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { OrderStatus } from '@/types/shop';
 
 function getInitials(name: string) {
   return name
@@ -55,18 +53,9 @@ function CustomerDetailDrawer({
   currency: string;
 }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [historyPage, setHistoryPage] = useState(1);
-  const HISTORY_PAGE_SIZE = 20;
 
   if (!customer) return null;
-
-  const historyPages = Math.max(1, Math.ceil(customer.orders.length / HISTORY_PAGE_SIZE));
-  const paginatedOrders = customer.orders.slice(
-    (historyPage - 1) * HISTORY_PAGE_SIZE,
-    historyPage * HISTORY_PAGE_SIZE
-  );
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
@@ -117,40 +106,10 @@ function CustomerDetailDrawer({
             ))}
           </div>
 
-          {/* Order history */}
+          {/* Total amount */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold">{t('customers.orderHistory')}</h3>
-            <div className="space-y-1.5">
-              {paginatedOrders.map((o: CustomerOrder) => (
-                <button
-                  key={o.id}
-                  onClick={() => { onClose(); navigate(`/dashboard/commandes/${o.id}`); }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/60 transition-colors text-left"
-                >
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-medium">#{o.id.slice(0, 8)}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {o.created_at ? format(new Date(o.created_at), 'dd/MM/yy') : ''}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{formatCurrency(o.total, currency)}</span>
-                    <OrderStatusBadge status={o.status as OrderStatus} />
-                  </div>
-                </button>
-              ))}
-            </div>
-            {historyPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <Button size="sm" variant="ghost" disabled={historyPage <= 1} onClick={() => setHistoryPage((p) => p - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground">{historyPage}/{historyPages}</span>
-                <Button size="sm" variant="ghost" disabled={historyPage >= historyPages} onClick={() => setHistoryPage((p) => p + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <h3 className="text-sm font-semibold">{t('customers.totalAmount', 'Montant total')}</h3>
+            <p className="text-lg font-bold">{formatCurrency(customer.totalAmount, currency)}</p>
           </div>
         </div>
       </SheetContent>

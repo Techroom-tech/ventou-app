@@ -1,9 +1,11 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Product } from '@/types/shop';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/hooks/useShop';
 import { useToast } from '@/hooks/use-toast';
+
+const PAGE_SIZE = 20;
 
 interface ProductContextType {
   products: Product[];
@@ -13,6 +15,16 @@ interface ProductContextType {
   deleteProduct: (id: string) => void;
   duplicateProduct: (id: string) => void;
   toggleVisibility: (id: string) => void;
+  // Pagination
+  page: number;
+  setPage: (p: number) => void;
+  totalCount: number;
+  totalPages: number;
+  // Filters
+  search: string;
+  setSearch: (s: string) => void;
+  statusFilter: string;
+  setStatusFilter: (s: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
@@ -22,20 +34,54 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ['products', shop?.id],
+  const [page, setPageRaw] = useState(0);
+  const [search, setSearchRaw] = useState('');
+  const [statusFilter, setStatusFilterRaw] = useState('all');
+
+  const setSearch = useCallback((s: string) => {
+    setSearchRaw(s);
+    setPageRaw(0);
+  }, []);
+
+  const setStatusFilter = useCallback((s: string) => {
+    setStatusFilterRaw(s);
+    setPageRaw(0);
+  }, []);
+
+  const setPage = useCallback((p: number) => setPageRaw(p), []);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['products', shop?.id, page, search, statusFilter],
     queryFn: async () => {
-      if (!shop?.id) return [];
-      const { data, error } = await supabase
+      if (!shop?.id) return { products: [] as Product[], total: 0 };
+
+      let query = supabase
         .from('products')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('shop_id', shop.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+
+      if (search.trim()) {
+        query = query.ilike('name', `%${search.trim()}%`);
+      }
+
+      if (statusFilter === 'active') {
+        query = query.eq('is_active', true);
+      } else if (statusFilter === 'draft') {
+        query = query.eq('is_active', false);
+      }
+
+      const { data: rows, error, count } = await query;
       if (error) throw error;
-      return data as Product[];
+      return { products: (rows ?? []) as Product[], total: count ?? 0 };
     },
     enabled: !!shop?.id,
   });
+
+  const products = data?.products ?? [];
+  const totalCount = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products', shop?.id] });
 
@@ -104,7 +150,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ProductContext.Provider value={{ products, isLoading, addProduct, updateProduct, deleteProduct, duplicateProduct, toggleVisibility }}>
+    <ProductContext.Provider value={{
+      products, isLoading, addProduct, updateProduct, deleteProduct, duplicateProduct, toggleVisibility,
+      page, setPage, totalCount, totalPages,
+      search, setSearch, statusFilter, setStatusFilter,
+    }}>
       {children}
     </ProductContext.Provider>
   );

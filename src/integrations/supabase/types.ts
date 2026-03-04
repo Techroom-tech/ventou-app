@@ -1175,6 +1175,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_customer_stats: {
+        Args: {
+          _page_offset?: number
+          _page_size?: number
+          _search?: string
+          _shop_id: string
+        }
+        Returns: {
+          cancelled: number
+          city: string
+          delivered: number
+          first_order_date: string
+          name: string
+          phone: string
+          quartier: string
+          total_amount: number
+          total_count: number
+          total_orders: number
+        }[]
+      }
+      get_repeat_customer_count: { Args: { _shop_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
