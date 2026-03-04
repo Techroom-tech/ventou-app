@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('slug', slug)
         .eq('is_active', true)
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (error) {
@@ -76,7 +77,8 @@ Deno.serve(async (req) => {
         .from('products')
         .select('*')
         .eq('shop_id', shop_id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('status', 'published');
 
       if (sort === 'alpha') query = query.order('name', { ascending: true });
       else if (sort === 'price_asc') query = query.order('price', { ascending: true });
