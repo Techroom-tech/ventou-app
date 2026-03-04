@@ -15,6 +15,7 @@ export const adminNavItems: AdminNavItem[] = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/admin' },
   { key: 'vendors', icon: Users, path: '/admin/vendors' },
   { key: 'stores', icon: Store, path: '/admin/stores' },
+  { key: 'deleted-stores', icon: Store, path: '/admin/deleted-stores', roles: ['super_admin'] },
   { key: 'products', icon: Package, path: '/admin/products' },
   { key: 'reports', icon: Flag, path: '/admin/reports' },
   { key: 'subscriptions', icon: CreditCard, path: '/admin/subscriptions' },
