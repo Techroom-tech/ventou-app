@@ -700,6 +700,8 @@ export type Database = {
           rating: number
           review_text: string | null
           shop_id: string
+          vendor_reply: string | null
+          vendor_reply_at: string | null
         }
         Insert: {
           country?: string | null
@@ -712,6 +714,8 @@ export type Database = {
           rating: number
           review_text?: string | null
           shop_id: string
+          vendor_reply?: string | null
+          vendor_reply_at?: string | null
         }
         Update: {
           country?: string | null
@@ -724,6 +728,8 @@ export type Database = {
           rating?: number
           review_text?: string | null
           shop_id?: string
+          vendor_reply?: string | null
+          vendor_reply_at?: string | null
         }
         Relationships: []
       }
