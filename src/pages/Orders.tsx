@@ -82,7 +82,7 @@ function QuickActionBtn({
       disabled={disabled}
       title={label}
       className={cn(
-        'inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors disabled:opacity-50',
+        'inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors disabled:opacity-50 icon-interactive',
         colorMap[variant]
       )}
     >
@@ -277,7 +277,7 @@ export default function Orders() {
               className={cn('h-8 gap-1.5 text-xs', quickMode && 'bg-[hsl(38,92%,50%)] hover:bg-[hsl(38,92%,45%)] text-white')}
               onClick={() => setQuickMode(!quickMode)}
             >
-              <Zap className="h-3.5 w-3.5" />
+              <Zap className="h-3.5 w-3.5 icon-interactive" />
               <span className="hidden sm:inline">{t('orders.quickMode', 'Mode rapide')}</span>
             </Button>
             <Button
@@ -285,7 +285,7 @@ export default function Orders() {
               className="h-8 gap-1.5 text-xs"
               onClick={() => setCreateOpen(true)}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5 icon-interactive" />
               <span className="hidden sm:inline">{t('orders.newOrder', 'Nouvelle commande')}</span>
               <span className="sm:hidden">+</span>
             </Button>
@@ -295,7 +295,7 @@ export default function Orders() {
                 className="h-8 gap-1.5 text-xs"
                 onClick={() => exportOrdersCSV(orders, currencyCode)}
               >
-                <Download className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5 icon-interactive" />
                 <span className="hidden sm:inline">CSV</span>
               </Button>
             )}

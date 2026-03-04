@@ -70,12 +70,12 @@ function CustomerDetailDrawer({
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="flex-1" asChild>
                 <a href={`tel:${customer.phone}`}>
-                  <Phone className="h-4 w-4 mr-1.5" /> {t('customers.call')}
+                  <Phone className="h-4 w-4 mr-1.5 icon-interactive" /> {t('customers.call')}
                 </a>
               </Button>
               <Button size="sm" variant="outline" className="flex-1" asChild>
                 <a href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-4 w-4 mr-1.5" /> WhatsApp
+                  <MessageCircle className="h-4 w-4 mr-1.5 icon-interactive" /> WhatsApp
                 </a>
               </Button>
             </div>
@@ -209,7 +209,7 @@ export default function Customers() {
                       <td className="p-3 text-center font-medium text-[hsl(142,76%,36%)]">{c.delivered}</td>
                       <td className="p-3 text-center font-medium text-destructive">{c.cancelled}</td>
                       <td className="p-3"><CustomerBadgeTag badge={c.badge} /></td>
-                      <td className="p-3"><ChevronRight className="h-4 w-4 text-muted-foreground" /></td>
+                      <td className="p-3"><ChevronRight className="h-4 w-4 text-muted-foreground icon-interactive" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -243,12 +243,12 @@ export default function Customers() {
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" className="flex-1 h-9" asChild>
                       <a href={`tel:${c.phone}`} onClick={(e) => e.stopPropagation()}>
-                        <Phone className="h-3.5 w-3.5 mr-1" /> {t('customers.call')}
+                        <Phone className="h-3.5 w-3.5 mr-1 icon-interactive" /> {t('customers.call')}
                       </a>
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1 h-9" asChild>
                       <a href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                        <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                        <MessageCircle className="h-3.5 w-3.5 mr-1 icon-interactive" /> WhatsApp
                       </a>
                     </Button>
                   </div>
@@ -262,11 +262,11 @@ export default function Customers() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-3 pt-2">
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 icon-interactive" />
             </Button>
             <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
             <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 icon-interactive" />
             </Button>
           </div>
         )}

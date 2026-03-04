@@ -99,27 +99,27 @@ export default function Products() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow">
-                          <MoreVertical className="h-4 w-4" />
+                          <MoreVertical className="h-4 w-4 icon-interactive" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => navigate(`/dashboard/products/${product.id}/edit`)}>
-                          <Pencil className="h-4 w-4 mr-2" />
+                          <Pencil className="h-4 w-4 mr-2 icon-interactive" />
                           {t('common.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDuplicate(product.id)}>
-                          <Copy className="h-4 w-4 mr-2" />
+                          <Copy className="h-4 w-4 mr-2 icon-interactive" />
                           {t('dashboard.products.duplicate')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggle(product.id)}>
-                          {product.is_active ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                          {product.is_active ? <EyeOff className="h-4 w-4 mr-2 icon-interactive" /> : <Eye className="h-4 w-4 mr-2 icon-interactive" />}
                           {product.is_active ? t('dashboard.products.hide') : t('dashboard.products.show')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => handleDelete(product.id, product.name)}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="h-4 w-4 mr-2 icon-interactive" />
                           {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -169,7 +169,7 @@ export default function Products() {
                   disabled={page === 0}
                   onClick={() => setPage(page - 1)}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  <ChevronLeft className="h-4 w-4 mr-1 icon-interactive" />
                   {t('common.previous', 'Précédent')}
                 </Button>
                 <span className="text-sm text-muted-foreground px-3">
@@ -182,7 +182,7 @@ export default function Products() {
                   onClick={() => setPage(page + 1)}
                 >
                   {t('common.next', 'Suivant')}
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                  <ChevronRight className="h-4 w-4 ml-1 icon-interactive" />
                 </Button>
               </div>
             )}
