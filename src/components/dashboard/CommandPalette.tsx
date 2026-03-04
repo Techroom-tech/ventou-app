@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Command,
   CommandInput,
@@ -10,10 +10,6 @@ import {
   CommandItem,
   CommandSeparator,
 } from '@/components/ui/command';
-import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog';
 import {
   Plus,
   Percent,
@@ -32,6 +28,7 @@ import {
   Globe,
   Link,
   Zap,
+  ChevronRight,
 } from 'lucide-react';
 
 interface CommandPaletteProps {
@@ -43,9 +40,6 @@ const quickActions = [
   { icon: Plus, label: 'Ajouter un produit', labelEn: 'Add a product', path: '/dashboard/products/add' },
   { icon: Percent, label: 'Créer une réduction', labelEn: 'Create a discount', path: '/dashboard/marketing/coupons' },
   { icon: ShoppingBag, label: 'Voir les commandes', labelEn: 'View orders', path: '/dashboard/orders' },
-  { icon: Users, label: 'Voir les clients', labelEn: 'View customers', path: '/dashboard/customers' },
-  { icon: BarChart3, label: 'Voir les analytics', labelEn: 'View analytics', path: '/dashboard/marketing/analytics' },
-  { icon: Settings, label: 'Paramètres', labelEn: 'Settings', path: '/dashboard/parametres' },
 ];
 
 const pages = [
@@ -54,6 +48,7 @@ const pages = [
   { icon: ShoppingBag, label: 'Commandes', labelEn: 'Orders', path: '/dashboard/orders' },
   { icon: Users, label: 'Clients', labelEn: 'Customers', path: '/dashboard/customers' },
   { icon: Megaphone, label: 'Marketing', labelEn: 'Marketing', path: '/dashboard/marketing' },
+  { icon: BarChart3, label: 'Analytics', labelEn: 'Analytics', path: '/dashboard/marketing/analytics' },
   { icon: Link, label: 'Liens trackés', labelEn: 'Tracked links', path: '/dashboard/marketing/links' },
   { icon: Zap, label: 'Promotions flash', labelEn: 'Flash promotions', path: '/dashboard/marketing/promos' },
   { icon: Settings, label: 'Paramètres', labelEn: 'Settings', path: '/dashboard/parametres' },
@@ -76,56 +71,95 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 rounded-xl shadow-2xl max-w-[540px] gap-0 border-border">
-        <Command className="rounded-xl">
-          <CommandInput placeholder={isEn ? 'Start typing to search…' : 'Commencez à taper pour rechercher…'} />
-          <CommandList className="max-h-[360px]">
-            <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
-              {isEn ? 'No results found.' : 'Aucun résultat trouvé.'}
-            </CommandEmpty>
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh]">
+          {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-0 bg-black/35 backdrop-blur-sm"
+            onClick={() => onOpenChange(false)}
+          />
 
-            <CommandGroup heading={isEn ? '⚡ Quick actions' : '⚡ Actions rapides'}>
-              {quickActions.map((action) => (
-                <CommandItem
-                  key={action.path}
-                  onSelect={() => runAction(action.path)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <action.icon className="h-4 w-4" />
-                  </div>
-                  <span className="text-sm font-medium">{isEn ? action.labelEn : action.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+          {/* Panel */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="relative w-[560px] max-w-[92vw] rounded-2xl bg-background shadow-[0_24px_80px_rgba(0,0,0,0.18)] overflow-hidden"
+          >
+            <Command className="rounded-2xl">
+              {/* Search input */}
+              <div className="flex items-center gap-2.5 px-4 h-12 border-b border-border">
+                <CommandInput
+                  placeholder={isEn ? 'Start typing to search…' : 'Commencez à taper pour rechercher…'}
+                  className="h-12 text-sm"
+                />
+              </div>
 
-            <CommandSeparator />
+              <CommandList className="max-h-[340px] overflow-y-auto">
+                <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
+                  {isEn ? 'No results found.' : 'Aucun résultat trouvé.'}
+                </CommandEmpty>
 
-            <CommandGroup heading={isEn ? '📄 Pages' : '📄 Pages'}>
-              {pages.map((page) => (
-                <CommandItem
-                  key={page.path}
-                  onSelect={() => runAction(page.path)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer"
-                >
-                  <page.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm">{isEn ? page.labelEn : page.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
+                {/* Quick Actions */}
+                <CommandGroup heading={isEn ? '⚡ Quick actions' : '⚡ Actions rapides'}>
+                  {quickActions.map((action) => (
+                    <CommandItem
+                      key={action.path}
+                      onSelect={() => runAction(action.path)}
+                      className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] cursor-pointer mx-1 data-[selected=true]:bg-muted/60"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <action.icon className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.8} />
+                        </div>
+                        <span className="text-sm font-medium text-foreground">{isEn ? action.labelEn : action.label}</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
 
-          <div className="flex items-center justify-end border-t border-border px-3 py-2">
-            <span className="text-[11px] text-muted-foreground">
-              {isEn ? 'Close' : 'Quitter'}{' '}
-              <kbd className="ml-1 inline-flex h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
-                esc
-              </kbd>
-            </span>
-          </div>
-        </Command>
-      </DialogContent>
-    </Dialog>
+                <CommandSeparator />
+
+                {/* Pages */}
+                <CommandGroup heading={isEn ? '📄 Pages' : '📄 Pages'}>
+                  {pages.map((page) => (
+                    <CommandItem
+                      key={page.path}
+                      onSelect={() => runAction(page.path)}
+                      className="flex items-center justify-between px-3.5 py-2 rounded-[10px] cursor-pointer mx-1 data-[selected=true]:bg-muted/60"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <page.icon className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.8} />
+                        </div>
+                        <span className="text-sm text-foreground">{isEn ? page.labelEn : page.label}</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end border-t border-border px-3.5 py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {isEn ? 'Close' : 'Quitter'}{' '}
+                  <kbd className="ml-1 inline-flex h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
+                    esc
+                  </kbd>
+                </span>
+              </div>
+            </Command>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
