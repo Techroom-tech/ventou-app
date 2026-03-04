@@ -13,7 +13,9 @@ interface UseOrdersOptions {
 }
 
 export function useOrders({ shopId, status, search, page = 0, includeArchived = false }: UseOrdersOptions) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const result = useQuery({
     queryKey: ['orders', shopId, status, search, page, includeArchived],
     queryFn: async () => {
       if (!shopId) return { orders: [], total: 0 };
@@ -35,7 +37,6 @@ export function useOrders({ shopId, status, search, page = 0, includeArchived = 
 
       if (search && search.trim()) {
         const term = search.trim();
-        // Search by name, phone, or order ID
         query = query.or(
           `customer_name.ilike.%${term}%,phone.ilike.%${term}%,id.ilike.%${term}%`
         );
@@ -50,7 +51,36 @@ export function useOrders({ shopId, status, search, page = 0, includeArchived = 
     },
     enabled: !!shopId,
     staleTime: 30_000,
+    gcTime: 5 * 60_000,
   });
+
+  // Prefetch next page
+  const total = result.data?.total ?? 0;
+  const hasNextPage = (page + 1) * PAGE_SIZE < total;
+
+  if (shopId && hasNextPage) {
+    const nextPage = page + 1;
+    queryClient.prefetchQuery({
+      queryKey: ['orders', shopId, status, search, nextPage, includeArchived],
+      queryFn: async () => {
+        let query = supabase
+          .from('orders')
+          .select('*', { count: 'exact' })
+          .eq('shop_id', shopId)
+          .order('created_at', { ascending: false })
+          .range(nextPage * PAGE_SIZE, nextPage * PAGE_SIZE + PAGE_SIZE - 1);
+        if (!includeArchived) query = query.eq('is_archived', false);
+        if (status && status !== 'all') query = query.eq('status', status);
+        if (search?.trim()) query = query.or(`customer_name.ilike.%${search.trim()}%,phone.ilike.%${search.trim()}%,id.ilike.%${search.trim()}%`);
+        const { data, error, count } = await query;
+        if (error) throw error;
+        return { orders: (data ?? []) as Order[], total: count ?? 0 };
+      },
+      staleTime: 30_000,
+    });
+  }
+
+  return result;
 }
 
 export function useOrderCounts(shopId: string | undefined) {
