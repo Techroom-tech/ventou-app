@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Product } from '@/types/shop';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,7 +77,36 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       return { products: (rows ?? []) as Product[], total: count ?? 0 };
     },
     enabled: !!shop?.id,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
+
+  // Prefetch next page
+  const totalForPrefetch = data?.total ?? 0;
+  const hasNextPage = (page + 1) * PAGE_SIZE < totalForPrefetch;
+  
+  useEffect(() => {
+    if (!shop?.id || !hasNextPage) return;
+    const nextPage = page + 1;
+    queryClient.prefetchQuery({
+      queryKey: ['products', shop.id, nextPage, search, statusFilter],
+      queryFn: async () => {
+        let query = supabase
+          .from('products')
+          .select('*', { count: 'exact' })
+          .eq('shop_id', shop.id)
+          .order('created_at', { ascending: false })
+          .range(nextPage * PAGE_SIZE, nextPage * PAGE_SIZE + PAGE_SIZE - 1);
+        if (search.trim()) query = query.ilike('name', `%${search.trim()}%`);
+        if (statusFilter === 'active') query = query.eq('is_active', true);
+        else if (statusFilter === 'draft') query = query.eq('is_active', false);
+        const { data: rows, error, count } = await query;
+        if (error) throw error;
+        return { products: (rows ?? []) as Product[], total: count ?? 0 };
+      },
+      staleTime: 60_000,
+    });
+  }, [shop?.id, page, search, statusFilter, hasNextPage, queryClient]);
 
   const products = data?.products ?? [];
   const totalCount = data?.total ?? 0;
