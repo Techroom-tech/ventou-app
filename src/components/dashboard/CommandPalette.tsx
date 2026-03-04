@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -64,6 +65,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isEn = i18n.language?.startsWith('en');
+  const [search, setSearch] = useState('');
 
   const runAction = (path: string) => {
     onOpenChange(false);
@@ -98,6 +100,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <CommandInput
                   placeholder={isEn ? 'Start typing to search…' : 'Commencez à taper pour rechercher…'}
                   className="h-12 text-sm"
+                  value={search}
+                  onValueChange={setSearch}
                 />
               </div>
 
@@ -125,26 +129,28 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   ))}
                 </CommandGroup>
 
-                <CommandSeparator />
-
-                {/* Pages */}
-                <CommandGroup heading={isEn ? '📄 Pages' : '📄 Pages'}>
-                  {pages.map((page) => (
-                    <CommandItem
-                      key={page.path}
-                      onSelect={() => runAction(page.path)}
-                      className="flex items-center justify-between px-3.5 py-2 rounded-[10px] cursor-pointer mx-1 data-[selected=true]:bg-muted/60"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                          <page.icon className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.8} />
-                        </div>
-                        <span className="text-sm text-foreground">{isEn ? page.labelEn : page.label}</span>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                {search.length > 0 && (
+                  <>
+                    <CommandSeparator />
+                    <CommandGroup heading={isEn ? '📄 Pages' : '📄 Pages'}>
+                      {pages.map((page) => (
+                        <CommandItem
+                          key={page.path}
+                          onSelect={() => runAction(page.path)}
+                          className="flex items-center justify-between px-3.5 py-2 rounded-[10px] cursor-pointer mx-1 data-[selected=true]:bg-muted/60"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                              <page.icon className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.8} />
+                            </div>
+                            <span className="text-sm text-foreground">{isEn ? page.labelEn : page.label}</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </>
+                )}
               </CommandList>
 
               {/* Footer */}
