@@ -1,87 +1,74 @@
 
 
-# Refonte Sidebar Dashboard — Style Chariow adapté Ventou
+## Diagnostic: Architecture Stability Assessment
 
-## Analyse de l'existant
+After thorough review of the codebase, **most of the 14 items you listed are already implemented and working**. Here is the honest status:
 
-La sidebar actuelle fonctionne bien structurellement (collapse, store switcher modal, nav items, help center). Les changements sont principalement **visuels et UX** : nouveau mapping d'icônes, meilleur store switcher inline (dropdown au lieu de modal), tooltips en mode collapsed, styles nav modernisés, et mobile drawer au lieu du bottom nav actuel.
+### Already Implemented (No Work Needed)
 
-## Plan d'implémentation
+| Feature | Status |
+|---------|--------|
+| Multi-tenant subdomain routing | Done -- `getStoreSlugFromHostname()` + Cloudflare Worker proxy |
+| Data isolation by shop_id | Done -- RLS policies on all tables filter by `shop_id` via `owner_id` |
+| Public storefront page | Done -- `ShopStorefront.tsx` (banner, logo, name, WhatsApp, products) |
+| Product detail page | Done -- `ProductDetailSheet` (gallery, price, description, cart, WhatsApp) |
+| Order system (COD/WhatsApp) | Done -- `CheckoutDrawer` with name, phone, city, quartier, notes, maps |
+| Vendor orders dashboard | Done -- `Orders.tsx` with statuses, quick actions, bulk ops, CSV export |
+| Vendor analytics | Done -- `Dashboard.tsx` KPIs + `MarketingAnalytics` page |
+| Marketing coupons & promos | Done -- `MarketingCoupons`, `MarketingPromos`, `flash_promotions` table |
+| Tracking pixels (FB, TikTok, GTM) | Done -- `useStorefrontTracking` with sanitized injection + CAPI relay |
+| Edge cache layer | Done -- `storefront-cache` function with in-memory TTL |
+| Mobile-first UX | Done -- responsive layouts, mobile bottom nav, touch-friendly buttons |
+| Input sanitization & XSS | Done -- DOMPurify, script sanitizer, rate limiting on slug check |
+| Audit logging | Done -- `admin_audit_logs` table, shop creation diagnostic panel |
 
-### 1. Mettre à jour les icônes navigation (`src/config/navigation.ts`)
+### Real Gaps Worth Addressing
 
-Nouveau mapping selon le brief :
-- `LayoutDashboard` → `Home`
-- `ShoppingCart` → `ShoppingBag`
-- `Package` → reste `Package`
-- `Users` → reste `Users`
-- `Megaphone` → reste `Megaphone`
-- `Settings` → reste `Settings`
+After analyzing what is genuinely missing or fragile, here are the improvements that would make the architecture production-ready:
 
-### 2. Refondre `DashboardSidebar.tsx`
+---
 
-Changements majeurs :
-- **Store Switcher** : remplacer le bouton qui ouvre un modal par un `Popover` inline avec la liste des boutiques + slug affiché (`nike.ventou.shop`) + bouton "Créer une boutique"
-- **StoreAvatar** : composant dédié 32px, `rounded-[6px]`, fallback avec initiale sur fond coloré déterministe
-- **NavItem styling** : `gap-2.5`, `py-2.5 px-3`, `rounded-lg`, hover `bg-sidebar-accent/50` avec `scale(1.03)` subtle, active state avec fond opaque sans la barre latérale gauche (style Chariow = fond uni)
-- **Tooltips** en mode collapsed via `Tooltip` de Radix
-- **Icônes** : `size={20}`, `strokeWidth={1.8}`, `icon-interactive` class
-- **Footer** : `LifeBuoy` pour Centre d'aide, `PanelLeftClose`/`PanelLeftOpen` pour collapse
-- **Accessibility** : `aria-current="page"` sur le lien actif, `aria-label` sur les boutons
+### Plan: 5 Targeted Stabilization Tasks
 
-### 3. Créer `StoreAvatar.tsx` (nouveau composant)
+#### 1. Add `deleted_at IS NULL` filter to `useShop` hook
+The `useShop` hook fetches all shops for a vendor but does not exclude soft-deleted shops. A vendor who soft-deletes a shop will still see it in their dashboard switcher.
 
-```text
-Props: name, logoUrl, size (default 32px)
-- Image carrée, rounded-[6px], overflow-hidden
-- Fallback: initiale sur fond déterministe (hash du nom → palette de 6 couleurs)
-```
+**Change**: Add `.is('deleted_at', null)` to the query in `src/hooks/useShop.ts`.
 
-### 4. Créer `StoreSwitcherPopover.tsx` (remplace le modal)
+#### 2. Add `deleted_at IS NULL` filter to storefront cache
+The `storefront-cache` edge function fetches shops by slug with `is_active = true` but does not check `deleted_at`. A soft-deleted shop could still be served publicly.
 
-- Popover ancré au bouton store dans la sidebar
-- Liste des boutiques avec StoreAvatar + nom + slug (`slug.ventou.shop`)
-- Check icon sur la boutique active
-- Séparateur + bouton "Créer une boutique" (désactivé si >= 4)
-- `window.location.reload()` au changement (comme actuellement)
+**Change**: Add `.is('deleted_at', null)` to the shop query in `supabase/functions/storefront-cache/index.ts`.
 
-### 5. Mobile : Drawer sidebar (`MobileBottomNav.tsx`)
+#### 3. Add `status = 'published'` filter to storefront product query
+The storefront cache fetches products with `is_active = true` but ignores the `status` column. Draft products could appear on the public storefront.
 
-Adapter le drawer existant pour inclure :
-- Store Switcher en haut du drawer
-- Toute la navigation (primary + secondary)
-- Help center + Mon compte + Déconnexion
-- Spacing augmenté (`min-h-[48px]` par item) pour touch targets
+**Change**: Add `.eq('status', 'published')` to the products query in the storefront cache function.
 
-### 6. CSS — sidebar tokens ajustement (`src/index.css`)
+#### 4. Harden RLS: add `deleted_at IS NULL` to public shop visibility policy
+The current `Public can view active shops` policy only checks `is_active = true`. Soft-deleted shops remain publicly visible.
 
-- Sidebar background passe à un gris très clair (`--sidebar-background: 220 14% 96%`) au lieu du bleu foncé actuel, pour un look Chariow (sidebar claire)
-- `--sidebar-foreground` : texte sombre
-- `--sidebar-accent` : gris-100 subtil
-- Conserver les variables dark mode existantes
+**Change**: SQL migration to update the policy: `USING (is_active = true AND deleted_at IS NULL)`.
 
-### 7. Layout margin (`DashboardLayout.tsx`)
+#### 5. Fix `useShop` to exclude suspended shops from vendor dashboard
+The `is_suspended` field exists on the `Shop` type but the `useShop` query does not filter it. A suspended shop should show a warning, not operate normally.
 
-Ajuster la largeur collapsed de `68px` à `64px` comme spécifié dans le brief.
+**Change**: Add `.or('is_suspended.is.null,is_suspended.eq.false')` to the query, or display a suspension banner in the dashboard when detected.
 
-## Fichiers modifiés
+---
 
-| Fichier | Action |
-|---|---|
-| `src/config/navigation.ts` | Changer `LayoutDashboard` → `Home`, `ShoppingCart` → `ShoppingBag` |
-| `src/components/dashboard/StoreAvatar.tsx` | **Nouveau** — composant avatar boutique 32px |
-| `src/components/dashboard/StoreSwitcherPopover.tsx` | **Nouveau** — remplace `ShopSwitcherModal` dans la sidebar |
-| `src/components/dashboard/DashboardSidebar.tsx` | Refonte complète — popover store, tooltips, nouveau style nav |
-| `src/components/dashboard/MobileBottomNav.tsx` | Ajouter store switcher dans le drawer, spacing touch |
-| `src/components/dashboard/DashboardLayout.tsx` | Margin collapsed `64px` |
-| `src/contexts/SidebarCollapseContext.tsx` | Inchangé |
-| `src/index.css` | Sidebar tokens → palette claire (gris) |
-| `src/components/dashboard/ShopSwitcherModal.tsx` | Conservé (utilisé par mobile), mais retiré de la sidebar desktop |
+### What This Does NOT Include (Already Working)
 
-## Ce qui ne change PAS
+These are explicitly excluded because they are already solid:
+- Subdomain middleware (Cloudflare Worker + `getStoreSlugFromHostname`)
+- RLS isolation per shop_id (all tables have appropriate policies)
+- Cart persistence per shop (`ventou-cart-{shopId}`)
+- Pixel injection with sanitization
+- Order lifecycle (pending -> confirmed -> delivered -> cancelled)
+- Cache invalidation on product/shop changes
+- Rate limiting on slug validation
 
-- `DashboardShell.tsx` — structure identique
-- `DashboardHeader.tsx` — inchangé
-- Toutes les pages dashboard — aucune modification
-- Dark mode sidebar — reste sombre (seul le light mode passe en sidebar claire)
+### Summary
+
+5 targeted fixes to close soft-delete and status gaps across the query layer and RLS policies. No architectural rewrite needed -- the foundation is solid.
 
