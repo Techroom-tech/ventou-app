@@ -811,6 +811,7 @@ export type Database = {
           id: string
           identity_display_mode: string | null
           is_active: boolean | null
+          is_suspended: boolean
           is_verified: boolean | null
           letter_spacing_px: number | null
           line_height_pct: number | null
@@ -825,6 +826,7 @@ export type Database = {
           slug: string
           spacing: string | null
           spacing_density: string | null
+          suspended_reason: string | null
           theme_color: string | null
           title_size: string | null
           title_size_px: number | null
@@ -864,6 +866,7 @@ export type Database = {
           id?: string
           identity_display_mode?: string | null
           is_active?: boolean | null
+          is_suspended?: boolean
           is_verified?: boolean | null
           letter_spacing_px?: number | null
           line_height_pct?: number | null
@@ -878,6 +881,7 @@ export type Database = {
           slug: string
           spacing?: string | null
           spacing_density?: string | null
+          suspended_reason?: string | null
           theme_color?: string | null
           title_size?: string | null
           title_size_px?: number | null
@@ -917,6 +921,7 @@ export type Database = {
           id?: string
           identity_display_mode?: string | null
           is_active?: boolean | null
+          is_suspended?: boolean
           is_verified?: boolean | null
           letter_spacing_px?: number | null
           line_height_pct?: number | null
@@ -931,6 +936,7 @@ export type Database = {
           slug?: string
           spacing?: string | null
           spacing_density?: string | null
+          suspended_reason?: string | null
           theme_color?: string | null
           title_size?: string | null
           title_size_px?: number | null
