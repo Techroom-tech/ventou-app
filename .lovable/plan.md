@@ -1,32 +1,47 @@
 
 
-# Plan: Dynamic Subtitle + Replace "Partager" CTA with Marketing Action
+# Icon System Standardization — Production-Ready
+
+## Audit Result
+All icons already come from `lucide-react`. No migration needed. The work is purely **consistency and polish**.
 
 ## Changes
 
-### 1. Dynamic subtitle in `src/lib/greeting.ts`
-Add a `subtitle` (FR) and `subtitleEn` (EN) field to `TimeGreeting` that varies by time slot:
+### 1. Create `src/components/ui/Icon.tsx`
+Centralized wrapper enforcing:
+- Size presets: `sidebar` (20px), `header` (18px), `button` (16px), `table` (16px), `decorative` (20px)
+- Default `strokeWidth: 1.8` (thinner, more premium than default 2)
+- Optional `interactive` prop adding subtle `hover:scale-105` with 150ms transition
 
-| Time | FR subtitle | EN subtitle |
-|---|---|---|
-| 5-12h | Commencez la journée en beauté — vérifiez vos commandes du matin ! | Start the day right — check your morning orders! |
-| 12-14h | Profitez de la pause pour optimiser votre boutique. | Use the break to optimize your shop. |
-| 14-18h | C'est l'heure de pointe — lancez cette campagne que vous planifiez ! | Peak hours — launch that campaign you've been planning! |
-| 18-22h | Bilan de la journée — voyez comment vos ventes ont performé. | Day recap — see how your sales performed. |
-| 22-5h | Reposez-vous, votre boutique travaille pour vous. | Rest easy, your shop is working for you. |
+### 2. Global CSS in `src/index.css`
+- `.lucide { stroke-width: 1.8; }` — standardizes every Lucide icon project-wide in one line
+- `.icon-interactive` utility class for hover scale effect on interactive elements
 
-### 2. Use dynamic subtitle in `src/pages/Dashboard.tsx`
-Replace the hardcoded `t('dashboard.hero.subtitle', "C'est l'heure de pointe...")` with `isFr ? greeting.subtitle : greeting.subtitleEn`.
+### 3. `DashboardHeader.tsx` — Standardize header icon sizes
+- All header action icons: `h-[18px] w-[18px]` (was mixed `h-4 w-4` / `h-3.5 w-3.5`)
+- Add `icon-interactive` to clickable icon buttons (copy, mask toggle)
+- Dropdown menu icons stay `h-4 w-4` (standard for menu items)
 
-### 3. Replace "Partager" button with a Marketing action
-Replace the third CTA (Share2 / `handleShare`) with a link to **Analytics** (`/dashboard/marketing/analytics`) using the `BarChart2` icon already imported. Label: "Voir analytics" / "View analytics".
+### 4. `DashboardSidebar.tsx` — Add hover animation
+- Add `icon-interactive` class to nav link icon wrappers
+- Sizes already correct (`h-5 w-5`)
 
-Remove `handleShare` function, `Share2` import, `getStorefrontUrl` import, and `toast` import (if unused elsewhere).
+### 5. `MobileBottomNav.tsx` — Standardize mobile
+- Mobile nav icons: `h-5 w-5` (was `h-[22px] w-[22px]`, slightly oversized)
+- Drawer menu icons already `h-5 w-5` — correct
 
-## Files Modified
+### 6. `Dashboard.tsx` — Polish CTA icons
+- CTA button icons: consistent `h-4 w-4` (already correct)
+- Stat card icons: add `strokeWidth` via global CSS (automatic)
 
-| File | Change |
+## Files
+
+| File | Action |
 |---|---|
-| `src/lib/greeting.ts` | Add `subtitle`/`subtitleEn` per time slot |
-| `src/pages/Dashboard.tsx` | Use `greeting.subtitle`, replace Partager CTA with Analytics link |
+| `src/components/ui/Icon.tsx` | **Create** — centralized component |
+| `src/index.css` | Add 2 utility rules |
+| `src/components/dashboard/DashboardHeader.tsx` | Standardize sizes to 18px, add interactive class |
+| `src/components/dashboard/DashboardSidebar.tsx` | Add interactive class to nav icons |
+| `src/components/dashboard/MobileBottomNav.tsx` | Fix icon sizes to 20px |
+| `src/pages/Dashboard.tsx` | No changes needed (already consistent) |
 
