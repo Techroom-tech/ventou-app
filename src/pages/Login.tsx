@@ -172,6 +172,7 @@ export default function Login() {
 
               <Button
                 type="submit"
+                size="cta"
                 className="w-full bg-accent hover:bg-accent/90"
                 disabled={isLoading}
               >

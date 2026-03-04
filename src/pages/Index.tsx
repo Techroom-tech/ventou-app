@@ -121,12 +121,12 @@ const Index = () => {
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Link to={user ? '/dashboard' : '/signup'}>
-                  <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-lg px-8">
+                  <Button size="cta" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-lg">
                     {t('home.hero.cta')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="ghost" className="w-full sm:w-auto text-muted-foreground">
+                <Button size="cta" variant="ghost" className="w-full sm:w-auto text-muted-foreground">
                   <Play className="mr-2 h-5 w-5" />
                   {t('home.hero.demo')}
                 </Button>
@@ -154,7 +154,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-12 md:py-20 px-4 sm:px-6 bg-secondary/30">
+      <section className="py-12 md:py-20 px-4 sm:px-6 bg-muted">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-10 md:mb-12">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-3">
@@ -209,7 +209,7 @@ const Index = () => {
       </section>
 
       {/* Security Section */}
-      <section className="py-12 md:py-20 px-4 sm:px-6 bg-secondary/30">
+      <section className="py-12 md:py-20 px-4 sm:px-6 bg-muted">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
@@ -270,7 +270,7 @@ const Index = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-12 md:py-20 px-4 sm:px-6 bg-secondary/30">
+      <section className="py-12 md:py-20 px-4 sm:px-6 bg-muted">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground text-center mb-10 md:mb-12">
             {t('home.testimonials.title')}
@@ -315,7 +315,7 @@ const Index = () => {
             {t('home.cta.subtitle')}
           </p>
           <Link to={user ? '/dashboard' : '/signup'}>
-            <Button size="lg" className="bg-accent hover:bg-accent/90 text-lg px-8">
+            <Button size="cta" className="bg-accent hover:bg-accent/90 text-lg">
               {t('home.cta.button')}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -395,7 +395,7 @@ const Index = () => {
       {isMobile && (
         <div className="fixed bottom-4 left-4 right-4 z-50">
           <Link to={user ? '/dashboard' : '/signup'}>
-            <Button className="w-full bg-accent hover:bg-accent/90 shadow-lg h-12">
+            <Button size="cta" className="w-full bg-accent hover:bg-accent/90 shadow-lg">
               {t('home.footer.floatingCta')}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
