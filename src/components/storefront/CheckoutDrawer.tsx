@@ -12,7 +12,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { MessageCircle, Truck, CheckCircle2, MapPin, X, Loader2, ShoppingBag } from 'lucide-react';
+import { Truck, CheckCircle2, MapPin, X, Loader2, ShoppingBag } from 'lucide-react';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Shop } from '@/types/shop';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
 import { useCart } from './CartContext';
@@ -489,7 +490,7 @@ function CheckoutFormContent({
                   : 'border-border hover:border-muted-foreground'
               }`}
             >
-              <MessageCircle className={`h-5 w-5 shrink-0 ${paymentMethod === 'whatsapp' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <WhatsAppIcon size={20} className={`shrink-0 ${paymentMethod === 'whatsapp' ? 'text-primary' : 'text-muted-foreground'}`} />
               <span className="text-sm font-medium">{t('storefront.orderViaWhatsapp')}</span>
             </button>
           )}

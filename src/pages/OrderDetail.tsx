@@ -4,11 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
-  ArrowLeft, Phone, MessageCircle, MapPin,
+  ArrowLeft, Phone, MapPin,
   Send, Star, ChevronDown, Trash2,
 } from 'lucide-react';
 
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -233,7 +234,7 @@ export default function OrderDetail() {
               {phone && (
                 <a href={`https://wa.me/${phone.replace(/\s/g, '')}`} target="_blank" rel="noopener noreferrer">
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-[hsl(142,76%,36%)]">
-                    <MessageCircle className="h-4 w-4" />
+                    <WhatsAppIcon size={16} />
                   </Button>
                 </a>
               )}
@@ -297,7 +298,7 @@ export default function OrderDetail() {
                     'text-[hsl(142,76%,36%)] bg-[hsl(142,76%,36%)]/5 hover:bg-[hsl(142,76%,36%)]/10 transition-colors'
                   )}
                 >
-                  <MessageCircle className="h-4 w-4" />
+                   <WhatsAppIcon size={16} />
                   WhatsApp
                 </a>
               </div>

@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Search, Phone, MessageCircle, ChevronRight, ChevronLeft, Users } from 'lucide-react';
+import { Search, Phone, ChevronRight, ChevronLeft, Users } from 'lucide-react';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -75,7 +76,7 @@ function CustomerDetailDrawer({
               </Button>
               <Button size="sm" variant="outline" className="flex-1" asChild>
                 <a href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-4 w-4 mr-1.5 icon-interactive" /> WhatsApp
+                  <WhatsAppIcon size={16} className="mr-1.5 icon-interactive" /> WhatsApp
                 </a>
               </Button>
             </div>
@@ -248,7 +249,7 @@ export default function Customers() {
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1 h-9" asChild>
                       <a href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                        <MessageCircle className="h-3.5 w-3.5 mr-1 icon-interactive" /> WhatsApp
+                        <WhatsAppIcon size={14} className="mr-1 icon-interactive" /> WhatsApp
                       </a>
                     </Button>
                   </div>
