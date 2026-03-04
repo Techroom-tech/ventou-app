@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, Profile } from '@/integrations/supabase/client';
+import { supabase, Profile, VentouStorage } from '@/integrations/supabase/client';
+
+const STORAGE_KEY = 'sb-chpplckgndznakuvcqbx-auth-token';
+const TTL_REMEMBER = 72 * 60 * 60 * 1000; // 72 hours
+const TTL_DEFAULT = 12 * 60 * 60 * 1000;  // 12 hours
 
 interface AuthContextType {
   user: User | null;
@@ -8,7 +12,7 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   signUp: (email: string, password: string, metadata: { first_name: string; last_name: string }) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
@@ -16,7 +20,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Fallback for components rendered outside AuthProvider (e.g. storefront)
 const AUTH_FALLBACK: AuthContextType = {
   user: null,
   session: null,
@@ -28,6 +31,19 @@ const AUTH_FALLBACK: AuthContextType = {
   resetPassword: async () => ({ error: new Error('No AuthProvider') }),
   updatePassword: async () => ({ error: new Error('No AuthProvider') }),
 };
+
+function isSessionExpired(): boolean {
+  const start = localStorage.getItem('ventou_session_start');
+  if (!start) return false;
+  const rememberMe = localStorage.getItem('ventou_remember_me') === 'true';
+  const ttl = rememberMe ? TTL_REMEMBER : TTL_DEFAULT;
+  return Date.now() - Number(start) > ttl;
+}
+
+function clearSessionFlags() {
+  localStorage.removeItem('ventou_remember_me');
+  localStorage.removeItem('ventou_session_start');
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,47 +57,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single();
-
     if (error) {
       console.error('Error fetching profile:', error);
       return null;
     }
-
     return data;
   };
 
+  const doSignOut = async () => {
+    clearSessionFlags();
+    VentouStorage.removeItem(STORAGE_KEY);
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+  };
+
   useEffect(() => {
-    let initialSessionHandled = false;
     let mounted = true;
-    let profileFetched = false; // Prevent duplicate profile fetches
+    let initialSessionHandled = false;
+    let profileFetched = false;
+
+    // Check TTL on mount — if expired, sign out immediately
+    if (isSessionExpired()) {
+      if (import.meta.env.DEV) console.log('[Auth] Session TTL expired — signing out');
+      doSignOut().then(() => { if (mounted) setIsLoading(false); });
+      return () => { mounted = false; };
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (import.meta.env.DEV) {
           console.log('[Auth] onAuthStateChange:', event, currentSession?.user?.id ?? 'no user');
-          console.log('[Auth] Session:', currentSession ? 'exists' : 'null');
         }
-
         if (!mounted) return;
         initialSessionHandled = true;
 
-        // Only fetch profile on SIGNED_IN or INITIAL_SESSION, NOT on TOKEN_REFRESHED
         const shouldFetchProfile = (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && !profileFetched;
 
         // Protect against spurious SIGNED_OUT from failed token refresh (429)
         if (event === 'SIGNED_OUT' && !currentSession) {
-          const storedSession = localStorage.getItem('ventou-auth-token');
+          const storedSession = VentouStorage.getItem(STORAGE_KEY);
           if (storedSession) {
             if (import.meta.env.DEV) console.log('[Auth] SIGNED_OUT fired but storage still has token — ignoring');
-            // Don't clear state, don't logout — the token may still be valid
             return;
           }
           // Genuine logout
-          if (import.meta.env.DEV) console.log('[Auth] Genuine logout');
           setSession(null);
           setUser(null);
           setProfile(null);
           profileFetched = false;
+          clearSessionFlags();
           setIsLoading(false);
           return;
         }
@@ -95,12 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!mounted) return;
             try {
               const profileData = await fetchProfile(currentSession.user.id);
-              if (mounted) {
-                if (import.meta.env.DEV) console.log('[Auth] Profile:', profileData);
-                setProfile(profileData);
-              }
+              if (mounted) setProfile(profileData);
             } catch (e) {
-              // NEVER logout on profile error
               console.error('[Auth] Profile fetch failed (non-fatal):', e);
               if (mounted) setProfile(null);
             }
@@ -112,13 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (import.meta.env.DEV) console.log('[Auth] getSession:', initialSession?.user?.id ?? 'no session');
-
       if (!mounted) return;
       if (!initialSessionHandled) {
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
-
         if (initialSession?.user && !profileFetched) {
           profileFetched = true;
           fetchProfile(initialSession.user.id)
@@ -128,7 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (mounted) setProfile(null);
             });
         }
-
         setIsLoading(false);
       }
     });
@@ -152,31 +170,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
       },
     });
-
     return { error: error as Error | null };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const signIn = async (email: string, password: string, rememberMe = false) => {
+    // Set storage flags BEFORE signIn so the storage adapter routes correctly
+    localStorage.setItem('ventou_remember_me', String(rememberMe));
+    localStorage.setItem('ventou_session_start', String(Date.now()));
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      // Clean flags on failure
+      clearSessionFlags();
+    }
 
     return { error: error as Error | null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
+    await doSignOut();
   };
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-
     return { error: error as Error | null };
   };
 
@@ -187,17 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        isLoading,
-        signUp,
-        signIn,
-        signOut,
-        resetPassword,
-        updatePassword,
-      }}
+      value={{ user, session, profile, isLoading, signUp, signIn, signOut, resetPassword, updatePassword }}
     >
       {children}
     </AuthContext.Provider>
@@ -207,7 +216,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // Graceful fallback instead of crash — allows storefront/public pages to render
     console.warn('useAuth called outside AuthProvider — returning fallback');
     return AUTH_FALLBACK;
   }

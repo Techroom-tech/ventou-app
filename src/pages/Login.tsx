@@ -60,7 +60,7 @@ export default function Login() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
 
-    const { error } = await signIn(data.email, data.password);
+    const { error } = await signIn(data.email, data.password, data.rememberMe);
 
     if (error) {
       let errorMessage = t('auth.errors.generic');
