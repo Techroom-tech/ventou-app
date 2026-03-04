@@ -33,6 +33,8 @@ export const COUNTRY_CONFIGS: CountryConfig[] = [
   { code: 'NE', name: 'Niger',          flag: '🇳🇪', currency: 'XOF', phonePrefix: '+227' },
   { code: 'CM', name: 'Cameroun',       flag: '🇨🇲', currency: 'XAF', phonePrefix: '+237' },
   { code: 'GA', name: 'Gabon',          flag: '🇬🇦', currency: 'XAF', phonePrefix: '+241' },
+  { code: 'FR', name: 'France',         flag: '🇫🇷', currency: 'EUR', phonePrefix: '+33' },
+  { code: 'US', name: 'United States',  flag: '🇺🇸', currency: 'USD', phonePrefix: '+1' },
 ];
 
 const STORAGE_KEY = 'user_country';
@@ -105,7 +107,7 @@ async function detectFromHeader(): Promise<string | null> {
       method: 'HEAD',
       cache: 'no-store',
     });
-    const code = res.headers.get('X-User-Country');
+    const code = res.headers.get('X-User-Country') || res.headers.get('CF-IPCountry');
     return code ? code.toUpperCase() : null;
   } catch {
     return null;

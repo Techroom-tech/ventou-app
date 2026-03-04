@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import { Store, MessageCircle, ShoppingBag, Search, ShoppingCart, Menu, X } from 'lucide-react';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
@@ -25,6 +26,7 @@ import { useStorefrontTracking, trackViewContent, trackAddToCart, trackInitiateC
 const ProductPage = lazy(() => import('@/components/storefront/ProductPage'));
 interface ShopStorefrontProps {
   slug: string;
+  basePath?: string;
 }
 
 /** Generate initials avatar from shop name */
@@ -52,7 +54,9 @@ function ShopAvatar({ name, color, size = 'md' }: { name: string; color: string;
   );
 }
 
-function StorefrontContent({ slug }: ShopStorefrontProps) {
+function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
+  const { productSlug } = useParams<{ productSlug?: string }>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { addToCart } = useCart();
   const { country } = useCountry();
@@ -62,7 +66,6 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [productPageProduct, setProductPageProduct] = useState<Product | null>(null);
 
   // ── postMessage listener for live preview mode ──
   useEffect(() => {
@@ -174,6 +177,32 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
     staleTime: 60_000,
   });
 
+  // ── Fetch product by slug for /p/:productSlug routes ──
+  const { data: productFromSlug, isLoading: productSlugLoading } = useQuery({
+    queryKey: ['storefront-product-slug', shop?.id, productSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('shop_id', shop!.id)
+        .eq('slug', productSlug!)
+        .maybeSingle();
+      return data as Product | null;
+    },
+    enabled: !!shop?.id && !!productSlug,
+    staleTime: 60_000,
+  });
+
+  const navigateToProduct = useCallback((product: Product) => {
+    const pSlug = product.slug || product.id;
+    navigate(`${basePath}/p/${pSlug}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [basePath, navigate]);
+
+  const navigateToHome = useCallback(() => {
+    navigate(basePath || '/');
+  }, [basePath, navigate]);
+
   // ── Apply dark mode + fonts on initial load based on shop settings ──
   useEffect(() => {
     if (!shop) return;
@@ -283,8 +312,17 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   const showLogo = displayMode === 'logo-only' || displayMode === 'logo-name';
   const showName = displayMode === 'name-only' || displayMode === 'logo-name';
 
-  // If a product is selected for full page view
-  if (productPageProduct && shop) {
+  // Loading product by slug
+  if (productSlug && productSlugLoading && shop) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Product page via URL (/p/:productSlug)
+  if (productSlug && productFromSlug && shop) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
@@ -301,7 +339,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                 )
               )}
               {showName && (
-                <span className="font-bold text-lg truncate cursor-pointer" onClick={() => setProductPageProduct(null)}>{shop.name}</span>
+                <span className="font-bold text-lg truncate cursor-pointer" onClick={navigateToHome}>{shop.name}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -316,13 +354,10 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
 
         <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
           <ProductPage
-            product={productPageProduct}
+            product={productFromSlug}
             shop={shop}
-            onBack={() => setProductPageProduct(null)}
-            onProductClick={(p) => {
-              setProductPageProduct(p);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            onBack={navigateToHome}
+            onProductClick={navigateToProduct}
           />
         </Suspense>
 
@@ -551,8 +586,7 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
                         data-card-bg
                         className={cardClass}
                         onClick={() => {
-                          setProductPageProduct(product);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                          navigateToProduct(product);
                           trackViewContent({
                             content_name: product.name,
                             content_id: product.id,
@@ -722,11 +756,11 @@ function StorefrontContent({ slug }: ShopStorefrontProps) {
   );
 }
 
-export default function ShopStorefront({ slug }: ShopStorefrontProps) {
+export default function ShopStorefront({ slug, basePath }: ShopStorefrontProps) {
   return (
     <CountryProvider>
       <CartProvider shopId={slug}>
-        <StorefrontContent slug={slug} />
+        <StorefrontContent slug={slug} basePath={basePath} />
       </CartProvider>
     </CountryProvider>
   );
