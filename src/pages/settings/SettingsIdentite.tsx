@@ -11,6 +11,7 @@ import { useShop } from '@/hooks/useShop';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase, CURRENCIES } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { invalidateStorefrontCache } from '@/lib/invalidateStorefrontCache';
 
 const COUNTRIES = [
   { code: 'BF', name: 'Burkina Faso' },
@@ -66,6 +67,7 @@ export default function SettingsIdentite() {
         .eq('id', shop.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['shop'] });
+      invalidateStorefrontCache(shop.id, shop.slug);
       setSaved(true);
       toast.success('Identité sauvegardée !');
       setTimeout(() => setSaved(false), 3000);
