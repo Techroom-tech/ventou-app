@@ -7,7 +7,7 @@
  * - COD + WhatsApp logic (no online payment)
  * - Null guards throughout
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -322,6 +322,11 @@ function CheckoutFormContent({
         });
       }
 
+      // Fire campaign purchase event
+      import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
+        trackCampaignEvent(shop.id, 'purchase', { revenue: grandTotal });
+      });
+
       clearCart();
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onSuccess(); }, 3000);
@@ -517,6 +522,15 @@ export default function CheckoutDrawer({ open, onOpenChange, shop }: CheckoutDra
   const { items } = useCart();
 
   const { data: delivery } = useDeliverySettings(shop?.id);
+
+  // Track checkout_started when drawer opens
+  useEffect(() => {
+    if (open && shop?.id) {
+      import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
+        trackCampaignEvent(shop.id, 'checkout_started');
+      });
+    }
+  }, [open, shop?.id]);
 
   // OR-logic for backward compat with legacy shop flags
   const allowCod = (delivery?.allow_cod ?? true) || (shop?.enable_cod ?? false);

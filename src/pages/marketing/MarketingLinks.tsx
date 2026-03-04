@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Link2, Copy } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Link2, Copy, BarChart3 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -48,8 +48,8 @@ export default function MarketingLinks() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
-  const [source, setSource] = useState('facebook');
-  const [destMode, setDestMode] = useState<'product' | 'link'>('product');
+   const [source, setSource] = useState('facebook_ads');
+   const [destMode, setDestMode] = useState<'product' | 'link'>('product');
   const [selectedProductId, setSelectedProductId] = useState('');
 
   const { data: products } = useQuery({
@@ -150,12 +150,12 @@ export default function MarketingLinks() {
                   <Select value={source} onValueChange={setSource}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="facebook_ads">Facebook Ads</SelectItem>
+                      <SelectItem value="tiktok_ads">TikTok Ads</SelectItem>
                       <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="tiktok">TikTok</SelectItem>
                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="other">{t('marketing.links.other')}</SelectItem>
+                      <SelectItem value="influencer">Influencer</SelectItem>
+                      <SelectItem value="direct">Direct</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -192,13 +192,13 @@ export default function MarketingLinks() {
                       {links.map((l) => {
                         const fullUrl = buildFullUrl(l);
                         return (
-                          <TableRow key={l.id}>
+                          <TableRow key={l.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/dashboard/marketing/liens/${l.id}`)}>
                             <TableCell className="font-medium">{l.name}</TableCell>
                             <TableCell><Badge variant="secondary">{l.source}</Badge></TableCell>
                             <TableCell className="max-w-[260px]">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs font-mono text-muted-foreground truncate">{fullUrl}</span>
-                                <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7" onClick={() => copyLink(l)}>
+                                <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7" onClick={(e) => { e.stopPropagation(); copyLink(l); }}>
                                   <Copy className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
@@ -206,9 +206,14 @@ export default function MarketingLinks() {
                             <TableCell className="text-center">{l.clicks}</TableCell>
                             <TableCell><LastActivity date={l.last_clicked_at} /></TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
-                                <Trash2 className="h-4 w-4 text-destructive icon-interactive" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/marketing/liens/${l.id}`); }}>
+                                  <BarChart3 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteMut.mutate({ id: l.id, shop_id: shop!.id }); }}>
+                                  <Trash2 className="h-4 w-4 text-destructive icon-interactive" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -221,17 +226,17 @@ export default function MarketingLinks() {
                   {links.map((l) => {
                     const fullUrl = buildFullUrl(l);
                     return (
-                      <div key={l.id} className="p-3 rounded-xl border border-border space-y-2">
+                      <div key={l.id} className="p-3 rounded-xl border border-border space-y-2 cursor-pointer" onClick={() => navigate(`/dashboard/marketing/liens/${l.id}`)}>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="font-semibold text-sm truncate">{l.name}</span>
                             <Badge variant="secondary" className="text-[10px] shrink-0">{l.source}</Badge>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyLink(l)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); copyLink(l); }}>
                               <Copy className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMut.mutate({ id: l.id, shop_id: shop!.id })}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); deleteMut.mutate({ id: l.id, shop_id: shop!.id }); }}>
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           </div>
