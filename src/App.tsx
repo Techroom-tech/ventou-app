@@ -127,7 +127,10 @@ const App = () => {
               <StorefrontProvider routeSlug={hostnameSlug}>
                 <Suspense fallback={<LoadingSpinner />}>
                   <ErrorBoundary fallbackMessage={`Erreur lors du chargement de la boutique "${hostnameSlug}"`}>
-                    <ShopStorefront slug={hostnameSlug} />
+                    <Routes>
+                      <Route path="/p/:productSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
+                      <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
+                    </Routes>
                   </ErrorBoundary>
                 </Suspense>
               </StorefrontProvider>
@@ -223,7 +226,9 @@ const App = () => {
 
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
+            <Route path="/boutique/:slug/p/:productSlug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
+            <Route path="/shop/:slug/p/:productSlug" element={<ShopStorefrontRoute />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
