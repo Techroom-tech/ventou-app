@@ -1,7 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+const ImageLightbox = lazy(() => import('./ImageLightbox'));
 
 interface ProductGalleryProps {
   images: string[];
@@ -11,6 +13,7 @@ interface ProductGalleryProps {
 export default function ProductGallery({ images, productName }: ProductGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({});
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
@@ -80,46 +83,61 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
     );
   }
 
-  // Desktop: main image + thumbnails with zoom
+  // Desktop: main image + thumbnails with zoom + lightbox
   return (
-    <div className="space-y-3">
-      {/* Main image with zoom */}
-      <div
-        ref={mainRef}
-        className="aspect-square bg-muted rounded-xl overflow-hidden cursor-crosshair relative"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        <img
-          src={mainImage}
-          alt={productName}
-          className="w-full h-full object-cover transition-transform duration-150"
-          style={zoomStyle}
-          loading="eager"
-        />
+    <>
+      <div className="space-y-3">
+        {/* Main image with zoom */}
+        <div
+          ref={mainRef}
+          className="aspect-square bg-muted rounded-xl overflow-hidden cursor-crosshair relative"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          onClick={() => setLightboxOpen(true)}
+        >
+          <img
+            src={mainImage}
+            alt={productName}
+            className="w-full h-full object-cover transition-transform duration-150"
+            style={zoomStyle}
+            loading="eager"
+          />
+        </div>
+
+        {/* Thumbnails */}
+        {images.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedIndex(i)}
+                className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
+                  i === selectedIndex ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
+                }`}
+              >
+                <img
+                  src={img}
+                  alt={`${productName} ${i + 1}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Thumbnails */}
-      {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {images.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setSelectedIndex(i)}
-              className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
-                i === selectedIndex ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
-              }`}
-            >
-              <img
-                src={img}
-                alt={`${productName} ${i + 1}`}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </button>
-          ))}
-        </div>
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <Suspense fallback={null}>
+          <ImageLightbox
+            images={images}
+            currentIndex={selectedIndex}
+            onClose={() => setLightboxOpen(false)}
+            onChangeIndex={setSelectedIndex}
+          />
+        </Suspense>
       )}
-    </div>
+    </>
   );
 }

@@ -52,6 +52,7 @@ const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
 const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 const Customers = lazy(() => import("./pages/Customers"));
+const Reviews = lazy(() => import("./pages/Reviews"));
 
 // Marketing pages
 const MarketingHub = lazy(() => import("./pages/marketing/MarketingHub"));
@@ -168,6 +169,7 @@ const App = () => {
               <Route path="settings" element={<Settings />} />
               <Route path="commandes/:orderId" element={<OrderDetail />} />
               <Route path="customers" element={<Customers />} />
+              <Route path="reviews" element={<Reviews />} />
 
               {/* Marketing */}
               <Route path="marketing" element={<MarketingHub />} />
