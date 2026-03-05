@@ -326,7 +326,7 @@ function PageEditorModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[900px] md:max-w-[700px] sm:max-w-[700px] w-full max-w-full max-h-[100dvh] sm:max-h-[90vh] h-[100dvh] sm:h-auto p-0 flex flex-col gap-0 rounded-none sm:rounded-lg [&>button.absolute]:hidden">
+        <DialogContent className="sm:max-w-[700px] lg:max-w-[900px] w-full max-w-full max-h-[100dvh] sm:max-h-[90vh] h-[100dvh] sm:h-auto p-0 flex flex-col gap-0 rounded-none sm:rounded-lg [&>button.absolute]:hidden">
           {/* Header */}
           <div className="bg-background border-b px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
             <div className="min-w-0 flex-1">
