@@ -46,6 +46,7 @@ const SettingsProfil = lazy(() => import("./pages/settings/SettingsProfil"));
 const SettingsEquipe = lazy(() => import("./pages/settings/SettingsEquipe"));
 const SettingsFacturation = lazy(() => import("./pages/settings/SettingsFacturation"));
 const SettingsApi = lazy(() => import("./pages/settings/SettingsApi"));
+const SettingsPages = lazy(() => import("./pages/settings/SettingsPages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
 const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
@@ -199,6 +200,7 @@ const App = () => {
               <Route path="parametres/equipe" element={<SettingsEquipe />} />
               <Route path="parametres/facturation" element={<SettingsFacturation />} />
               <Route path="parametres/api" element={<SettingsApi />} />
+              <Route path="parametres/pages" element={<SettingsPages />} />
             </Route>
 
             {/* Hidden admin login */}
