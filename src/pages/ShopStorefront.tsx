@@ -23,6 +23,7 @@ import { getPlatformUrl } from '@/lib/domain';
 import { useStorefrontTracking, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase } from '@/hooks/useStorefrontTracking';
 
 const ProductPage = lazy(() => import('@/components/storefront/ProductPage'));
+const StorePage = lazy(() => import('@/components/storefront/StorePage'));
 interface ShopStorefrontProps {
   slug: string;
   basePath?: string;
