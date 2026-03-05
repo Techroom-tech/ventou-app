@@ -21,7 +21,7 @@ import { CountryProvider, useCountry } from '@/contexts/CountryContext';
 import CountrySelector from '@/components/storefront/CountrySelector';
 import { getPlatformUrl } from '@/lib/domain';
 import { useStorefrontTracking, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase } from '@/hooks/useStorefrontTracking';
-
+import StoreFooter from '@/components/storefront/StoreFooter';
 const ProductPage = lazy(() => import('@/components/storefront/ProductPage'));
 const StorePage = lazy(() => import('@/components/storefront/StorePage'));
 interface ShopStorefrontProps {
@@ -227,7 +227,7 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from('store_pages')
-        .select('slug, title')
+        .select('slug, title, page_type')
         .eq('shop_id', shop!.id)
         .eq('status', 'published')
         .order('created_at');
@@ -382,14 +382,7 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
         <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
           <StorePage shop={shop} pageSlug={pageSlug} onBack={navigateToHome} />
         </Suspense>
-        <footer className="mt-auto border-t py-6">
-          <div className="max-w-6xl mx-auto px-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} {shop.name} · {t('storefront.poweredBy')}{' '}
-              <a href={getPlatformUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Ventou</a>
-            </p>
-          </div>
-        </footer>
+        <StoreFooter shop={shop} publishedPages={publishedPages} basePath={basePath} navigate={navigate} />
         <CartButton onClick={() => setCartOpen(true)} />
         <CartDrawer open={cartOpen} onOpenChange={setCartOpen} onCheckout={() => { setCheckoutOpen(true); }} currency={shop.currency} shopName={shop.name} />
         <CheckoutDrawer open={checkoutOpen} onOpenChange={setCheckoutOpen} shop={shop} />
@@ -782,45 +775,7 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
       </div>
 
       {/* Footer */}
-      <footer className="mt-auto border-t py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          {/* Page links */}
-          {publishedPages && publishedPages.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-4 mb-4">
-              {publishedPages.map((p: { slug: string; title: string }) => (
-                <button
-                  key={p.slug}
-                  onClick={() => navigate(`${basePath}/page/${p.slug}`)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {p.title}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              {shop.logo_url ? (
-                <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex items-center justify-center">
-                  <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <ShopAvatar name={shop.name} color={primaryColor} size="sm" />
-              )}
-              <span className="text-sm font-medium">{shop.name}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} {shop.name}. {t('storefront.allRights')}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {t('storefront.poweredBy')}{' '}
-              <a href={getPlatformUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>
-                Ventou
-              </a>
-            </p>
-          </div>
-        </div>
-      </footer>
+      <StoreFooter shop={shop} publishedPages={publishedPages} basePath={basePath} navigate={navigate} />
 
       <CartButton onClick={() => setCartOpen(true)} />
 
