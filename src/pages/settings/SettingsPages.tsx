@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, Tag } from 'lucide-react';
+import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, Tag, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -146,41 +146,45 @@ function TagsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogTitle className="text-base font-semibold">Tags dynamiques</DialogTitle>
-        <p className="text-xs text-muted-foreground -mt-2">
-          Insérez ces tags dans votre contenu — ils seront remplacés par les données de votre boutique.
-        </p>
-        <div className="border rounded-lg overflow-hidden mt-2">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Donnée</TableHead>
-                <TableHead className="text-xs">Tag</TableHead>
-                <TableHead className="text-xs w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tags.map((t) => (
-                <TableRow key={t.tag}>
-                  <TableCell className="text-xs py-2">{t.label}</TableCell>
-                  <TableCell className="py-2">
-                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{t.tag}</code>
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyTag(t.tag)}>
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Copier</TooltipContent>
-                    </Tooltip>
-                  </TableCell>
+      <DialogContent className="sm:max-w-[420px] max-w-[calc(100vw-2rem)] p-0 gap-0 rounded-xl [&>button.absolute]:hidden">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div>
+            <DialogTitle className="text-base font-semibold">Tags dynamiques</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Insérez ces tags dans votre contenu — ils seront remplacés par les données de votre boutique.
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="px-5 pb-5">
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="text-xs font-medium h-9">Donnée</TableHead>
+                  <TableHead className="text-xs font-medium h-9">Tag</TableHead>
+                  <TableHead className="text-xs font-medium h-9 w-14 text-right">Copier</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {tags.map((t) => (
+                  <TableRow key={t.tag} className="hover:bg-muted/30">
+                    <TableCell className="text-sm py-2.5 text-foreground">{t.label}</TableCell>
+                    <TableCell className="py-2.5">
+                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-foreground">{t.tag}</code>
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyTag(t.tag)}>
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
