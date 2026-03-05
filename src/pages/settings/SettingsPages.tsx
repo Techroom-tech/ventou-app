@@ -272,6 +272,7 @@ function PageEditorModal({
   const initialContent = saved?.content ?? getDefaultTemplate(pageDef.page_type);
   const pageTags = getTagsForPageType(pageDef.page_type);
   const [editorContent, setEditorContent] = useState<Record<string, unknown>>(initialContent as Record<string, unknown>);
+  const [editorKey, setEditorKey] = useState(0);
 
   // FAQ state
   const [faqItems, setFaqItems] = useState<FAQItem[]>(() => {
@@ -298,6 +299,7 @@ function PageEditorModal({
     } else {
       const template = getDefaultTemplate(pageDef.page_type);
       setEditorContent(template);
+      setEditorKey((k) => k + 1);
       toast.info('Template réinitialisé');
     }
   };
