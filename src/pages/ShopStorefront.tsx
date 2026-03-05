@@ -221,6 +221,22 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
     staleTime: 60_000,
   });
 
+  // ── Fetch published pages for footer nav ──
+  const { data: publishedPages } = useQuery({
+    queryKey: ['storefront-pages', shop?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('store_pages')
+        .select('slug, title')
+        .eq('shop_id', shop!.id)
+        .eq('status', 'published')
+        .order('created_at');
+      return data ?? [];
+    },
+    enabled: !!shop?.id,
+    staleTime: 60_000,
+  });
+
   const navigateToProduct = useCallback((product: Product) => {
     const pSlug = product.slug || product.id;
     navigate(`${basePath}/p/${pSlug}`);
