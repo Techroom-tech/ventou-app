@@ -1,52 +1,58 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan: Dynamic Store Footer (Chariow-inspired)
 
-### Problem
-
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
-
-### Solution
-
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
-
-### Architecture
-
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
+### Current State
+The storefront has a minimal footer (lines 784-823 in `ShopStorefront.tsx`) with flat page links, a logo, copyright, and "Powered by Ventou". There's also a simpler footer for the page view (lines 385-392). No column layout, no legal/navigation separation, no disclaimer.
 
 ### Changes
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
+#### 1. New Component: `src/components/storefront/StoreFooter.tsx`
 
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
+A reusable footer component receiving `shop`, `publishedPages`, `basePath`, and `navigate` as props.
 
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
+**Layout (4-column grid):**
 
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+```text
+┌──────────────┬──────────────┬──────────────┬──────────────┐
+│  Col 1       │  Col 2       │  Col 3       │  Col 4       │
+│  Logo + Name │  Navigation  │  Legal       │  Contact     │
+│  Description │  About       │  Legal Notice│  WhatsApp    │
+│              │  FAQ         │  Terms       │  City/Country│
+│              │  Contact     │  Privacy     │              │
+└──────────────┴──────────────┴──────────────┴──────────────┘
+├─────────────── Disclaimer text ───────────────────────────┤
+├─── Copyright ─────────────────────── Powered by Ventou ───┤
+```
 
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
+**Column logic:**
+- Col 1: Store logo (or initials avatar) + name + description (truncated)
+- Col 2: "Navigation" -- pages with `page_type` in `['about', 'faq', 'contact']` + any custom pages
+- Col 3: "Legal" -- pages with `page_type` in `['legal', 'terms', 'privacy']`
+- Col 4: "Contact" -- WhatsApp number, city, country (only if fields exist on shop)
 
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
+**Dynamic data:** Update the published pages query to also fetch `page_type` so we can categorize.
+
+**Disclaimer:** Hardcoded default text: "Cette boutique est exploitée de manière indépendante et est responsable de ses propres contenus et produits." (Can be made configurable via `platform_settings` later.)
+
+**Copyright:** `{shop.name} © {currentYear} Tous droits réservés.`
+
+**Powered by Ventou:** Always shown (premium badge hiding can be added later with subscription check).
+
+**Responsive:**
+- Desktop: 4 columns, max-w-[1200px] centered
+- Tablet (md): 2 columns grid
+- Mobile: stacked single column with 16px padding
+
+#### 2. Update `src/pages/ShopStorefront.tsx`
+
+- Update `publishedPages` query to select `slug, title, page_type`
+- Replace both footer blocks (main storefront at line 784 and page view at line 385) with `<StoreFooter />`
 
 | File | Change |
 |------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+| `src/components/storefront/StoreFooter.tsx` | New component |
+| `src/pages/ShopStorefront.tsx` | Update query, replace 2 footer sections |
+
+No database changes needed.
 
