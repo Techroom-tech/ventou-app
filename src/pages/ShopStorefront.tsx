@@ -54,7 +54,7 @@ function ShopAvatar({ name, color, size = 'md' }: { name: string; color: string;
 }
 
 function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
-  const { productSlug } = useParams<{ productSlug?: string }>();
+  const { productSlug, pageSlug } = useParams<{ productSlug?: string; pageSlug?: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { addToCart } = useCart();

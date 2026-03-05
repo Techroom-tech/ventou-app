@@ -130,6 +130,8 @@ const App = () => {
                   <ErrorBoundary fallbackMessage={`Erreur lors du chargement de la boutique "${hostnameSlug}"`}>
                     <Routes>
                       <Route path="/p/:productSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
+                      <Route path="/page/:pageSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
+                      <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                       <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                     </Routes>
                   </ErrorBoundary>
