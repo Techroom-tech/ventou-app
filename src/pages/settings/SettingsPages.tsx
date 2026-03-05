@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -10,8 +10,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,7 +21,7 @@ import { cn } from '@/lib/utils';
 import {
   useStorePages,
   DEFAULT_PAGES,
-  DYNAMIC_TAGS,
+  getTagsForPageType,
   getDefaultTemplate,
   type StorePage,
 } from '@/hooks/useStorePages';
@@ -80,18 +79,13 @@ export default function SettingsPages() {
                 onClick={() => openEditor(page)}
                 className="group flex items-center gap-3 p-4 rounded-xl border border-border bg-card cursor-pointer transition-all duration-150 hover:bg-accent/50 hover:border-border/80"
               >
-                {/* Icon container */}
                 <div className="w-9 h-9 rounded-[10px] bg-muted flex items-center justify-center shrink-0">
                   <IconComp className="h-[18px] w-[18px] text-muted-foreground" />
                 </div>
-
-                {/* Text content */}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-[13px] text-foreground leading-tight">{page.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{page.description}</p>
                 </div>
-
-                {/* Status badge */}
                 <div
                   className={cn(
                     'px-2.5 py-1 rounded-lg text-[11px] font-medium shrink-0',
@@ -102,8 +96,6 @@ export default function SettingsPages() {
                 >
                   {status === 'published' ? 'Publié' : 'Brouillon'}
                 </div>
-
-                {/* Arrow */}
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
               </motion.div>
             );
@@ -133,6 +125,65 @@ export default function SettingsPages() {
         />
       )}
     </SettingsPageLayout>
+  );
+}
+
+// ── Tags Modal ──
+function TagsModal({
+  open,
+  onOpenChange,
+  pageType,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  pageType: string;
+}) {
+  const tags = getTagsForPageType(pageType);
+  const copyTag = (tag: string) => {
+    navigator.clipboard.writeText(tag);
+    toast.success(`${tag} copié`);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogTitle className="text-base font-semibold">Tags dynamiques</DialogTitle>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Insérez ces tags dans votre contenu — ils seront remplacés par les données de votre boutique.
+        </p>
+        <div className="border rounded-lg overflow-hidden mt-2">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Donnée</TableHead>
+                <TableHead className="text-xs">Tag</TableHead>
+                <TableHead className="text-xs w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tags.map((t) => (
+                <TableRow key={t.tag}>
+                  <TableCell className="text-xs py-2">{t.label}</TableCell>
+                  <TableCell className="py-2">
+                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{t.tag}</code>
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyTag(t.tag)}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Copier</TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -169,13 +220,7 @@ function FAQEditor({
           <h3 className="text-sm font-semibold">Questions / Réponses</h3>
           <p className="text-xs text-muted-foreground">{items.length}/5 questions</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={addItem}
-          disabled={items.length >= 5}
-          className="h-8 text-xs"
-        >
+        <Button variant="outline" size="sm" onClick={addItem} disabled={items.length >= 5} className="h-8 text-xs">
           <Plus className="h-3.5 w-3.5 mr-1" />
           Ajouter
         </Button>
@@ -188,25 +233,10 @@ function FAQEditor({
               {i + 1}
             </div>
             <div className="flex-1 space-y-2">
-              <Input
-                placeholder="Question…"
-                value={item.question}
-                onChange={(e) => updateItem(i, 'question', e.target.value)}
-                className="text-sm font-medium h-9"
-              />
-              <Textarea
-                placeholder="Réponse…"
-                value={item.answer}
-                onChange={(e) => updateItem(i, 'answer', e.target.value)}
-                className="text-sm min-h-[80px] resize-none"
-              />
+              <Input placeholder="Question…" value={item.question} onChange={(e) => updateItem(i, 'question', e.target.value)} className="text-sm font-medium h-9" />
+              <Textarea placeholder="Réponse…" value={item.answer} onChange={(e) => updateItem(i, 'answer', e.target.value)} className="text-sm min-h-[80px] resize-none" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0 mt-1"
-              onClick={() => removeItem(i)}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0 mt-1" onClick={() => removeItem(i)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -239,8 +269,10 @@ function PageEditorModal({
   onSave: (content: Record<string, unknown>, status: 'published' | 'draft') => void;
 }) {
   const [status, setStatus] = useState<'published' | 'draft'>(saved?.status ?? 'draft');
+  const [tagsOpen, setTagsOpen] = useState(false);
   const isFAQ = pageDef.page_type === 'faq';
   const initialContent = saved?.content ?? getDefaultTemplate(pageDef.page_type);
+  const pageTags = getTagsForPageType(pageDef.page_type);
 
   // FAQ state
   const [faqItems, setFaqItems] = useState<FAQItem[]>(() => {
@@ -267,13 +299,13 @@ function PageEditorModal({
     },
   });
 
-  const handleSave = () => {
+  const handleSave = (saveStatus: 'published' | 'draft') => {
     if (isFAQ) {
       const validItems = faqItems.filter(f => f.question.trim() && f.answer.trim());
-      onSave({ faq_items: validItems } as Record<string, unknown>, status);
+      onSave({ faq_items: validItems } as Record<string, unknown>, saveStatus);
     } else {
       if (!editor) return;
-      onSave(editor.getJSON() as Record<string, unknown>, status);
+      onSave(editor.getJSON() as Record<string, unknown>, saveStatus);
     }
     onOpenChange(false);
   };
@@ -289,146 +321,121 @@ function PageEditorModal({
     }
   };
 
-  const copyTag = (tag: string) => {
-    navigator.clipboard.writeText(tag);
-    toast.success(`${tag} copié`);
-  };
-
   if (!isFAQ && !editor) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-background border-b px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">{pageDef.title}</h2>
-            <p className="text-xs text-muted-foreground">{pageDef.description}</p>
-          </div>
-          <div className="flex items-center gap-2">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-4xl w-full max-h-screen sm:max-h-[90vh] h-full sm:h-auto p-0 flex flex-col gap-0">
+          {/* Header */}
+          <div className="sticky top-0 z-10 bg-background border-b px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="min-w-0">
+              <DialogTitle className="text-base sm:text-lg font-bold truncate">{pageDef.title}</DialogTitle>
+              <p className="text-xs text-muted-foreground truncate">{pageDef.description}</p>
+            </div>
             <Button
               variant="outline"
               size="sm"
+              className="shrink-0 ml-2"
               onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
             >
               {status === 'published' ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
-              {status === 'published' ? 'Publié' : 'Brouillon'}
-            </Button>
-            <Button size="sm" onClick={handleSave}>
-              Sauvegarder
+              <span className="hidden sm:inline">{status === 'published' ? 'Publié' : 'Brouillon'}</span>
             </Button>
           </div>
-        </div>
 
-        <div className="px-6 py-4 space-y-6">
-          {/* Section 1: Reset */}
-          <div className="bg-muted/50 rounded-lg p-4">
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-5">
+            {/* Template reset */}
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Template par défaut</p>
+                  <p className="text-xs text-muted-foreground">Réinitialisez avec le template par défaut.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleReset} className="shrink-0">
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Réinitialiser
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Dynamic tags compact section */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Template par défaut</p>
-                <p className="text-xs text-muted-foreground">Réinitialisez le contenu avec le template par défaut pour cette page.</p>
+                <h3 className="text-sm font-semibold">Tags dynamiques</h3>
+                <p className="text-xs text-muted-foreground">{pageTags.length} tags disponibles pour cette page</p>
               </div>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                Réinitialiser
+              <Button variant="outline" size="sm" onClick={() => setTagsOpen(true)} className="h-8 text-xs">
+                <Tag className="h-3.5 w-3.5 mr-1" />
+                Voir les tags
               </Button>
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Section 2: Dynamic tags (not for FAQ) */}
-          {!isFAQ && (
-            <>
+            {/* Content */}
+            {isFAQ ? (
+              <FAQEditor items={faqItems} onChange={setFaqItems} />
+            ) : (
               <div>
-                <h3 className="text-sm font-semibold mb-3">Tags dynamiques</h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Insérez ces tags dans votre contenu — ils seront remplacés automatiquement par les données de votre boutique.
-                </p>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Donnée</TableHead>
-                        <TableHead className="text-xs">Tag</TableHead>
-                        <TableHead className="text-xs w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {DYNAMIC_TAGS.map((t) => (
-                        <TableRow key={t.tag}>
-                          <TableCell className="text-xs py-2">{t.label}</TableCell>
-                          <TableCell className="py-2">
-                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{t.tag}</code>
-                          </TableCell>
-                          <TableCell className="py-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyTag(t.tag)}>
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Copier</TooltipContent>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <h3 className="text-sm font-semibold mb-3">Contenu de la page</h3>
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-1 p-2 border rounded-t-lg bg-muted/30">
+                  {[
+                    { label: 'B', action: () => editor!.chain().focus().toggleBold().run(), active: editor!.isActive('bold'), className: 'font-bold' },
+                    { label: 'I', action: () => editor!.chain().focus().toggleItalic().run(), active: editor!.isActive('italic'), className: 'italic' },
+                    { label: 'U', action: () => editor!.chain().focus().toggleUnderline().run(), active: editor!.isActive('underline'), className: 'underline' },
+                    { label: 'H1', action: () => editor!.chain().focus().toggleHeading({ level: 1 }).run(), active: editor!.isActive('heading', { level: 1 }) },
+                    { label: 'H2', action: () => editor!.chain().focus().toggleHeading({ level: 2 }).run(), active: editor!.isActive('heading', { level: 2 }) },
+                    { label: 'H3', action: () => editor!.chain().focus().toggleHeading({ level: 3 }).run(), active: editor!.isActive('heading', { level: 3 }) },
+                    { label: '• List', action: () => editor!.chain().focus().toggleBulletList().run(), active: editor!.isActive('bulletList') },
+                    { label: '1. List', action: () => editor!.chain().focus().toggleOrderedList().run(), active: editor!.isActive('orderedList') },
+                    { label: '❝', action: () => editor!.chain().focus().toggleBlockquote().run(), active: editor!.isActive('blockquote') },
+                  ].map((btn) => (
+                    <Button
+                      key={btn.label}
+                      variant="ghost"
+                      size="sm"
+                      className={cn('h-7 px-2 text-xs', btn.active && 'bg-primary/15 text-primary', btn.className)}
+                      onClick={btn.action}
+                      type="button"
+                    >
+                      {btn.label}
+                    </Button>
+                  ))}
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" type="button"
+                    onClick={() => { const url = window.prompt('URL du lien :'); if (url) editor!.chain().focus().setLink({ href: url }).run(); }}>
+                    🔗 Lien
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" type="button"
+                    onClick={() => { const url = window.prompt("URL de l'image :"); if (url) editor!.chain().focus().setImage({ src: url }).run(); }}>
+                    🖼 Image
+                  </Button>
+                </div>
+                <div className="border border-t-0 rounded-b-lg min-h-[300px] bg-background">
+                  <EditorContent editor={editor} />
                 </div>
               </div>
-              <Separator />
-            </>
-          )}
+            )}
+          </div>
 
-          {/* Section 3: Content */}
-          {isFAQ ? (
-            <FAQEditor items={faqItems} onChange={setFaqItems} />
-          ) : (
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Contenu de la page</h3>
+          {/* Sticky footer */}
+          <div className="sticky bottom-0 z-10 bg-background border-t px-4 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => handleSave(status)}>
+              {status === 'published' ? 'Publier' : 'Sauvegarder'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-              {/* Toolbar */}
-              <div className="flex flex-wrap items-center gap-1 p-2 border rounded-t-lg bg-muted/30">
-                {[
-                  { label: 'B', action: () => editor!.chain().focus().toggleBold().run(), active: editor!.isActive('bold'), className: 'font-bold' },
-                  { label: 'I', action: () => editor!.chain().focus().toggleItalic().run(), active: editor!.isActive('italic'), className: 'italic' },
-                  { label: 'U', action: () => editor!.chain().focus().toggleUnderline().run(), active: editor!.isActive('underline'), className: 'underline' },
-                  { label: 'H1', action: () => editor!.chain().focus().toggleHeading({ level: 1 }).run(), active: editor!.isActive('heading', { level: 1 }) },
-                  { label: 'H2', action: () => editor!.chain().focus().toggleHeading({ level: 2 }).run(), active: editor!.isActive('heading', { level: 2 }) },
-                  { label: 'H3', action: () => editor!.chain().focus().toggleHeading({ level: 3 }).run(), active: editor!.isActive('heading', { level: 3 }) },
-                  { label: '• List', action: () => editor!.chain().focus().toggleBulletList().run(), active: editor!.isActive('bulletList') },
-                  { label: '1. List', action: () => editor!.chain().focus().toggleOrderedList().run(), active: editor!.isActive('orderedList') },
-                  { label: '❝', action: () => editor!.chain().focus().toggleBlockquote().run(), active: editor!.isActive('blockquote') },
-                ].map((btn) => (
-                  <Button
-                    key={btn.label}
-                    variant="ghost"
-                    size="sm"
-                    className={cn('h-7 px-2 text-xs', btn.active && 'bg-primary/15 text-primary', btn.className)}
-                    onClick={btn.action}
-                    type="button"
-                  >
-                    {btn.label}
-                  </Button>
-                ))}
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" type="button"
-                  onClick={() => { const url = window.prompt('URL du lien :'); if (url) editor!.chain().focus().setLink({ href: url }).run(); }}>
-                  🔗 Lien
-                </Button>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" type="button"
-                  onClick={() => { const url = window.prompt("URL de l'image :"); if (url) editor!.chain().focus().setImage({ src: url }).run(); }}>
-                  🖼 Image
-                </Button>
-              </div>
-
-              <div className="border border-t-0 rounded-b-lg min-h-[300px] bg-background">
-                <EditorContent editor={editor} />
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* Tags modal (separate dialog) */}
+      <TagsModal open={tagsOpen} onOpenChange={setTagsOpen} pageType={pageDef.page_type} />
+    </>
   );
 }

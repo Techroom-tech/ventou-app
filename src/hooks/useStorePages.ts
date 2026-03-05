@@ -26,7 +26,7 @@ export const DEFAULT_PAGES = [
   { slug: 'contact', title: 'Contact', description: 'Coordonnées et formulaire de contact', icon: 'Mail', page_type: 'contact' },
 ] as const;
 
-export const DYNAMIC_TAGS = [
+export const ALL_DYNAMIC_TAGS = [
   { label: 'Nom de la boutique', tag: '{{storeName}}' },
   { label: 'URL de la boutique', tag: '{{storeUrl}}' },
   { label: 'Nom du propriétaire', tag: '{{ownerName}}' },
@@ -41,6 +41,23 @@ export const DYNAMIC_TAGS = [
   { label: 'Description boutique', tag: '{{storeDescription}}' },
   { label: 'WhatsApp', tag: '{{storeWhatsApp}}' },
 ] as const;
+
+const TAGS_BY_PAGE_TYPE: Record<string, string[]> = {
+  about: ['{{storeName}}', '{{ownerName}}', '{{storeCity}}', '{{storeCountry}}', '{{contactEmail}}', '{{storePhone}}', '{{storeDescription}}'],
+  privacy: ['{{storeName}}', '{{contactEmail}}', '{{storeUrl}}', '{{storeCountry}}', '{{lastUpdatedDate}}', '{{currentYear}}'],
+  legal: ['{{storeName}}', '{{ownerName}}', '{{storeUrl}}', '{{storeCity}}', '{{storeCountry}}', '{{storePhone}}', '{{currentYear}}'],
+  terms: ['{{storeName}}', '{{storeUrl}}', '{{storeCity}}', '{{storePhone}}', '{{lastUpdatedDate}}', '{{storeCurrency}}', '{{currentYear}}'],
+  faq: ['{{storeName}}', '{{storePhone}}', '{{storeWhatsApp}}', '{{contactEmail}}'],
+  contact: ['{{storeName}}', '{{storePhone}}', '{{storeWhatsApp}}', '{{contactEmail}}', '{{storeCity}}', '{{storeCountry}}', '{{storeUrl}}'],
+};
+
+export function getTagsForPageType(pageType: string) {
+  const allowed = TAGS_BY_PAGE_TYPE[pageType] ?? Object.values(TAGS_BY_PAGE_TYPE).flat();
+  return ALL_DYNAMIC_TAGS.filter((t) => allowed.includes(t.tag));
+}
+
+/** @deprecated Use getTagsForPageType instead */
+export const DYNAMIC_TAGS = ALL_DYNAMIC_TAGS;
 
 export function getDefaultTemplate(pageType: string): Record<string, unknown> {
   const templates: Record<string, Record<string, unknown>> = {
