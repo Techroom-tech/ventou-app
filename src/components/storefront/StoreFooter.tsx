@@ -166,7 +166,7 @@ export default function StoreFooter({ shop, publishedPages = [], basePath, navig
       <div className="border-t">
         <div className="max-w-[1200px] mx-auto px-4 py-4">
           <p className="text-xs text-muted-foreground text-center">
-            Cette boutique est exploitée de manière indépendante et est responsable de ses propres contenus et produits.
+            {disclaimerText ?? DEFAULT_DISCLAIMER}
           </p>
         </div>
       </div>
