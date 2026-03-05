@@ -365,50 +365,12 @@ function PageEditorModal({
             {isFAQ ? (
               <FAQEditor items={faqItems} onChange={setFaqItems} />
             ) : (
-              <div>
-                <h3 className="text-sm font-semibold mb-3">Contenu de la page</h3>
-                {/* Toolbar */}
-                <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 p-1.5 sm:p-2 border rounded-t-lg bg-muted/30">
-                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
-                    {[
-                      { label: 'B', action: () => editor!.chain().focus().toggleBold().run(), active: editor!.isActive('bold'), className: 'font-bold' },
-                      { label: 'I', action: () => editor!.chain().focus().toggleItalic().run(), active: editor!.isActive('italic'), className: 'italic' },
-                      { label: 'U', action: () => editor!.chain().focus().toggleUnderline().run(), active: editor!.isActive('underline'), className: 'underline' },
-                    ].map((btn) => (
-                      <Button key={btn.label} variant="ghost" size="sm" className={cn('h-7 w-7 p-0 text-xs', btn.active && 'bg-primary/15 text-primary', btn.className)} onClick={btn.action} type="button">{btn.label}</Button>
-                    ))}
-                  </div>
-                  <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
-                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
-                    {[
-                      { label: 'H1', action: () => editor!.chain().focus().toggleHeading({ level: 1 }).run(), active: editor!.isActive('heading', { level: 1 }) },
-                      { label: 'H2', action: () => editor!.chain().focus().toggleHeading({ level: 2 }).run(), active: editor!.isActive('heading', { level: 2 }) },
-                      { label: 'H3', action: () => editor!.chain().focus().toggleHeading({ level: 3 }).run(), active: editor!.isActive('heading', { level: 3 }) },
-                    ].map((btn) => (
-                      <Button key={btn.label} variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', btn.active && 'bg-primary/15 text-primary')} onClick={btn.action} type="button">{btn.label}</Button>
-                    ))}
-                  </div>
-                  <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
-                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
-                    <Button variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', editor!.isActive('bulletList') && 'bg-primary/15 text-primary')} onClick={() => editor!.chain().focus().toggleBulletList().run()} type="button">• List</Button>
-                    <Button variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', editor!.isActive('orderedList') && 'bg-primary/15 text-primary')} onClick={() => editor!.chain().focus().toggleOrderedList().run()} type="button">1. List</Button>
-                    <Button variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', editor!.isActive('blockquote') && 'bg-primary/15 text-primary')} onClick={() => editor!.chain().focus().toggleBlockquote().run()} type="button">❝</Button>
-                  </div>
-                  <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
-                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 px-1.5 text-xs" type="button"
-                      onClick={() => { const url = window.prompt('URL du lien :'); if (url) editor!.chain().focus().setLink({ href: url }).run(); }}>
-                      🔗 Lien
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 px-1.5 text-xs" type="button"
-                      onClick={() => { const url = window.prompt("URL de l'image :"); if (url) editor!.chain().focus().setImage({ src: url }).run(); }}>
-                      🖼 Image
-                    </Button>
-                  </div>
-                </div>
-                <div className="border border-t-0 rounded-b-lg min-h-[250px] sm:min-h-[300px] bg-background overflow-y-auto">
-                  <EditorContent editor={editor} />
-                </div>
+              <div className="border rounded-lg overflow-hidden min-h-[350px] sm:min-h-[400px] flex flex-col">
+                <BlockEditor
+                  content={editorContent}
+                  onContentChange={setEditorContent}
+                  shopId={shopId}
+                />
               </div>
             )}
           </div>
