@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, Tag, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import TextAlign from '@tiptap/extension-text-align';
-import Placeholder from '@tiptap/extension-placeholder';
+import BlockEditor from '@/components/settings/BlockEditor';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
