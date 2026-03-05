@@ -271,6 +271,7 @@ function PageEditorModal({
   const isFAQ = pageDef.page_type === 'faq';
   const initialContent = saved?.content ?? getDefaultTemplate(pageDef.page_type);
   const pageTags = getTagsForPageType(pageDef.page_type);
+  const [editorContent, setEditorContent] = useState<Record<string, unknown>>(initialContent as Record<string, unknown>);
 
   // FAQ state
   const [faqItems, setFaqItems] = useState<FAQItem[]>(() => {
@@ -280,30 +281,12 @@ function PageEditorModal({
     return DEFAULT_FAQ_ITEMS;
   });
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      Link.configure({ openOnClick: false }),
-      Image,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Placeholder.configure({ placeholder: 'Rédigez le contenu de votre page...' }),
-    ],
-    content: isFAQ ? undefined : (initialContent as any),
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm max-w-none min-h-[300px] focus:outline-none p-4',
-      },
-    },
-  });
-
   const handleSave = (saveStatus: 'published' | 'draft') => {
     if (isFAQ) {
       const validItems = faqItems.filter(f => f.question.trim() && f.answer.trim());
       onSave({ faq_items: validItems } as Record<string, unknown>, saveStatus);
     } else {
-      if (!editor) return;
-      onSave(editor.getJSON() as Record<string, unknown>, saveStatus);
+      onSave(editorContent, saveStatus);
     }
     onOpenChange(false);
   };
@@ -314,12 +297,10 @@ function PageEditorModal({
       toast.info('FAQ réinitialisée');
     } else {
       const template = getDefaultTemplate(pageDef.page_type);
-      editor?.commands.setContent(template as any);
+      setEditorContent(template);
       toast.info('Template réinitialisé');
     }
   };
-
-  if (!isFAQ && !editor) return null;
 
   return (
     <>
