@@ -97,7 +97,7 @@ export default function StoreFooter({ shop, publishedPages = [], basePath, navig
           {/* Col 2 — Navigation */}
           {hasNav && (
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Navigation</h4>
+              <h4 className="text-sm font-semibold">{t('storefront.navigation', 'Navigation')}</h4>
               <ul className="space-y-2">
                 {navPages.map(p => (
                   <li key={p.slug}>
