@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, GripVertical } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -67,12 +68,15 @@ export default function SettingsPages() {
         </div>
       ) : (
         <div className="space-y-2">
-          {mergedPages.map((page) => {
+          {mergedPages.map((page, index) => {
             const IconComp = ICON_MAP[page.icon] ?? FileText;
             const status = page.saved?.status ?? 'draft';
             return (
-              <div
+              <motion.div
                 key={page.slug}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: index * 0.06, ease: 'easeOut' }}
                 onClick={() => openEditor(page)}
                 className="group flex items-center gap-3 p-4 rounded-xl border border-border bg-card cursor-pointer transition-all duration-150 hover:bg-accent/50 hover:border-border/80"
               >
@@ -101,7 +105,7 @@ export default function SettingsPages() {
 
                 {/* Arrow */}
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-              </div>
+              </motion.div>
             );
           })}
         </div>
