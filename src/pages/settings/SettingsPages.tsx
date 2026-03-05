@@ -326,22 +326,28 @@ function PageEditorModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-4xl w-full max-h-screen sm:max-h-[90vh] h-full sm:h-auto p-0 flex flex-col gap-0">
+        <DialogContent className="sm:max-w-[900px] md:max-w-[700px] sm:max-w-[700px] w-full max-w-full max-h-[100dvh] sm:max-h-[90vh] h-[100dvh] sm:h-auto p-0 flex flex-col gap-0 rounded-none sm:rounded-lg [&>button.absolute]:hidden">
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-background border-b px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
-            <div className="min-w-0">
+          <div className="bg-background border-b px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="min-w-0 flex-1">
               <DialogTitle className="text-base sm:text-lg font-bold truncate">{pageDef.title}</DialogTitle>
               <p className="text-xs text-muted-foreground truncate">{pageDef.description}</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0 ml-2"
-              onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
-            >
-              {status === 'published' ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
-              <span className="hidden sm:inline">{status === 'published' ? 'Publié' : 'Brouillon'}</span>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
+              >
+                {status === 'published' ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
+                <span className="hidden sm:inline">{status === 'published' ? 'Publié' : 'Brouillon'}</span>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onOpenChange(false)}>
+                <span className="sr-only">Fermer</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </Button>
+            </div>
           </div>
 
           {/* Scrollable body */}
@@ -383,39 +389,45 @@ function PageEditorModal({
               <div>
                 <h3 className="text-sm font-semibold mb-3">Contenu de la page</h3>
                 {/* Toolbar */}
-                <div className="flex flex-wrap items-center gap-1 p-2 border rounded-t-lg bg-muted/30">
-                  {[
-                    { label: 'B', action: () => editor!.chain().focus().toggleBold().run(), active: editor!.isActive('bold'), className: 'font-bold' },
-                    { label: 'I', action: () => editor!.chain().focus().toggleItalic().run(), active: editor!.isActive('italic'), className: 'italic' },
-                    { label: 'U', action: () => editor!.chain().focus().toggleUnderline().run(), active: editor!.isActive('underline'), className: 'underline' },
-                    { label: 'H1', action: () => editor!.chain().focus().toggleHeading({ level: 1 }).run(), active: editor!.isActive('heading', { level: 1 }) },
-                    { label: 'H2', action: () => editor!.chain().focus().toggleHeading({ level: 2 }).run(), active: editor!.isActive('heading', { level: 2 }) },
-                    { label: 'H3', action: () => editor!.chain().focus().toggleHeading({ level: 3 }).run(), active: editor!.isActive('heading', { level: 3 }) },
-                    { label: '• List', action: () => editor!.chain().focus().toggleBulletList().run(), active: editor!.isActive('bulletList') },
-                    { label: '1. List', action: () => editor!.chain().focus().toggleOrderedList().run(), active: editor!.isActive('orderedList') },
-                    { label: '❝', action: () => editor!.chain().focus().toggleBlockquote().run(), active: editor!.isActive('blockquote') },
-                  ].map((btn) => (
-                    <Button
-                      key={btn.label}
-                      variant="ghost"
-                      size="sm"
-                      className={cn('h-7 px-2 text-xs', btn.active && 'bg-primary/15 text-primary', btn.className)}
-                      onClick={btn.action}
-                      type="button"
-                    >
-                      {btn.label}
+                <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 p-1.5 sm:p-2 border rounded-t-lg bg-muted/30">
+                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+                    {[
+                      { label: 'B', action: () => editor!.chain().focus().toggleBold().run(), active: editor!.isActive('bold'), className: 'font-bold' },
+                      { label: 'I', action: () => editor!.chain().focus().toggleItalic().run(), active: editor!.isActive('italic'), className: 'italic' },
+                      { label: 'U', action: () => editor!.chain().focus().toggleUnderline().run(), active: editor!.isActive('underline'), className: 'underline' },
+                    ].map((btn) => (
+                      <Button key={btn.label} variant="ghost" size="sm" className={cn('h-7 w-7 p-0 text-xs', btn.active && 'bg-primary/15 text-primary', btn.className)} onClick={btn.action} type="button">{btn.label}</Button>
+                    ))}
+                  </div>
+                  <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
+                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+                    {[
+                      { label: 'H1', action: () => editor!.chain().focus().toggleHeading({ level: 1 }).run(), active: editor!.isActive('heading', { level: 1 }) },
+                      { label: 'H2', action: () => editor!.chain().focus().toggleHeading({ level: 2 }).run(), active: editor!.isActive('heading', { level: 2 }) },
+                      { label: 'H3', action: () => editor!.chain().focus().toggleHeading({ level: 3 }).run(), active: editor!.isActive('heading', { level: 3 }) },
+                    ].map((btn) => (
+                      <Button key={btn.label} variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', btn.active && 'bg-primary/15 text-primary')} onClick={btn.action} type="button">{btn.label}</Button>
+                    ))}
+                  </div>
+                  <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
+                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+                    <Button variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', editor!.isActive('bulletList') && 'bg-primary/15 text-primary')} onClick={() => editor!.chain().focus().toggleBulletList().run()} type="button">• List</Button>
+                    <Button variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', editor!.isActive('orderedList') && 'bg-primary/15 text-primary')} onClick={() => editor!.chain().focus().toggleOrderedList().run()} type="button">1. List</Button>
+                    <Button variant="ghost" size="sm" className={cn('h-7 px-1.5 text-xs', editor!.isActive('blockquote') && 'bg-primary/15 text-primary')} onClick={() => editor!.chain().focus().toggleBlockquote().run()} type="button">❝</Button>
+                  </div>
+                  <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
+                  <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 px-1.5 text-xs" type="button"
+                      onClick={() => { const url = window.prompt('URL du lien :'); if (url) editor!.chain().focus().setLink({ href: url }).run(); }}>
+                      🔗 Lien
                     </Button>
-                  ))}
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" type="button"
-                    onClick={() => { const url = window.prompt('URL du lien :'); if (url) editor!.chain().focus().setLink({ href: url }).run(); }}>
-                    🔗 Lien
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" type="button"
-                    onClick={() => { const url = window.prompt("URL de l'image :"); if (url) editor!.chain().focus().setImage({ src: url }).run(); }}>
-                    🖼 Image
-                  </Button>
+                    <Button variant="ghost" size="sm" className="h-7 px-1.5 text-xs" type="button"
+                      onClick={() => { const url = window.prompt("URL de l'image :"); if (url) editor!.chain().focus().setImage({ src: url }).run(); }}>
+                      🖼 Image
+                    </Button>
+                  </div>
                 </div>
-                <div className="border border-t-0 rounded-b-lg min-h-[300px] bg-background">
+                <div className="border border-t-0 rounded-b-lg min-h-[250px] sm:min-h-[300px] bg-background overflow-y-auto">
                   <EditorContent editor={editor} />
                 </div>
               </div>
@@ -423,11 +435,11 @@ function PageEditorModal({
           </div>
 
           {/* Sticky footer */}
-          <div className="sticky bottom-0 z-10 bg-background border-t px-4 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="mt-auto bg-background border-t px-4 sm:px-6 py-3 flex items-center justify-end gap-3 shrink-0">
+            <Button variant="outline" size="default" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button onClick={() => handleSave(status)}>
+            <Button size="default" onClick={() => handleSave(status)}>
               {status === 'published' ? 'Publier' : 'Sauvegarder'}
             </Button>
           </div>
