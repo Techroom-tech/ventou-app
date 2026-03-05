@@ -9,7 +9,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3,
-  List, ListOrdered, Quote, Link2, ImagePlus, Minus, Eye, EyeOff, Type,
+  List, ListOrdered, Quote, Link2, ImagePlus, Minus, Type,
   Video, AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -161,7 +161,7 @@ export default function BlockEditor({
   onContentChange: (content: Record<string, unknown>) => void;
   shopId: string;
 }) {
-  const [preview, setPreview] = useState(false);
+  
   const [slashMenu, setSlashMenu] = useState<{ open: boolean; query: string; pos: { top: number; left: number } }>({
     open: false,
     query: '',
@@ -181,7 +181,7 @@ export default function BlockEditor({
       HorizontalRule,
     ],
     content: content as any,
-    editable: !preview,
+    editable: true,
     editorProps: {
       attributes: {
         class: 'block-editor-content prose prose-sm sm:prose max-w-none focus:outline-none px-4 sm:px-8 py-6',
@@ -224,10 +224,6 @@ export default function BlockEditor({
     },
   });
 
-  // Toggle editable on preview change
-  useEffect(() => {
-    if (editor) editor.setEditable(!preview);
-  }, [preview, editor]);
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -382,36 +378,13 @@ export default function BlockEditor({
         <ToolbarBtn icon={ImagePlus} onClick={() => fileInputRef.current?.click()} label="Image" />
         <ToolbarBtn icon={Minus} onClick={() => editor.chain().focus().setHorizontalRule().run()} label="Séparateur" />
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Preview toggle */}
-        <Button
-          variant={preview ? 'default' : 'outline'}
-          size="sm"
-          className="h-8 text-xs gap-1.5"
-          onClick={() => setPreview(!preview)}
-        >
-          {preview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          <span className="hidden sm:inline">{preview ? 'Éditer' : 'Aperçu'}</span>
-        </Button>
       </div>
 
       {/* Editor content */}
       <div
         ref={editorContainerRef}
-        className={cn(
-          'flex-1 overflow-y-auto bg-background relative',
-          preview && 'bg-muted/20'
-        )}
+        className="flex-1 overflow-y-auto bg-background relative"
       >
-        {preview && (
-          <div className="absolute top-3 right-3 z-10">
-            <span className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-              Mode aperçu
-            </span>
-          </div>
-        )}
         <div className="max-w-[900px] mx-auto">
           <EditorContent editor={editor} />
         </div>
