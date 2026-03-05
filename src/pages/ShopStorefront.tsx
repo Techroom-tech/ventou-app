@@ -356,7 +356,47 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
   const showLogo = displayMode === 'logo-only' || displayMode === 'logo-name';
   const showName = displayMode === 'name-only' || displayMode === 'logo-name';
 
-  // Loading product by slug
+  // Store page view (/page/:pageSlug)
+  if (pageSlug && shop) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b">
+          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              {showLogo && (
+                shop.logo_url ? (
+                  <div className="w-9 h-9 rounded-full bg-muted overflow-hidden shrink-0">
+                    <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <ShopAvatar name={shop.name} color={primaryColor} size="md" />
+                )
+              )}
+              {showName && (
+                <span className="font-bold text-lg truncate cursor-pointer" onClick={navigateToHome}>{shop.name}</span>
+              )}
+            </div>
+            <CountrySelector />
+          </div>
+        </header>
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+          <StorePage shop={shop} pageSlug={pageSlug} onBack={navigateToHome} />
+        </Suspense>
+        <footer className="mt-auto border-t py-6">
+          <div className="max-w-6xl mx-auto px-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} {shop.name} · {t('storefront.poweredBy')}{' '}
+              <a href={getPlatformUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Ventou</a>
+            </p>
+          </div>
+        </footer>
+        <CartButton onClick={() => setCartOpen(true)} />
+        <CartDrawer open={cartOpen} onOpenChange={setCartOpen} onCheckout={() => { setCheckoutOpen(true); }} currency={shop.currency} shopName={shop.name} />
+        <CheckoutDrawer open={checkoutOpen} onOpenChange={setCheckoutOpen} shop={shop} />
+      </div>
+    );
+  }
+
   if (productSlug && productSlugLoading && shop) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -744,6 +784,20 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
       {/* Footer */}
       <footer className="mt-auto border-t py-8">
         <div className="max-w-6xl mx-auto px-4">
+          {/* Page links */}
+          {publishedPages && publishedPages.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-4 mb-4">
+              {publishedPages.map((p: { slug: string; title: string }) => (
+                <button
+                  key={p.slug}
+                  onClick={() => navigate(`${basePath}/page/${p.slug}`)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               {shop.logo_url ? (
