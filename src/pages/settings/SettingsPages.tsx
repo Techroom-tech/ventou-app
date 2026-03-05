@@ -369,6 +369,7 @@ function PageEditorModal({
             ) : (
               <div className="border rounded-lg overflow-hidden min-h-[350px] sm:min-h-[400px] flex flex-col">
                 <BlockEditor
+                  key={editorKey}
                   content={editorContent}
                   onContentChange={setEditorContent}
                   shopId={shopId}
