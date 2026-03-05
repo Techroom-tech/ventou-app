@@ -181,7 +181,7 @@ function PageEditorModal({
               {status === 'published' ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
               {status === 'published' ? 'Publié' : 'Brouillon'}
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={upsertPage?.isPending}>
+            <Button size="sm" onClick={handleSave}>
               Sauvegarder
             </Button>
           </div>

@@ -208,7 +208,7 @@ export function replaceTags(
   const replaceInString = (s: string): string => {
     let result = s;
     for (const [tag, value] of Object.entries(tagMap)) {
-      result = result.replaceAll(tag, value);
+      result = result.split(tag).join(value);
     }
     return result;
   };
