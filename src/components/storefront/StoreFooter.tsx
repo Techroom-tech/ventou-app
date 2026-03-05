@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getPlatformUrl } from '@/lib/domain';
+import { supabase } from '@/integrations/supabase/client';
 import { Shop } from '@/types/shop';
 import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { MapPin } from 'lucide-react';
@@ -34,10 +36,25 @@ function FooterAvatar({ name, color }: { name: string; color: string }) {
   );
 }
 
+const DEFAULT_DISCLAIMER = 'Cette boutique est exploitée de manière indépendante et est responsable de ses propres contenus et produits.';
+
 export default function StoreFooter({ shop, publishedPages = [], basePath, navigate }: StoreFooterProps) {
   const { t } = useTranslation();
   const primaryColor = shop.primary_color || '#1E3A5F';
   const currentYear = new Date().getFullYear();
+
+  const { data: disclaimerText } = useQuery({
+    queryKey: ['footer-disclaimer'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'footer_disclaimer')
+        .maybeSingle();
+      return typeof data?.value === 'string' ? data.value : DEFAULT_DISCLAIMER;
+    },
+    staleTime: 300_000,
+  });
 
   const { navPages, legalPages } = useMemo(() => {
     const nav: PublishedPage[] = [];
