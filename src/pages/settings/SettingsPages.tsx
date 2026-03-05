@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, Tag } from 'lucide-react';
+import { Info, Shield, Scale, FileText, HelpCircle, Mail, ChevronRight, Copy, RotateCcw, Eye, EyeOff, Plus, Trash2, Tag, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
