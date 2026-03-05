@@ -1111,6 +1111,56 @@ export type Database = {
         }
         Relationships: []
       }
+      store_pages: {
+        Row: {
+          content: Json | null
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          page_type: string
+          shop_id: string
+          slug: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          page_type?: string
+          shop_id: string
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          page_type?: string
+          shop_id?: string
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_pages_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           banner_url: string | null

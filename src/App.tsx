@@ -46,6 +46,7 @@ const SettingsProfil = lazy(() => import("./pages/settings/SettingsProfil"));
 const SettingsEquipe = lazy(() => import("./pages/settings/SettingsEquipe"));
 const SettingsFacturation = lazy(() => import("./pages/settings/SettingsFacturation"));
 const SettingsApi = lazy(() => import("./pages/settings/SettingsApi"));
+const SettingsPages = lazy(() => import("./pages/settings/SettingsPages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ShopStorefront = lazy(() => import("./pages/ShopStorefront"));
 const ShopCreatedSuccess = lazy(() => import("./pages/ShopCreatedSuccess"));
@@ -129,6 +130,8 @@ const App = () => {
                   <ErrorBoundary fallbackMessage={`Erreur lors du chargement de la boutique "${hostnameSlug}"`}>
                     <Routes>
                       <Route path="/p/:productSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
+                      <Route path="/page/:pageSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
+                      <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                       <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                     </Routes>
                   </ErrorBoundary>
@@ -199,6 +202,7 @@ const App = () => {
               <Route path="parametres/equipe" element={<SettingsEquipe />} />
               <Route path="parametres/facturation" element={<SettingsFacturation />} />
               <Route path="parametres/api" element={<SettingsApi />} />
+              <Route path="parametres/pages" element={<SettingsPages />} />
             </Route>
 
             {/* Hidden admin login */}
@@ -227,8 +231,10 @@ const App = () => {
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
             <Route path="/boutique/:slug/p/:productSlug" element={<ShopStorefrontRoute />} />
+            <Route path="/boutique/:slug/page/:pageSlug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug/p/:productSlug" element={<ShopStorefrontRoute />} />
+            <Route path="/shop/:slug/page/:pageSlug" element={<ShopStorefrontRoute />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

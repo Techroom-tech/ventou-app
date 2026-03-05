@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Store, Globe, Palette, Truck, CreditCard, Tag,
   Search, BarChart2, Bell, Headphones, User, Users,
-  Receipt, Code2, ChevronRight, Settings2,
+  Receipt, Code2, ChevronRight, Settings2, FileText,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -50,6 +50,15 @@ const sections: SettingSection[] = [
         title: 'Apparence',
         description: 'Logo, bannière et couleur principale',
         path: '/dashboard/parametres/apparence',
+      },
+      {
+        icon: FileText,
+        iconBg: 'bg-emerald-100 dark:bg-emerald-950',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        title: 'Pages',
+        description: 'À propos, CGV, FAQ, mentions légales…',
+        path: '/dashboard/parametres/pages',
+        badge: 'Nouveau',
       },
     ],
   },
