@@ -135,7 +135,7 @@ export default function StoreFooter({ shop, publishedPages = [], basePath, navig
           {/* Col 4 — Contact */}
           {hasContact && (
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Contact</h4>
+              <h4 className="text-sm font-semibold">{t('storefront.contactColumn', 'Contact')}</h4>
               <ul className="space-y-2">
                 {shop.whatsapp && (
                   <li>
