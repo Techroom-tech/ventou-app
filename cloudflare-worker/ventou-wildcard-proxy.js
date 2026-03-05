@@ -84,6 +84,9 @@ const BOT_UA_RE = /facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|LinkedInB
 // Product page pattern: /p/{slug}
 const PRODUCT_PAGE_RE = /^\/p\/([a-z0-9][a-z0-9-]*[a-z0-9]?)$/i;
 
+// Store page pattern: /page/{slug}
+const STORE_PAGE_RE = /^\/page\/([a-z0-9][a-z0-9-]*[a-z0-9]?)$/i;
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function shouldProxy(pathname) {
@@ -298,6 +301,81 @@ async function handleProductOG(request, env, shopSlug, productSlug) {
   });
 }
 
+// ─── SSR OG Meta Tags for Store Pages (/page/:slug) ─────────
+
+async function handleStorePageOG(request, env, shopSlug, pageSlug) {
+  const supabaseUrl = env.SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return null;
+
+  const headers = {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  const [shopRes, pageRes] = await Promise.all([
+    fetch(`${supabaseUrl}/rest/v1/shops?slug=eq.${encodeURIComponent(shopSlug)}&is_active=eq.true&deleted_at=is.null&select=id,name,slug,logo_url,description&limit=1`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/store_pages?slug=eq.${encodeURIComponent(pageSlug)}&status=eq.published&select=id,title,description,slug,shop_id&limit=10`, { headers }),
+  ]);
+
+  if (!shopRes.ok || !pageRes.ok) return null;
+
+  const shops = await shopRes.json();
+  const storePages = await pageRes.json();
+  if (!shops.length) return null;
+  const shop = shops[0];
+
+  const storePage = storePages.find(p => p.shop_id === shop.id);
+  if (!storePage) return null;
+
+  const title = escapeHtml(storePage.title);
+  const description = escapeHtml(storePage.description || `${storePage.title} — ${shop.name}`);
+  const canonicalUrl = `https://${shopSlug}.ventou.shop/page/${storePage.slug}`;
+  const shopName = escapeHtml(shop.name);
+  const logoImage = escapeHtml(shop.logo_url || '');
+
+  const ogMetaBlock = `
+    <title>${title} | ${shopName}</title>
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:site_name" content="${shopName}" />
+    ${logoImage ? `<meta property="og:image" content="${logoImage}" />` : ''}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${title}" />
+    <meta name="twitter:description" content="${description}" />
+    ${logoImage ? `<meta name="twitter:image" content="${logoImage}" />` : ''}
+    <meta name="description" content="${description}" />
+    <link rel="canonical" href="${canonicalUrl}" />`;
+
+  const originUrl = `${ORIGIN_URL}/page/${pageSlug}`;
+  const originHeaders = new Headers(request.headers);
+  originHeaders.set('Host', ORIGIN_HOST);
+  originHeaders.delete('CF-Connecting-IP');
+  originHeaders.delete('CF-RAY');
+
+  let originResponse;
+  try {
+    originResponse = await fetch(originUrl, { method: 'GET', headers: originHeaders, redirect: 'follow' });
+  } catch { return null; }
+
+  let html = await originResponse.text();
+  html = html.replace(/<meta\s+(?:property|name)="(?:og:|twitter:|description)[^"]*"\s+content="[^"]*"\s*\/?>/gi, '');
+  html = html.replace(/<title>[^<]*<\/title>/i, '');
+  html = html.replace(/<head>/i, `<head>${ogMetaBlock}`);
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=300, s-maxage=3600',
+      'X-Robots-Tag': 'index, follow',
+    },
+  });
+}
+
 // ─── Main Handler ────────────────────────────────────────────
 
 export default {
@@ -338,8 +416,26 @@ export default {
           return ogResponse;
         }
       } catch (err) {
-        // On error, fall through to normal proxy
         console.error('SSR OG error:', err.message);
+      }
+    }
+
+    // ── SSR OG Meta Tags for bot crawlers on store pages ──
+    const storePageMatch = pathname.match(STORE_PAGE_RE);
+    if (storePageMatch && isBot(userAgent) && request.method === 'GET') {
+      const hostname = url.hostname;
+      const shopSlug = hostname.split('.')[0];
+      const pageSlug = storePageMatch[1];
+
+      try {
+        const ogResponse = await handleStorePageOG(request, env, shopSlug, pageSlug);
+        if (ogResponse) {
+          ogResponse.headers.set('X-User-Country', country);
+          ogResponse.headers.set('X-Content-Type-Options', 'nosniff');
+          return ogResponse;
+        }
+      } catch (err) {
+        console.error('SSR Store Page OG error:', err.message);
       }
     }
 
