@@ -231,8 +231,10 @@ const App = () => {
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
             <Route path="/boutique/:slug/p/:productSlug" element={<ShopStorefrontRoute />} />
+            <Route path="/boutique/:slug/page/:pageSlug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug" element={<ShopStorefrontRoute />} />
             <Route path="/shop/:slug/p/:productSlug" element={<ShopStorefrontRoute />} />
+            <Route path="/shop/:slug/page/:pageSlug" element={<ShopStorefrontRoute />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
