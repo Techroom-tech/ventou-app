@@ -21,7 +21,7 @@ import { CountryProvider, useCountry } from '@/contexts/CountryContext';
 import CountrySelector from '@/components/storefront/CountrySelector';
 import { getPlatformUrl } from '@/lib/domain';
 import { useStorefrontTracking, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase } from '@/hooks/useStorefrontTracking';
-
+import StoreFooter from '@/components/storefront/StoreFooter';
 const ProductPage = lazy(() => import('@/components/storefront/ProductPage'));
 const StorePage = lazy(() => import('@/components/storefront/StorePage'));
 interface ShopStorefrontProps {
