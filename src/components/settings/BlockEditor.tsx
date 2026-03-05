@@ -426,17 +426,6 @@ export default function BlockEditor({
         />
       )}
 
-      {/* Bubble menu for inline formatting */}
-      {editor && !preview && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 150 }} className="bg-popover border border-border rounded-lg shadow-lg p-1 flex items-center gap-0.5">
-          <ToolbarBtn icon={Bold} active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} label="Gras" />
-          <ToolbarBtn icon={Italic} active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} label="Italique" />
-          <ToolbarBtn icon={UnderlineIcon} active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} label="Souligné" />
-          <Separator orientation="vertical" className="h-4 mx-0.5" />
-          <ToolbarBtn icon={Link2} active={editor.isActive('link')} onClick={insertLink} label="Lien" />
-        </BubbleMenu>
-      )}
-
       {/* Hidden file input for image upload */}
       <input
         ref={fileInputRef}
