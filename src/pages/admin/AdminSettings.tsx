@@ -1,10 +1,14 @@
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Palette, CreditCard, Bell, Shield, Scale, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Settings, Palette, CreditCard, Bell, Shield, Scale, Wrench, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 const sections = [
   { icon: Settings, title: 'Général', description: 'Nom de la plateforme, logo, URLs' },
@@ -18,6 +22,16 @@ const sections = [
 
 export default function AdminSettings() {
   const navigate = useNavigate();
+  const { data: settings, updateSetting } = usePlatformSettings();
+
+  const disclaimerSetting = settings?.find(s => s.key === 'footer_disclaimer');
+  const savedDisclaimer = typeof disclaimerSetting?.value === 'string'
+    ? disclaimerSetting.value
+    : 'Cette boutique est exploitée de manière indépendante et est responsable de ses propres contenus et produits.';
+
+  const [disclaimer, setDisclaimer] = useState(savedDisclaimer);
+  useEffect(() => { setDisclaimer(savedDisclaimer); }, [savedDisclaimer]);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -43,6 +57,32 @@ export default function AdminSettings() {
         </div>
 
         <Separator />
+
+        {/* Footer Disclaimer */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Scale className="h-4 w-4" /> Disclaimer Footer
+            </CardTitle>
+            <CardDescription>Texte affiché en bas de toutes les boutiques</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={disclaimer}
+              onChange={e => setDisclaimer(e.target.value)}
+              rows={3}
+              placeholder="Texte de disclaimer..."
+            />
+            <Button
+              size="sm"
+              disabled={disclaimer === savedDisclaimer || updateSetting.isPending}
+              onClick={() => updateSetting.mutate({ key: 'footer_disclaimer', value: disclaimer })}
+            >
+              <Save className="h-4 w-4 mr-1" />
+              Enregistrer
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
