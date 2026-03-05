@@ -161,7 +161,7 @@ export default function BlockEditor({
   onContentChange: (content: Record<string, unknown>) => void;
   shopId: string;
 }) {
-  const [preview, setPreview] = useState(false);
+  
   const [slashMenu, setSlashMenu] = useState<{ open: boolean; query: string; pos: { top: number; left: number } }>({
     open: false,
     query: '',
@@ -181,7 +181,7 @@ export default function BlockEditor({
       HorizontalRule,
     ],
     content: content as any,
-    editable: !preview,
+    editable: true,
     editorProps: {
       attributes: {
         class: 'block-editor-content prose prose-sm sm:prose max-w-none focus:outline-none px-4 sm:px-8 py-6',
@@ -224,10 +224,6 @@ export default function BlockEditor({
     },
   });
 
-  // Toggle editable on preview change
-  useEffect(() => {
-    if (editor) editor.setEditable(!preview);
-  }, [preview, editor]);
 
   const handleImageUpload = useCallback(
     async (file: File) => {
