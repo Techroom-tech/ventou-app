@@ -25,14 +25,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useShop } from '@/hooks/useShop';
 import { getStorefrontDomain, BASE_DOMAIN } from '@/lib/domain';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useCountry, COUNTRY_CONFIGS } from '@/contexts/CountryContext';
 
 // ─── Constants ───────────────────────────────────────────────
 const SHOP_CATEGORIES = [
   'fashion', 'electronics', 'food', 'beauty', 'home', 'sports', 'books', 'art', 'services', 'other',
-] as const;
-
-const COUNTRIES = [
-  'Ivory Coast', 'Senegal', 'Ghana', 'Nigeria', 'Cameroon', 'Mali', 'Burkina Faso', 'Togo', 'Benin', 'Guinea',
 ] as const;
 
 const COLOR_PRESETS = [
