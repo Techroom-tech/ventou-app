@@ -1,52 +1,33 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan : Boutons "Continuer avec Google" sur Login et Signup
 
-### Problem
+### Fichiers modifiés
 
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/GoogleSignInButton.tsx` | Nouveau composant réutilisable |
+| `src/pages/Login.tsx` | Ajout du bouton Google au-dessus du formulaire email |
+| `src/pages/Signup.tsx` | Ajout du bouton Google au-dessus du formulaire email |
+| `src/i18n/locales/fr.json` | Clé `auth.continueWithGoogle` |
+| `src/i18n/locales/en.json` | Clé `auth.continueWithGoogle` |
 
-### Solution
+### Composant GoogleSignInButton
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+Composant partagé qui :
+- Appelle `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard' } })`
+- Affiche le logo Google SVG inline + texte traduit
+- Style : bouton outline pleine largeur, hauteur 48px (CTA standard), border radius 8-10px
+- État loading avec spinner pendant la redirection
+- Responsive : texte et icône s'adaptent, padding ajusté mobile/desktop
 
-### Architecture
+### Placement dans les pages
 
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
+Sur Login et Signup, le bouton Google apparait **avant** le formulaire email, suivi d'un séparateur "ou" (déjà présent sur Login, à ajouter sur Signup). Cela suit le pattern standard où l'OAuth est proposé en premier pour réduire la friction.
 
-### Changes
+### Détails techniques
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
-
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
-
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
-
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
-
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
-
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
-
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+- Pas besoin de modifier `AuthContext` : le callback OAuth est géré automatiquement par Supabase via `onAuthStateChange` qui détecte la nouvelle session après redirection
+- Le trigger `handle_new_user` existant crée automatiquement le profil pour les nouveaux utilisateurs Google (via `raw_user_meta_data`)
+- `redirectTo` pointe vers `window.location.origin` pour supporter les différents domaines (ventou.shop, lovable.app, localhost)
 
