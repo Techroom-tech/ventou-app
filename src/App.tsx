@@ -12,6 +12,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { getStoreSlugFromHostname } from "@/lib/subdomain";
 import { StorefrontProvider } from "@/contexts/StorefrontContext";
+import { CountryProvider } from "@/contexts/CountryContext";
 
 // Shared dashboard shell (guards + layout mounted once)
 const DashboardShell = lazy(() => import("./components/dashboard/DashboardShell"));
