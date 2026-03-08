@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -90,7 +91,18 @@ export default function Login() {
           <CardTitle className="text-2xl font-bold">{t('auth.login.title')}</CardTitle>
           <CardDescription>{t('auth.login.subtitle')}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <GoogleSignInButton />
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">{t('common.or')}</span>
+            </div>
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -188,16 +200,8 @@ export default function Login() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">{t('common.or')}</span>
-            </div>
-          </div>
-          <p className="text-center text-sm text-muted-foreground">
+        <CardFooter>
+          <p className="text-center text-sm text-muted-foreground w-full">
             {t('auth.login.noAccount')}{' '}
             <Link to="/signup" className="text-accent hover:underline font-medium">
               {t('auth.login.signupLink')}

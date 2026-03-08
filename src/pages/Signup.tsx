@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export default function Signup() {
   const { t } = useTranslation();
@@ -122,7 +123,18 @@ export default function Signup() {
           <CardTitle className="text-2xl font-bold">{t('auth.signup.title')}</CardTitle>
           <CardDescription>{t('auth.signup.subtitle')}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <GoogleSignInButton />
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">{t('common.or')}</span>
+            </div>
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
