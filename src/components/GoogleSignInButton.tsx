@@ -33,7 +33,7 @@ export function GoogleSignInButton() {
       type="button"
       onClick={handleGoogleSignIn}
       disabled={isLoading}
-      className="w-full h-12 flex items-center justify-center gap-3 rounded-[10px] border border-border bg-background text-foreground font-medium text-sm hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+      className="w-full h-12 flex items-center justify-center gap-3 rounded-[10px] border border-border bg-background text-foreground font-medium text-sm shadow-sm hover:shadow-md hover:border-primary/30 hover:bg-muted/40 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
     >
       {isLoading ? (
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
