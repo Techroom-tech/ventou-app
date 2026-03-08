@@ -260,6 +260,7 @@ export default function Signup() {
                           </button>
                         </div>
                       </FormControl>
+                      <PasswordStrengthIndicator password={field.value} />
                       <FormMessage />
                     </FormItem>
                   )}
