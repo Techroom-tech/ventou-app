@@ -122,6 +122,7 @@ const App = () => {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <QueryClientProvider client={queryClient}>
+          <CountryProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
