@@ -177,6 +177,7 @@ export default function CreateShop() {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { hasShop, isLoading: shopLoading } = useShop();
+  const { country: detectedCountry } = useCountry();
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -192,9 +193,9 @@ export default function CreateShop() {
       name: '',
       description: '',
       category: '',
-      country: 'Ivory Coast',
+      country: detectedCountry.name,
       city: '',
-      whatsapp: '',
+      whatsapp: detectedCountry.phonePrefix,
       slug: '',
       primary_color: '#1E3A5F',
     },
