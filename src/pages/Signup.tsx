@@ -129,7 +129,7 @@ export default function Signup() {
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] as const, delay: 0.5 }}
             >
               <Link to="/login">
                 <Button variant="outline" className="w-full">
