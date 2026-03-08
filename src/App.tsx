@@ -141,6 +141,7 @@ const App = () => {
               </StorefrontProvider>
             </BrowserRouter>
           </TooltipProvider>
+          </CountryProvider>
         </QueryClientProvider>
       </ThemeProvider>
     );
@@ -149,6 +150,7 @@ const App = () => {
   return (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
   <QueryClientProvider client={queryClient}>
+    <CountryProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
