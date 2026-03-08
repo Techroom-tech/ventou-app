@@ -509,9 +509,20 @@ export default function CreateShop() {
                                     <SelectValue placeholder="Sélectionnez..." />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
-                                  {COUNTRIES.map((c) => (
-                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectContent>
+                                  {COUNTRY_CONFIGS.map((c) => (
+                                    <SelectItem key={c.code} value={c.name}>
+                                      <span className="flex items-center gap-2">
+                                        <img
+                                          src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                                          alt={c.name}
+                                          className="w-5 h-auto rounded-sm"
+                                          width={20}
+                                          height={15}
+                                        />
+                                        {c.name}
+                                      </span>
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
