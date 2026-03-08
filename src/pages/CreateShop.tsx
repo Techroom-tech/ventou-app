@@ -25,14 +25,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useShop } from '@/hooks/useShop';
 import { getStorefrontDomain, BASE_DOMAIN } from '@/lib/domain';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useCountry, COUNTRY_CONFIGS } from '@/contexts/CountryContext';
 
 // ─── Constants ───────────────────────────────────────────────
 const SHOP_CATEGORIES = [
   'fashion', 'electronics', 'food', 'beauty', 'home', 'sports', 'books', 'art', 'services', 'other',
-] as const;
-
-const COUNTRIES = [
-  'Ivory Coast', 'Senegal', 'Ghana', 'Nigeria', 'Cameroon', 'Mali', 'Burkina Faso', 'Togo', 'Benin', 'Guinea',
 ] as const;
 
 const COLOR_PRESETS = [
@@ -180,6 +177,7 @@ export default function CreateShop() {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { hasShop, isLoading: shopLoading } = useShop();
+  const { country: detectedCountry } = useCountry();
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -195,9 +193,9 @@ export default function CreateShop() {
       name: '',
       description: '',
       category: '',
-      country: 'Ivory Coast',
+      country: detectedCountry.name,
       city: '',
-      whatsapp: '',
+      whatsapp: detectedCountry.phonePrefix,
       slug: '',
       primary_color: '#1E3A5F',
     },
@@ -511,9 +509,20 @@ export default function CreateShop() {
                                     <SelectValue placeholder="Sélectionnez..." />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
-                                  {COUNTRIES.map((c) => (
-                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectContent>
+                                  {COUNTRY_CONFIGS.map((c) => (
+                                    <SelectItem key={c.code} value={c.name}>
+                                      <span className="flex items-center gap-2">
+                                        <img
+                                          src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                                          alt={c.name}
+                                          className="w-5 h-auto rounded-sm"
+                                          width={20}
+                                          height={15}
+                                        />
+                                        {c.name}
+                                      </span>
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>

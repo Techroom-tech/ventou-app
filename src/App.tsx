@@ -12,6 +12,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { getStoreSlugFromHostname } from "@/lib/subdomain";
 import { StorefrontProvider } from "@/contexts/StorefrontContext";
+import { CountryProvider } from "@/contexts/CountryContext";
 
 // Shared dashboard shell (guards + layout mounted once)
 const DashboardShell = lazy(() => import("./components/dashboard/DashboardShell"));
@@ -121,6 +122,7 @@ const App = () => {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <QueryClientProvider client={queryClient}>
+          <CountryProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -139,6 +141,7 @@ const App = () => {
               </StorefrontProvider>
             </BrowserRouter>
           </TooltipProvider>
+          </CountryProvider>
         </QueryClientProvider>
       </ThemeProvider>
     );
@@ -147,6 +150,7 @@ const App = () => {
   return (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
   <QueryClientProvider client={queryClient}>
+    <CountryProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -242,6 +246,7 @@ const App = () => {
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </CountryProvider>
   </QueryClientProvider>
   </ThemeProvider>
   );

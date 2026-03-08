@@ -810,10 +810,8 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
 
 export default function ShopStorefront({ slug, basePath }: ShopStorefrontProps) {
   return (
-    <CountryProvider>
-      <CartProvider shopId={slug}>
-        <StorefrontContent slug={slug} basePath={basePath} />
-      </CartProvider>
-    </CountryProvider>
+    <CartProvider shopId={slug}>
+      <StorefrontContent slug={slug} basePath={basePath} />
+    </CartProvider>
   );
 }
