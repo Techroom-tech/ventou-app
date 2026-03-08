@@ -1,52 +1,37 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan : Auto-détection du pays par IP pour pré-remplissage intelligent
 
-### Problem
+### Problème actuel
+- Le `CountryProvider` existe mais n'est utilisé que dans le **storefront** (ShopStorefront). Il n'est pas disponible dans les pages dashboard/auth/CreateShop.
+- La page `CreateShop` a un pays par défaut hardcodé `'Ivory Coast'` et un champ WhatsApp sans préfixe automatique.
+- La liste `COUNTRIES` dans CreateShop ne correspond pas aux `COUNTRY_CONFIGS` du CountryContext (noms différents : "Ivory Coast" vs "Côte d'Ivoire").
 
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+### Ce qu'on va faire
 
-### Solution
+**1. Remonter le `CountryProvider` au niveau global (App.tsx)**
+- Wraper toute l'app dans `<CountryProvider>` pour que la détection IP soit disponible partout (dashboard, CreateShop, checkout, etc.)
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+**2. Utiliser `useCountry()` dans CreateShop pour pré-remplir automatiquement :**
+- **Pays** : sélectionné selon le pays détecté
+- **WhatsApp** : pré-rempli avec le préfixe téléphonique du pays (ex: `+225` pour CI)
+- Harmoniser la liste `COUNTRIES` avec `COUNTRY_CONFIGS` pour utiliser les mêmes codes/noms
 
-### Architecture
+**3. Harmoniser les noms de pays**
+- Remplacer la constante `COUNTRIES` dans CreateShop par `COUNTRY_CONFIGS` du CountryContext
+- Mapper le code pays détecté → nom affiché dans le select
+- Stocker le code ISO dans le formulaire (plus fiable que le nom)
 
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
+### Fichiers modifiés
 
-### Changes
+| Fichier | Action |
+|---------|--------|
+| `src/App.tsx` | Wrapper `<CountryProvider>` au niveau global |
+| `src/pages/CreateShop.tsx` | Importer `useCountry`, remplacer `COUNTRIES` par `COUNTRY_CONFIGS`, pré-remplir pays + WhatsApp prefix |
+| `src/pages/ShopStorefront.tsx` | Retirer le `<CountryProvider>` local (désormais global) |
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
-
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
-
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
-
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
-
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
-
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
-
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+### Détails techniques
+- `useCountry()` dans CreateShop → `country.name` pour `defaultValues.country`, `country.phonePrefix` pour `defaultValues.whatsapp`
+- La détection IP existante via le header `X-User-Country` (Cloudflare Worker) reste le mécanisme principal — aucun service externe nécessaire
+- Le `useEffect` dans CountryContext gère déjà la cascade : localStorage → header HTTP → navigator.language → défaut BF
 
