@@ -433,6 +433,12 @@
       "firstNameRequired": "Le prénom est requis",
       "lastNameRequired": "Le nom est requis"
     },
+    "passwordStrength": {
+      "weak": "Faible",
+      "fair": "Moyen",
+      "good": "Bon",
+      "strong": "Excellent"
+    },
     "errors": {
       "invalidCredentials": "Email ou mot de passe incorrect",
       "emailNotVerified": "Veuillez vérifier votre email",

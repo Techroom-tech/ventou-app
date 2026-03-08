@@ -432,6 +432,12 @@
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required"
     },
+    "passwordStrength": {
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong"
+    },
     "errors": {
       "invalidCredentials": "Invalid email or password",
       "emailNotVerified": "Please verify your email",
