@@ -480,7 +480,7 @@ export default function CreateShop() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>{t('createShop.fields.category', 'Catégorie')} *</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select value={field.value} onValueChange={field.onChange}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Sélectionnez..." />
