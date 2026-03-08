@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -30,18 +29,16 @@ export function GoogleSignInButton() {
   };
 
   return (
-    <Button
+    <button
       type="button"
-      variant="outline"
-      size="cta"
-      className="w-full gap-3 border-border hover:bg-muted/50"
       onClick={handleGoogleSignIn}
       disabled={isLoading}
+      className="w-full h-12 flex items-center justify-center gap-3 rounded-[10px] border border-border bg-background text-foreground font-medium text-sm hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:pointer-events-none"
     >
       {isLoading ? (
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       ) : (
-        <svg className="h-5 w-5" viewBox="0 0 24 24">
+        <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
           <path
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
             fill="#4285F4"
@@ -60,7 +57,7 @@ export function GoogleSignInButton() {
           />
         </svg>
       )}
-      {t('auth.continueWithGoogle')}
-    </Button>
+      <span>{t('auth.continueWithGoogle')}</span>
+    </button>
   );
 }
