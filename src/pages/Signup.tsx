@@ -109,7 +109,7 @@ export default function Signup() {
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const, delay: 0.1 }}
               className="mx-auto w-12 h-12 bg-ventou-success/10 rounded-full flex items-center justify-center mb-4"
             >
               <CheckCircle className="h-6 w-6 text-ventou-success" />
