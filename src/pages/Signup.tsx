@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export default function Signup() {
   const { t } = useTranslation();
