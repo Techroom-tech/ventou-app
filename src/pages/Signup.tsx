@@ -8,6 +8,7 @@ import { Eye, EyeOff, Mail, Lock, User, Loader2, CheckCircle } from 'lucide-reac
 import { motion } from 'framer-motion';
 
 import { AuthLayout } from '@/components/AuthLayout';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
