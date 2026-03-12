@@ -265,10 +265,12 @@ function CheckoutFormContent({
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const onSubmit = async (data: CheckoutForm) => {
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      toast.error('Votre panier est vide.');
+      return;
+    }
     if (shop.is_suspended) {
-      console.warn('[CheckoutDrawer] Shop is suspended, blocking order.');
-      toast.error('Cette boutique n’accepte pas de commandes pour le moment.');
+      toast.error('Cette boutique n\u2019accepte pas de commandes pour le moment.');
       return;
     }
     setSubmitting(true);
@@ -286,11 +288,9 @@ function CheckoutFormContent({
       );
       const grandTotal = subtotal + deliveryFee;
 
-      // Generate ID client-side so we can use it for notify-order
-      // (anon users can't SELECT back after INSERT due to RLS)
       const orderId = crypto.randomUUID();
 
-      const { error } = await supabase.from('orders').insert({
+      const orderPayload = {
         id: orderId,
         shop_id: shop.id,
         customer_name: data.customer_name.trim(),
@@ -300,15 +300,28 @@ function CheckoutFormContent({
         quartier: data.quartier?.trim() || null,
         notes: data.notes?.trim() || null,
         location_url: data.location_url?.trim() || null,
-        items: orderItems,
+        items: orderItems as unknown as import('@/integrations/supabase/types').Json,
         subtotal,
         delivery_fee: deliveryFee,
         total: grandTotal,
         status: 'pending',
         payment_method: data.payment_method,
-      });
+      };
 
-      if (error) throw error;
+      console.log('[CheckoutDrawer] Inserting order:', JSON.stringify(orderPayload));
+
+      const { error } = await supabase.from('orders').insert(orderPayload);
+
+      if (error) {
+        console.error('[CheckoutDrawer] Supabase insert error:', error.message, error.code, error.details, error.hint);
+        
+        if (error.code === '42501') {
+          toast.error('Cette boutique ne peut pas recevoir de commandes actuellement.');
+        } else {
+          toast.error(`Erreur: ${error.message || 'Impossible de créer la commande.'}`);
+        }
+        return;
+      }
 
       // WhatsApp redirect
       if (data.payment_method === 'whatsapp' && shop.whatsapp) {
@@ -347,25 +360,13 @@ function CheckoutFormContent({
         trackCampaignEvent(shop.id, 'purchase', { revenue: grandTotal });
       });
 
-      // Notification email is now handled automatically by database trigger (pg_net)
-
       clearCart();
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onSuccess(); }, 3000);
     } catch (err: unknown) {
-      console.error('[CheckoutDrawer] error:', err);
-
-      const isRlsError =
-        typeof err === 'object' &&
-        err !== null &&
-        'code' in err &&
-        (err as { code?: string }).code === '42501';
-
-      if (isRlsError) {
-        toast.error('Cette boutique ne peut pas recevoir de commandes actuellement.');
-      } else {
-        toast.error('Échec de l’envoi de la commande. Vérifiez les champs et réessayez.');
-      }
+      console.error('[CheckoutDrawer] Unexpected error:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Erreur inattendue: ${message}`);
     } finally {
       setSubmitting(false);
     }
