@@ -81,7 +81,7 @@ export function NotificationsPopover() {
               return (
                 <button
                   key={order.id}
-                  onClick={() => navigate(`/dashboard/orders/${order.id}`)}
+                  onClick={() => navigate(`/dashboard/commandes/${order.id}`)}
                   className={cn(
                     'flex gap-3 px-3 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors w-full text-left',
                     isRecent && 'bg-accent/5'
