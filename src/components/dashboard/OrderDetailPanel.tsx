@@ -349,7 +349,7 @@ export function OrderDetailPanel({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="gap-2 cursor-pointer text-xs text-destructive focus:text-destructive"
-                        onClick={handleDeleteOrder}
+                        onClick={() => setShowDeleteConfirm(true)}
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Supprimer
                       </DropdownMenuItem>
