@@ -8,6 +8,7 @@ import {
   Shield,
   Settings,
   Bug,
+  MessageSquare,
 } from 'lucide-react';
 import type { AdminNavItem, AdminRole } from '@/types/admin';
 
