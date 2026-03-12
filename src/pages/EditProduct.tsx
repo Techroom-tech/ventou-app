@@ -188,9 +188,9 @@ export default function EditProduct() {
               .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
               .map((img: any) => ({
                 id: img.id,
-                url: img.url,
-                storage_path: img.storage_path ?? '',
-                is_primary: img.is_primary ?? false,
+                url: img.image_url,
+                storage_path: '',
+                is_primary: (img.position ?? 0) === 0,
                 position: img.position ?? 0,
               }))
           );
