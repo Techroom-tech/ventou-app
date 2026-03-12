@@ -20,7 +20,7 @@ import {
   useUpdateOrderStatus, useBatchUpdateOrderStatus, useDeleteOrders,
 } from '@/hooks/useOrders';
 import { useShop } from '@/hooks/useShop';
-import { formatCurrency, supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/integrations/supabase/client';
 import { Order, OrderStatus, ORDER_TRANSITIONS } from '@/types/shop';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
