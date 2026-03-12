@@ -12,7 +12,38 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useEmailTemplates, type EmailTemplate } from '@/hooks/useEmailTemplates';
-import { Pencil, Eye, Loader2, Save } from 'lucide-react';
+import { Pencil, Eye, Loader2, Save, Tag } from 'lucide-react';
+
+// ─── Tags disponibles par template ───────────────────────────────────────────
+const TEMPLATE_TAGS: Record<string, string[]> = {
+  email_verification: ['name', 'verification_url'],
+  password_reset: ['name', 'reset_url'],
+  two_factor_code: ['name', 'code'],
+  account_approved: ['name', 'dashboard_url'],
+  account_suspended: ['name', 'reason'],
+  welcome_vendor: ['name', 'dashboard_url'],
+  store_created: ['name', 'store_name', 'store_url'],
+  store_approved: ['name', 'store_name', 'store_url'],
+  store_rejected: ['name', 'store_name', 'reason'],
+  store_suspended: ['name', 'store_name', 'reason'],
+  store_reactivated: ['name', 'store_name', 'store_url'],
+  new_order_vendor: ['name', 'store_name', 'order_id', 'customer_name', 'customer_phone', 'total', 'city', 'quartier', 'payment_method', 'items_list', 'dashboard_url'],
+  order_confirmation_customer: ['customer_name', 'order_id', 'store_name', 'items_list', 'total', 'payment_method', 'city'],
+  order_cancelled: ['name', 'order_id', 'store_name', 'reason', 'total'],
+  order_refunded: ['name', 'order_id', 'amount'],
+  order_shipped: ['customer_name', 'order_id', 'store_name'],
+  order_delivered: ['customer_name', 'order_id', 'store_name'],
+  subscription_activated: ['name', 'plan_name', 'period_start', 'period_end'],
+  subscription_expiring_7_days: ['name', 'plan_name', 'expiry_date', 'dashboard_url'],
+  subscription_expiring_1_day: ['name', 'plan_name', 'dashboard_url'],
+  subscription_expired: ['name', 'plan_name', 'dashboard_url'],
+  plan_upgraded: ['name', 'plan_name', 'plan_features'],
+  plan_downgraded: ['name', 'plan_name', 'plan_limits'],
+  vendor_report_warning: ['name', 'store_name', 'reason', 'report_count'],
+  manual_admin_action: ['name', 'action_description'],
+  payment_failed: ['name', 'plan_name', 'amount', 'error_message', 'dashboard_url'],
+  payment_success: ['name', 'plan_name', 'amount', 'payment_date'],
+};
 
 const CATEGORIES: Record<string, { label: string; slugs: string[] }> = {
   auth: {
@@ -64,6 +95,7 @@ function TemplateRow({ t, onUpdate, onToggle }: { t: EmailTemplate; onUpdate: an
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState(t.subject);
   const [body, setBody] = useState(t.body);
+  const tags = TEMPLATE_TAGS[t.slug] || [];
 
   const handleSave = () => {
     onUpdate.mutate({ id: t.id, subject, body });
@@ -89,6 +121,18 @@ function TemplateRow({ t, onUpdate, onToggle }: { t: EmailTemplate; onUpdate: an
       </CardHeader>
       {editing && (
         <CardContent className="space-y-3 pt-0">
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+              {tags.map(tag => (
+                <code key={tag} className="bg-muted text-[11px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => {
+                  navigator.clipboard.writeText(`{{${tag}}}`);
+                }}>
+                  {`{{${tag}}}`}
+                </code>
+              ))}
+            </div>
+          )}
           <div><Label className="text-xs">Sujet</Label><Input value={subject} onChange={e => setSubject(e.target.value)} /></div>
           <div><Label className="text-xs">Corps HTML</Label><Textarea value={body} onChange={e => setBody(e.target.value)} rows={8} className="font-mono text-xs" /></div>
           <div className="flex gap-2">
@@ -122,8 +166,12 @@ export default function AdminEmailTemplates() {
           <EmailJumpToMenu />
 
           <div className="space-y-4">
-            <div className="text-xs text-muted-foreground">
-              Variables : <code className="bg-muted px-1 rounded">{'{{name}}'}</code> <code className="bg-muted px-1 rounded">{'{{platform_name}}'}</code> <code className="bg-muted px-1 rounded">{'{{store_name}}'}</code> <code className="bg-muted px-1 rounded">{'{{order_id}}'}</code> <code className="bg-muted px-1 rounded">{'{{reason}}'}</code> <code className="bg-muted px-1 rounded">{'{{amount}}'}</code>
+            <div className="text-xs text-muted-foreground flex flex-wrap gap-1 items-center">
+              <span>Variables globales :</span>
+              <code className="bg-muted px-1 rounded">{'{{platform_name}}'}</code>
+              <code className="bg-muted px-1 rounded">{'{{year}}'}</code>
+              <code className="bg-muted px-1 rounded">{'{{logo_url}}'}</code>
+              <span className="text-muted-foreground/60 ml-1">· Cliquez sur un tag pour le copier</span>
             </div>
 
             {isLoading ? (

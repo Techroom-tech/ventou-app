@@ -328,6 +328,13 @@ function CheckoutFormContent({
         trackCampaignEvent(shop.id, 'purchase', { revenue: grandTotal });
       });
 
+      // Fire-and-forget: notify vendor by email
+      supabase.functions.invoke('notify-order', {
+        body: { order_id: undefined, shop_id: shop.id },
+      }).catch(() => {});
+      // Note: we don't have order_id from insert response, we pass shop_id
+      // The edge function will find the latest pending order
+
       clearCart();
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onSuccess(); }, 3000);

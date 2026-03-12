@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.track-campaign-event]
 verify_jwt = false
+
+[functions.notify-order]
+verify_jwt = false
