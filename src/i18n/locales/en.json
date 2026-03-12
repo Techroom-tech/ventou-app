@@ -393,13 +393,13 @@
     },
     "forgotPassword": {
       "title": "Forgot password",
-      "subtitle": "Enter your email to receive a reset link",
+      "subtitle": "Enter your email to receive a verification code",
       "email": "Email address",
       "emailPlaceholder": "your@email.com",
-      "submit": "Send reset link",
+      "submit": "Send code",
       "backToLogin": "Back to login",
       "successTitle": "Email sent!",
-      "successMessage": "Check your inbox for the reset link."
+      "successMessage": "Check your inbox for the verification code."
     },
     "resetPassword": {
       "title": "New password",
@@ -408,13 +408,29 @@
       "passwordPlaceholder": "Your new password",
       "confirmPassword": "Confirm password",
       "confirmPasswordPlaceholder": "Confirm your new password",
-      "submit": "Reset password"
+      "submit": "Reset password",
+      "successMessage": "Your password has been reset successfully."
+    },
+    "otp": {
+      "title": "Enter your verification code",
+      "subtitle": "We sent a 5-digit code to",
+      "noCode": "Didn't receive a code?",
+      "resend": "Resend code",
+      "resendIn": "Resend in {{seconds}}s",
+      "resent": "Code resent!",
+      "verifyingLink": "Verifying...",
+      "successTitle": "Email verified!",
+      "successMessage": "Your email has been verified successfully. Redirecting...",
+      "invalidOrExpired": "Invalid or expired code",
+      "wrongCode": "Wrong code. {{remaining}} attempt(s) remaining",
+      "locked": "Too many attempts. Try again in {{minutes}} minute(s)",
+      "expired": "Code has expired. Please request a new one."
     },
     "verifyEmail": {
       "title": "Verify your email",
-      "subtitle": "We've sent a verification link to",
-      "resend": "Resend email",
-      "resent": "Email resent!"
+      "subtitle": "We sent a verification code to",
+      "resend": "Resend code",
+      "resent": "Code resent!"
     },
     "twoFactor": {
       "title": "Two-factor verification",
