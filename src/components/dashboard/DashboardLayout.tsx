@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, lazy, Suspense } from 'react';
 import { DashboardSidebar } from './DashboardSidebar';
+const FeedbackWidget = lazy(() => import('./FeedbackWidget').then(m => ({ default: m.FeedbackWidget })));
 import { DashboardHeader } from './DashboardHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { FloatingChatButton } from './FloatingChatButton';
@@ -36,6 +37,7 @@ function DashboardInner({ children }: { children: ReactNode }) {
       </div>
       <MobileBottomNav />
       <FloatingChatButton />
+      <Suspense fallback={null}><FeedbackWidget /></Suspense>
     </div>
   );
 }

@@ -432,6 +432,62 @@ export type Database = {
         }
         Relationships: []
       }
+      feedbacks: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device: string | null
+          id: string
+          message: string
+          page_url: string | null
+          screenshot_url: string | null
+          status: string
+          store_id: string | null
+          title: string
+          type: string
+          user_id: string
+          votes_count: number
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          id?: string
+          message: string
+          page_url?: string | null
+          screenshot_url?: string | null
+          status?: string
+          store_id?: string | null
+          title: string
+          type?: string
+          user_id: string
+          votes_count?: number
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          id?: string
+          message?: string
+          page_url?: string | null
+          screenshot_url?: string | null
+          status?: string
+          store_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+          votes_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedbacks_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flash_promotions: {
         Row: {
           created_at: string | null
