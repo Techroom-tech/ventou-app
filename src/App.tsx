@@ -85,6 +85,7 @@ const AdminEmailLogs = lazy(() => import("./pages/admin/AdminEmailLogs"));
 const AdminEmailDomains = lazy(() => import("./pages/admin/AdminEmailDomains"));
 const AdminShopDiagnostic = lazy(() => import("./pages/admin/AdminShopDiagnostic"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
 
 // Admin guard
 import { AdminGuard } from "@/components/admin/AdminGuard";
