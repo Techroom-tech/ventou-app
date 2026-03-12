@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Tag, Zap, Link2, Activity, ChevronRight } from 'lucide-react';
+import { BarChart3, Tag, Zap, Link2, Activity, ChevronRight, MessageSquare } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ const cards: MktCard[] = [
   { icon: Zap, iconBg: 'bg-amber-50 dark:bg-amber-950/50', iconColor: 'text-amber-600 dark:text-amber-400', titleKey: 'marketing.hub.promos', descKey: 'marketing.hub.promosDesc', path: '/dashboard/marketing/promos' },
   { icon: Link2, iconBg: 'bg-emerald-50 dark:bg-emerald-950/50', iconColor: 'text-emerald-600 dark:text-emerald-400', titleKey: 'marketing.hub.links', descKey: 'marketing.hub.linksDesc', path: '/dashboard/marketing/liens' },
   { icon: Activity, iconBg: 'bg-violet-50 dark:bg-violet-950/50', iconColor: 'text-violet-600 dark:text-violet-400', titleKey: 'marketing.hub.pixels', descKey: 'marketing.hub.pixelsDesc', path: '/dashboard/marketing/pixels' },
+  { icon: MessageSquare, iconBg: 'bg-orange-50 dark:bg-orange-950/50', iconColor: 'text-orange-600 dark:text-orange-400', titleKey: 'marketing.hub.reviews', descKey: 'marketing.hub.reviewsDesc', path: '/dashboard/marketing/reviews' },
 ];
 
 export default function MarketingHub() {
