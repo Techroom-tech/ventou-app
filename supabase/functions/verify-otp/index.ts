@@ -266,6 +266,22 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
     }
 
+    // ─── UPDATE PASSWORD ─────────────────────────
+    if (action === "update_password") {
+      const { user_id, password } = body;
+      if (!user_id || !password) {
+        return new Response(JSON.stringify({ error: "user_id and password required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const { error: updateError } = await admin.auth.admin.updateUserById(user_id, { password });
+      if (updateError) {
+        console.error("Update password error:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to update password" }), { status: 500, headers: jsonHeaders });
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: jsonHeaders });
   } catch (err) {
     console.error("verify-otp error:", err);
