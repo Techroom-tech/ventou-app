@@ -266,10 +266,10 @@ export function OrderDetailPanel({
   };
 
   const handleDeleteOrder = async () => {
-    if (!window.confirm('Supprimer définitivement cette commande annulée ?')) return;
     try {
       await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
       toast.success('Commande supprimée');
+      setShowDeleteConfirm(false);
       onClose();
     } catch {
       toast.error('Erreur lors de la suppression');
