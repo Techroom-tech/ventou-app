@@ -352,8 +352,20 @@ function CheckoutFormContent({
       clearCart();
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onSuccess(); }, 3000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[CheckoutDrawer] error:', err);
+
+      const isRlsError =
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code?: string }).code === '42501';
+
+      if (isRlsError) {
+        toast.error('Cette boutique ne peut pas recevoir de commandes actuellement.');
+      } else {
+        toast.error('Échec de l’envoi de la commande. Vérifiez les champs et réessayez.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -370,7 +382,7 @@ function CheckoutFormContent({
   }
 
   return (
-    <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form id="checkout-form" onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
       {/* Customer info */}
       <div className="space-y-3">
         {/* Name */}
