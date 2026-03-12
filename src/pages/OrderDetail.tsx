@@ -259,7 +259,7 @@ export default function OrderDetail() {
                 <Button
                   variant="outline" size="sm"
                   className="h-8 text-xs gap-1 text-destructive border-destructive/30"
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteConfirm(true)}
                   disabled={deleteOrders.isPending}
                 >
                   <Trash2 className="h-3 w-3" />
