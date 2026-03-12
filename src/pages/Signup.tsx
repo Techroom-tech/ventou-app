@@ -43,7 +43,6 @@ const itemVariants = {
 
 export default function Signup() {
   const { t } = useTranslation();
-  const { signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
