@@ -1,69 +1,52 @@
 
 
-## Plan : Templates Email Responsives + Envoi Automatique sur Commande
+## Plan: SSR OG Meta Tags via Cloudflare Worker
 
-### Vue d'ensemble
+### Problem
 
-Creer les 22 templates email professionnels en base, avec un HTML responsive (mobile/tablette/desktop), un emplacement pour le logo Ventou, et les tags specifiques a chaque template affiches dans l'admin. Puis automatiser l'envoi d'email au vendeur a chaque nouvelle commande via une Edge Function dediee appelee depuis le checkout.
+WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
 
-### 1. Migration SQL : Seed des 22 templates
+### Solution
 
-Inserer tous les templates avec un corps HTML responsive utilisant des tables HTML (compatibilite email), le logo Ventou en haut, et des variables `{{tag}}` specifiques par template.
+Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
 
-Les 22 templates couvrent 5 categories :
-- **Auth** (5) : email_verification, password_reset, two_factor_code, account_approved, account_suspended
-- **Boutique** (6) : welcome_vendor, store_created, store_approved, store_rejected, store_suspended, store_reactivated
-- **Commandes** (6) : new_order_vendor, order_confirmation_customer, order_cancelled, order_refunded, order_shipped, order_delivered
-- **Abonnements** (6) : subscription_activated, subscription_expiring_7_days, subscription_expiring_1_day, subscription_expired, plan_upgraded, plan_downgraded
-- **Admin** (4) : vendor_report_warning, manual_admin_action, payment_failed, payment_success
-
-Chaque template utilise un body HTML avec structure `<table>` pour le rendu email, pas de CSS externe (inline styles uniquement). Le layout est :
+### Architecture
 
 ```text
-┌──────────────────────────┐
-│   [Logo Ventou / image]  │  ← header sombre
-├──────────────────────────┤
-│                          │
-│   Contenu du mail        │  ← padding 35px, max-width 100%
-│   avec {{variables}}     │
-│                          │
-├──────────────────────────┤
-│   © 2026 Ventou          │  ← footer gris clair
-└──────────────────────────┘
+Bot request: test.ventou.shop/p/airpods-pro
+    │
+    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
+    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
+    │           ──► Fetches HTML from origin
+    │           ──► Rewrites <head> with OG tags + JSON-LD
+    │           ──► Returns modified HTML
+    │
+    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
 ```
 
-Le body de chaque template ne contient QUE le contenu interieur (pas le wrapper) car le `wrapInLayout()` dans send-email ajoute deja le header/footer.
+### Changes
 
-### 2. Edge Function `notify-order`
+**`cloudflare-worker/ventou-wildcard-proxy.js`**
 
-Nouvelle fonction sans JWT (appelee depuis le checkout par des utilisateurs anonymes) qui :
-- Recoit `order_id` et `shop_id`
-- Charge la commande, la boutique et l'email du proprietaire (via `shops.owner_id` → `auth.users`)
-- Appelle la fonction `send-email` en interne (service_role) avec le template `new_order_vendor`
-- Envoie aussi `order_confirmation_customer` si le client a un email (futur, pas bloquant)
+1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
 
-### 3. Appel depuis CheckoutDrawer
+2. Add a `handleProductOG` async function that:
+   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
+   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
+   - Fetches the origin HTML
+   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
+   - Returns the modified HTML response
 
-Apres l'insertion reussie de la commande, fire-and-forget un appel a `notify-order` avec l'order_id et shop_id.
+3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
 
-### 4. Admin UI : Tags par template
+4. Worker environment variables needed (set in Cloudflare dashboard):
+   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
+   - `SUPABASE_ANON_KEY` = the anon key
 
-Ajouter dans `AdminEmailTemplates.tsx` un mapping `TEMPLATE_TAGS` qui affiche les variables disponibles pour chaque template quand on l'edite. Ex: pour `new_order_vendor` → `{{customer_name}}`, `{{order_id}}`, `{{total}}`, `{{items_list}}`, `{{store_name}}`, etc.
+**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
 
-### Fichiers modifies
-
-| Fichier | Action |
-|---------|--------|
-| Migration SQL | INSERT 22 templates avec HTML responsive |
-| `supabase/functions/notify-order/index.ts` | Nouvelle Edge Function (fire-and-forget) |
-| `supabase/config.toml` | Ajouter `[functions.notify-order] verify_jwt = false` |
-| `src/components/storefront/CheckoutDrawer.tsx` | Appel notify-order apres insert commande |
-| `src/pages/admin/AdminEmailTemplates.tsx` | Afficher tags disponibles par template |
-
-### Details techniques
-
-- Les templates utilisent `INSERT ... ON CONFLICT (slug) DO NOTHING` pour ne pas ecraser les templates existants
-- Le HTML est responsive grace a `max-width:600px` + `width:100%` sur les tables, tailles de police en px, padding adaptatif
-- `notify-order` utilise le service_role pour bypasser le JWT de send-email et les RLS
-- L'appel depuis le checkout est non-bloquant (pas de `await`) pour ne pas ralentir l'UX
+| File | Change |
+|------|--------|
+| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
+| `index.html` | Update default OG meta tags to Ventou branding |
 

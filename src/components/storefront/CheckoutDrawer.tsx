@@ -272,7 +272,7 @@ function CheckoutFormContent({
       );
       const grandTotal = subtotal + deliveryFee;
 
-      const { error } = await supabase.from('orders').insert({
+      const { data: insertedOrder, error } = await supabase.from('orders').insert({
         shop_id: shop.id,
         customer_name: data.customer_name.trim(),
         customer_phone: data.phone.trim(),
@@ -287,7 +287,7 @@ function CheckoutFormContent({
         total: grandTotal,
         status: 'pending',
         payment_method: data.payment_method,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
@@ -327,6 +327,13 @@ function CheckoutFormContent({
       import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
         trackCampaignEvent(shop.id, 'purchase', { revenue: grandTotal });
       });
+
+      // Fire-and-forget: notify vendor by email
+      if (insertedOrder?.id) {
+        supabase.functions.invoke('notify-order', {
+          body: { order_id: insertedOrder.id, shop_id: shop.id },
+        }).catch(() => {});
+      }
 
       clearCart();
       setSuccess(true);
