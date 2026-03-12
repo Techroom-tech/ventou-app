@@ -285,6 +285,42 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          provider: string | null
+          recipient: string
+          status: string
+          template_slug: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          provider?: string | null
+          recipient: string
+          status?: string
+          template_slug?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          provider?: string | null
+          recipient?: string
+          status?: string
+          template_slug?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_providers: {
         Row: {
           config: Json
@@ -292,6 +328,7 @@ export type Database = {
           driver: string
           email_notification_enabled: boolean | null
           email_verification_enabled: boolean | null
+          encrypted_config: Json | null
           id: string
           is_active: boolean | null
           mail_host: string | null
@@ -309,6 +346,7 @@ export type Database = {
           driver: string
           email_notification_enabled?: boolean | null
           email_verification_enabled?: boolean | null
+          encrypted_config?: Json | null
           id?: string
           is_active?: boolean | null
           mail_host?: string | null
@@ -326,6 +364,7 @@ export type Database = {
           driver?: string
           email_notification_enabled?: boolean | null
           email_verification_enabled?: boolean | null
+          encrypted_config?: Json | null
           id?: string
           is_active?: boolean | null
           mail_host?: string | null

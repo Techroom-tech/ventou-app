@@ -96,8 +96,9 @@ function validateVariables(variables: Record<string, unknown>): Record<string, s
 }
 
 // ─── Rate Limiting ───────────────────────────────
-const RATE_LIMIT_PER_USER = 5;   // per minute
-const RATE_LIMIT_GLOBAL = 200;    // per hour
+const RATE_LIMIT_PER_USER = 10;   // per minute (balanced mode)
+const RATE_LIMIT_GLOBAL = 500;    // per hour
+const RATE_LIMIT_DAILY = 800;     // per day (Hostinger limit = 1000, safety margin)
 
 async function checkRateLimit(admin: any, userId?: string): Promise<{ blocked: boolean; reason?: string }> {
   const now = new Date();
@@ -132,6 +133,17 @@ async function checkRateLimit(admin: any, userId?: string): Promise<{ blocked: b
 
   if ((globalCount ?? 0) >= RATE_LIMIT_GLOBAL) {
     return { blocked: true, reason: `Global rate limit exceeded (${RATE_LIMIT_GLOBAL}/hour)` };
+  }
+
+  // Daily rate limit (Hostinger protection)
+  const dayStart = new Date(now.getTime() - 86400000).toISOString();
+  const { count: dailyCount } = await admin
+    .from("email_logs")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", dayStart);
+
+  if ((dailyCount ?? 0) >= RATE_LIMIT_DAILY) {
+    return { blocked: true, reason: `Daily rate limit exceeded (${RATE_LIMIT_DAILY}/day). Hostinger mailbox protection active.` };
   }
 
   return { blocked: false };

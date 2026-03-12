@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
       from: fromHeader,
       to: String(to).trim(),
       subject: subject || "SMTP Test Email",
-      html: html || `<h2>✅ SMTP is working correctly</h2><p>This email was sent via your configured SMTP provider.</p><p>Sent at: ${new Date().toISOString()}</p>`,
+      html: html || `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;text-align:center;"><h2 style="color:#16a34a;">✅ Test mail réussi avec succès !</h2><p style="color:#374151;font-size:15px;">Votre configuration SMTP fonctionne correctement.</p><p style="color:#6b7280;font-size:13px;">Envoyé le : ${new Date().toISOString()}</p></div>`,
     });
 
     const accepted = Array.isArray(info.accepted) ? info.accepted.map(String) : [];
