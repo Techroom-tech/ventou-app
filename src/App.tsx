@@ -55,6 +55,7 @@ const ShopStorefrontRoute = lazy(() => import("./pages/ShopStorefrontRoute"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Reviews = lazy(() => import("./pages/Reviews"));
+const Ideas = lazy(() => import("./pages/dashboard/Ideas"));
 
 // Marketing pages
 const MarketingHub = lazy(() => import("./pages/marketing/MarketingHub"));
