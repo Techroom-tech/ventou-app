@@ -251,11 +251,24 @@ function CheckoutFormContent({
     );
   };
 
+  const onInvalid = (formErrors: FieldErrors<CheckoutForm>) => {
+    const firstField = Object.keys(formErrors)[0] as keyof CheckoutForm | undefined;
+
+    if (firstField) {
+      const target = document.getElementById(firstField);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (target as HTMLInputElement | null)?.focus();
+    }
+
+    toast.error('Veuillez compléter les champs obligatoires.');
+  };
+
   // ── Submit ───────────────────────────────────────────────────────────────────
   const onSubmit = async (data: CheckoutForm) => {
     if (items.length === 0) return;
     if (shop.is_suspended) {
       console.warn('[CheckoutDrawer] Shop is suspended, blocking order.');
+      toast.error('Cette boutique n’accepte pas de commandes pour le moment.');
       return;
     }
     setSubmitting(true);
