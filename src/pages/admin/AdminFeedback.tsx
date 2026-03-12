@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageSquare, Bug, Lightbulb, Star, HelpCircle, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, Star, HelpCircle, ExternalLink, Image as ImageIcon, ThumbsUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
