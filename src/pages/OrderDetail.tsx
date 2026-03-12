@@ -87,6 +87,7 @@ export default function OrderDetail() {
 
   const [noteInput, setNoteInput] = useState('');
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Fetch order ──────────────────────────────────────────────────────────
   const {
