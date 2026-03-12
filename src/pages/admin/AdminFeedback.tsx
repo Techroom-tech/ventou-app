@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageSquare, Bug, Lightbulb, Star, HelpCircle, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, Star, HelpCircle, ExternalLink, Image as ImageIcon, ThumbsUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -115,10 +115,11 @@ export default function AdminFeedback() {
         {/* Table */}
         <div className="border rounded-xl overflow-hidden bg-card">
           <Table>
-            <TableHeader>
+             <TableHeader>
               <TableRow>
                 <TableHead className="w-[100px]">Type</TableHead>
                 <TableHead>Titre</TableHead>
+                <TableHead className="w-[70px] text-center">Votes</TableHead>
                 <TableHead className="hidden md:table-cell">Page</TableHead>
                 <TableHead className="hidden lg:table-cell">Appareil</TableHead>
                 <TableHead className="w-[140px]">Date</TableHead>
@@ -129,14 +130,14 @@ export default function AdminFeedback() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : feedbacks?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     Aucun feedback trouvé
                   </TableCell>
                 </TableRow>
@@ -159,6 +160,16 @@ export default function AdminFeedback() {
                       <TableCell className="font-medium max-w-[200px] truncate">
                         {fb.title}
                         {fb.screenshot_url && <ImageIcon className="inline h-3 w-3 ml-1 text-muted-foreground" />}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {fb.type === 'feature' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium">
+                            <ThumbsUp className="h-3 w-3" />
+                            {fb.votes_count || 0}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-[180px] truncate">
                         {fb.page_url?.replace(/^https?:\/\/[^/]+/, '') || '—'}
