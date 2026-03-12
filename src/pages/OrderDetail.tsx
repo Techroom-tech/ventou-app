@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
+import { ConfirmDialog } from '@/components/dashboard/ConfirmDialog';
 import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
