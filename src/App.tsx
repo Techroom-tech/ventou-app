@@ -168,6 +168,7 @@ const App = () => {
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/support" element={<Support />} />
 
             {/* Dashboard — shared shell: auth + shop guard + layout mounted ONCE */}
