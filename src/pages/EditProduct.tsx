@@ -206,7 +206,7 @@ export default function EditProduct() {
               name: v.name ?? '',
               value: v.value ?? '',
               price: v.price ? String(v.price) : '',
-              stock: String(v.stock_quantity ?? 0),
+              stock: String(v.stock ?? 0),
             }))
           );
         }
