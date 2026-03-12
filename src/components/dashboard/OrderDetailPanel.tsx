@@ -670,5 +670,17 @@ export function OrderDetailPanel({
         </div>
       </SheetContent>
     </Sheet>
+
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      onOpenChange={setShowDeleteConfirm}
+      onConfirm={handleDeleteOrder}
+      title="Supprimer cette commande ?"
+      description={`La commande de ${order.customer_name} sera définitivement supprimée. Cette action est irréversible.`}
+      confirmLabel="Supprimer"
+      variant="delete"
+      loading={deleteOrders.isPending}
+    />
+    </>
   );
 }
