@@ -135,6 +135,17 @@ async function checkRateLimit(admin: any, userId?: string): Promise<{ blocked: b
     return { blocked: true, reason: `Global rate limit exceeded (${RATE_LIMIT_GLOBAL}/hour)` };
   }
 
+  // Daily rate limit (Hostinger protection)
+  const dayStart = new Date(now.getTime() - 86400000).toISOString();
+  const { count: dailyCount } = await admin
+    .from("email_logs")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", dayStart);
+
+  if ((dailyCount ?? 0) >= RATE_LIMIT_DAILY) {
+    return { blocked: true, reason: `Daily rate limit exceeded (${RATE_LIMIT_DAILY}/day). Hostinger mailbox protection active.` };
+  }
+
   return { blocked: false };
 }
 
