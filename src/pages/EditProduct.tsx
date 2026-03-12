@@ -318,7 +318,7 @@ export default function EditProduct() {
             name: v.name.trim(),
             value: v.value.trim(),
             price: v.price ? Number(v.price) : null,
-            stock_quantity: Number(v.stock) || 0,
+            stock: Number(v.stock) || 0,
           }));
           await supabase.from('product_variants').insert(varRows);
         }
