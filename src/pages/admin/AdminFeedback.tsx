@@ -115,10 +115,11 @@ export default function AdminFeedback() {
         {/* Table */}
         <div className="border rounded-xl overflow-hidden bg-card">
           <Table>
-            <TableHeader>
+             <TableHeader>
               <TableRow>
                 <TableHead className="w-[100px]">Type</TableHead>
                 <TableHead>Titre</TableHead>
+                <TableHead className="w-[70px] text-center">Votes</TableHead>
                 <TableHead className="hidden md:table-cell">Page</TableHead>
                 <TableHead className="hidden lg:table-cell">Appareil</TableHead>
                 <TableHead className="w-[140px]">Date</TableHead>
