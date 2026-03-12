@@ -52,16 +52,21 @@ export default function ForgotPassword() {
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     setIsLoading(true);
 
-    const { error } = await resetPassword(data.email);
+    // Look up user by email to get user_id
+    // We use signInWithPassword with a dummy password to check if user exists
+    // Instead, we'll call verify-otp generate which will handle it server-side
+    // First, we need the user_id. Let's use the admin lookup via edge function.
+    
+    const { data: result, error } = await supabase.functions.invoke('verify-otp', {
+      body: { action: 'generate', email: data.email, type: 'password_reset', user_id: data.email },
+    });
 
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: t('common.error'),
-        description: t('auth.errors.generic'),
-      });
-    } else {
+    if (error || result?.error) {
+      // Don't reveal if email exists or not
       setIsSuccess(true);
+    } else {
+      // Redirect to reset-password with OTP input
+      navigate(`/reset-password?email=${encodeURIComponent(data.email)}`);
     }
 
     setIsLoading(false);

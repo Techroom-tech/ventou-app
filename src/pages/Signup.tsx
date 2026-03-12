@@ -79,23 +79,32 @@ export default function Signup() {
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
 
-    const { error } = await signUp(data.email, data.password, {
-      first_name: data.firstName,
-      last_name: data.lastName,
+    const { error, data: authData } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: { first_name: data.firstName, last_name: data.lastName },
+        emailRedirectTo: window.location.origin,
+      },
     });
 
     if (error) {
       let errorMessage = t('auth.errors.generic');
-      
       if (error.message?.includes('already registered')) {
         errorMessage = 'Cet email est déjà utilisé';
       }
+      toast({ variant: 'destructive', title: t('common.error'), description: errorMessage });
+      setIsLoading(false);
+      return;
+    }
 
-      toast({
-        variant: 'destructive',
-        title: t('common.error'),
-        description: errorMessage,
+    const userId = authData?.user?.id;
+    if (userId) {
+      // Generate OTP
+      await supabase.functions.invoke('verify-otp', {
+        body: { action: 'generate', email: data.email, type: 'signup', user_id: userId },
       });
+      navigate(`/verify-email?email=${encodeURIComponent(data.email)}&type=signup&uid=${userId}`);
     } else {
       setUserEmail(data.email);
       setIsSuccess(true);
