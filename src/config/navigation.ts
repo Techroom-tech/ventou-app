@@ -26,7 +26,6 @@ export const primaryNavItems: NavItem[] = [
 /** Secondary nav — visible in sidebar + mobile "Plus" drawer */
 export const secondaryNavItems: NavItem[] = [
   { key: 'customers', icon: Users, path: '/dashboard/customers' },
-  { key: 'reviews', icon: MessageSquare, path: '/dashboard/reviews' },
   { key: 'marketing', icon: Megaphone, path: '/dashboard/marketing' },
   { key: 'settings', icon: Settings, path: '/dashboard/parametres' },
 ];
