@@ -1,52 +1,39 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan : Correction SMTP Test Mail + Protection Hostinger
 
-### Problem
+### Problemes identifies
 
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+1. **Colonne `encrypted_config` manquante** : La table `email_providers` n'a pas de colonne `encrypted_config`. Le `smtp-relay` et `send-email` essaient de la selectionner, ce qui cause l'erreur `"column email_providers.encrypted_config does not exist"`. C'est LA cause du "Edge Function returned a non-2xx status code".
 
-### Solution
+2. **Table `email_logs` manquante** : La fonction `send-email` tente d'ecrire dans `email_logs` qui n'existe pas en base. Ca bloque tout envoi via templates.
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+3. **Rate limiting a ajuster** : Hostinger Business Starter = 1000 messages/jour max. Le rate limit actuel (200/heure global) est correct mais le per-user (5/min) est trop bas pour les tests. Mode equilibre : 10/min par user, 500/heure global, + nouveau seuil journalier de 800 (marge de securite par rapport aux 1000 de Hostinger).
 
-### Architecture
+4. **Message de test** : Remplacer le contenu HTML generique anglais par "Test mail reussi avec succes" en francais.
 
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
+### Modifications
 
-### Changes
+**Migration SQL** :
+- Ajouter la colonne `encrypted_config jsonb DEFAULT '{}'` a `email_providers`
+- Creer la table `email_logs` (id, recipient, template_slug, provider, status, error_message, user_id, ip_address, created_at) avec RLS (admins read, deny public write — service_role bypasse RLS)
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
+**`supabase/functions/smtp-relay/index.ts`** :
+- Changer le HTML du test mail par defaut : `<h2>✅ Test mail réussi avec succès !</h2><p>Votre configuration SMTP fonctionne correctement.</p><p>Envoyé le : ${date}</p>`
 
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
+**`supabase/functions/send-email/index.ts`** :
+- Ajuster les seuils rate limit : `RATE_LIMIT_PER_USER = 10` (par minute), `RATE_LIMIT_GLOBAL = 500` (par heure)
+- Ajouter un seuil journalier `RATE_LIMIT_DAILY = 800` pour proteger la mailbox Hostinger
 
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
+**`src/pages/admin/AdminEmailProviderConfig.tsx`** :
+- Mettre a jour les messages toast de succes en francais coherent
 
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+### Fichiers modifies
 
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
-
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
-
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+| Fichier | Action |
+|---------|--------|
+| Migration SQL | Ajouter `encrypted_config` + creer `email_logs` |
+| `supabase/functions/smtp-relay/index.ts` | Message test mail en francais |
+| `supabase/functions/send-email/index.ts` | Rate limits equilibres + seuil journalier |
+| `src/pages/admin/AdminEmailProviderConfig.tsx` | Toast messages coherents |
 
