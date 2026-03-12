@@ -188,9 +188,9 @@ export default function EditProduct() {
               .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
               .map((img: any) => ({
                 id: img.id,
-                url: img.url,
-                storage_path: img.storage_path ?? '',
-                is_primary: img.is_primary ?? false,
+                url: img.image_url,
+                storage_path: '',
+                is_primary: (img.position ?? 0) === 0,
                 position: img.position ?? 0,
               }))
           );
@@ -206,7 +206,7 @@ export default function EditProduct() {
               name: v.name ?? '',
               value: v.value ?? '',
               price: v.price ? String(v.price) : '',
-              stock: String(v.stock_quantity ?? 0),
+              stock: String(v.stock ?? 0),
             }))
           );
         }
@@ -301,12 +301,11 @@ export default function EditProduct() {
       if (images.length > 0) {
         const imgRows = images.map((img, i) => ({
           product_id: productId,
-          url: img.url,
-          storage_path: img.storage_path,
+          image_url: img.url,
           position: i,
-          is_primary: img.is_primary,
         }));
-        await supabase.from('product_images').insert(imgRows);
+        const { error: imgError } = await supabase.from('product_images').insert(imgRows);
+        if (imgError) console.error('[EditProduct] Image save error:', imgError);
       }
 
       // Save variants
@@ -319,7 +318,7 @@ export default function EditProduct() {
             name: v.name.trim(),
             value: v.value.trim(),
             price: v.price ? Number(v.price) : null,
-            stock_quantity: Number(v.stock) || 0,
+            stock: Number(v.stock) || 0,
           }));
           await supabase.from('product_variants').insert(varRows);
         }
