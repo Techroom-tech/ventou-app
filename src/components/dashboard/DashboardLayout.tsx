@@ -1,9 +1,8 @@
-import { ReactNode, lazy, Suspense } from 'react';
+import { ReactNode } from 'react';
 import { DashboardSidebar } from './DashboardSidebar';
-const FeedbackWidget = lazy(() => import('./FeedbackWidget').then(m => ({ default: m.FeedbackWidget })));
+import { FeedbackWidget } from './FeedbackWidget';
 import { DashboardHeader } from './DashboardHeader';
 import { MobileBottomNav } from './MobileBottomNav';
-import { FloatingChatButton } from './FloatingChatButton';
 import { DataMaskProvider } from '@/contexts/DataMaskContext';
 import { SidebarCollapseProvider, useSidebarCollapse } from '@/contexts/SidebarCollapseContext';
 import { cn } from '@/lib/utils';
@@ -36,8 +35,7 @@ function DashboardInner({ children }: { children: ReactNode }) {
         </main>
       </div>
       <MobileBottomNav />
-      <FloatingChatButton />
-      <Suspense fallback={null}><FeedbackWidget /></Suspense>
+      <FeedbackWidget />
     </div>
   );
 }
