@@ -45,6 +45,7 @@ export default function Signup() {
   const { t } = useTranslation();
   const { signUp } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
