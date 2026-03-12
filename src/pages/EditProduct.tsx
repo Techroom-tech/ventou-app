@@ -301,12 +301,11 @@ export default function EditProduct() {
       if (images.length > 0) {
         const imgRows = images.map((img, i) => ({
           product_id: productId,
-          url: img.url,
-          storage_path: img.storage_path,
+          image_url: img.url,
           position: i,
-          is_primary: img.is_primary,
         }));
-        await supabase.from('product_images').insert(imgRows);
+        const { error: imgError } = await supabase.from('product_images').insert(imgRows);
+        if (imgError) console.error('[EditProduct] Image save error:', imgError);
       }
 
       // Save variants
