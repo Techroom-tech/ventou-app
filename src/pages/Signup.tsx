@@ -30,6 +30,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { supabase } from '@/integrations/supabase/client';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 12 },
