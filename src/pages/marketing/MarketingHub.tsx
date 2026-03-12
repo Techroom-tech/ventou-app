@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Tag, Zap, Link2, Activity, ChevronRight } from 'lucide-react';
+import { BarChart3, Tag, Zap, Link2, Activity, ChevronRight, MessageSquare } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
