@@ -166,7 +166,6 @@ export default function OrderDetail() {
 
   const handleDelete = async () => {
     if (!order || !shopId) return;
-    if (!window.confirm('Supprimer définitivement cette commande annulée ?')) return;
     try {
       await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
       toast.success('Commande supprimée');

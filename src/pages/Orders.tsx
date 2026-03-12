@@ -10,6 +10,7 @@ import {
 
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
 import { CreateOrderModal } from '@/components/dashboard/CreateOrderModal';
+import { ConfirmDialog, ConfirmVariant } from '@/components/dashboard/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,6 +31,25 @@ const STATUS_TABS: Array<OrderStatus | 'all'> = [
 ];
 
 const PAGE_SIZE = 20;
+
+// --- Confirm action state type ---
+interface ConfirmAction {
+  type: 'status' | 'delete' | 'batch-status' | 'batch-delete';
+  order?: Order;
+  newStatus?: OrderStatus;
+  orderIds?: string[];
+  title: string;
+  description: string;
+  confirmLabel: string;
+  variant: ConfirmVariant;
+}
+
+function getVariantForStatus(status: OrderStatus): ConfirmVariant {
+  if (status === 'confirmed') return 'confirm';
+  if (status === 'delivered') return 'deliver';
+  if (status === 'cancelled') return 'cancel';
+  return 'warning';
+}
 
 // --- CSV Export ---
 function exportOrdersCSV(orders: Order[], currencyCode: string) {
@@ -119,6 +139,7 @@ export default function Orders() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [quickMode, setQuickMode] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -195,67 +216,113 @@ export default function Orders() {
     }
   }, [orders, selectedIds.size]);
 
-  // Quick status change with confirmation
-  const handleQuickStatus = useCallback(async (order: Order, newStatus: OrderStatus) => {
+  // Quick status change — open confirm dialog
+  const handleQuickStatus = useCallback((order: Order, newStatus: OrderStatus) => {
     if (!shopId) return;
     const statusLabel = t(`orders.status.${newStatus}`, newStatus);
-    if (!window.confirm(`Changer le statut vers "${statusLabel}" ?`)) return;
+    setConfirmAction({
+      type: 'status',
+      order,
+      newStatus,
+      title: `Passer en « ${statusLabel} » ?`,
+      description: `La commande de ${order.customer_name} sera marquée comme « ${statusLabel} ».`,
+      confirmLabel: statusLabel,
+      variant: getVariantForStatus(newStatus),
+    });
+  }, [shopId, t]);
+
+  // Delete cancelled orders — open confirm dialog
+  const handleDeleteOrder = useCallback((order: Order) => {
+    if (!shopId) return;
+    setConfirmAction({
+      type: 'delete',
+      order,
+      title: 'Supprimer cette commande ?',
+      description: `La commande de ${order.customer_name} sera définitivement supprimée. Cette action est irréversible.`,
+      confirmLabel: 'Supprimer',
+      variant: 'delete',
+    });
+  }, [shopId]);
+
+  // Batch actions — open confirm dialog
+  const handleBatchAction = useCallback((newStatus: OrderStatus) => {
+    if (!shopId || selectedIds.size === 0) return;
+    const statusLabel = t(`orders.status.${newStatus}`, newStatus);
+    setConfirmAction({
+      type: 'batch-status',
+      newStatus,
+      orderIds: Array.from(selectedIds),
+      title: `Modifier ${selectedIds.size} commande(s) ?`,
+      description: `${selectedIds.size} commande(s) seront passées en « ${statusLabel} ».`,
+      confirmLabel: `${statusLabel} (${selectedIds.size})`,
+      variant: getVariantForStatus(newStatus),
+    });
+  }, [shopId, selectedIds, t]);
+
+  // Batch delete cancelled — open confirm dialog
+  const handleBatchDelete = useCallback(() => {
+    if (!shopId || selectedIds.size === 0) return;
+    setConfirmAction({
+      type: 'batch-delete',
+      orderIds: Array.from(selectedIds),
+      title: `Supprimer ${selectedIds.size} commande(s) ?`,
+      description: `${selectedIds.size} commande(s) annulée(s) seront définitivement supprimées. Cette action est irréversible.`,
+      confirmLabel: `Supprimer (${selectedIds.size})`,
+      variant: 'delete',
+    });
+  }, [shopId, selectedIds]);
+
+  // Execute confirmed action
+  const executeConfirmedAction = useCallback(async () => {
+    if (!confirmAction || !shopId) return;
+
     try {
-      await updateStatus.mutateAsync({
-        orderId: order.id, shopId,
-        currentStatus: order.status, newStatus,
-      });
-      toast.success(`Statut → ${statusLabel}`);
+      switch (confirmAction.type) {
+        case 'status': {
+          const { order, newStatus } = confirmAction;
+          if (!order || !newStatus) return;
+          await updateStatus.mutateAsync({
+            orderId: order.id, shopId,
+            currentStatus: order.status, newStatus,
+          });
+          toast.success(`Statut → ${t(`orders.status.${newStatus}`, newStatus)}`);
+          break;
+        }
+        case 'delete': {
+          const { order } = confirmAction;
+          if (!order) return;
+          await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
+          toast.success(t('orders.deleted', 'Commande supprimée'));
+          break;
+        }
+        case 'batch-status': {
+          const { orderIds, newStatus } = confirmAction;
+          if (!orderIds || !newStatus) return;
+          const result = await batchUpdate.mutateAsync({ orderIds, shopId, newStatus });
+          toast.success(`${result.succeeded}/${result.total} commande(s) mises à jour`);
+          setSelectedIds(new Set());
+          break;
+        }
+        case 'batch-delete': {
+          const { orderIds } = confirmAction;
+          if (!orderIds) return;
+          const result = await deleteOrders.mutateAsync({ orderIds, shopId });
+          toast.success(`${result.succeeded}/${result.total} commande(s) supprimée(s)`);
+          setSelectedIds(new Set());
+          break;
+        }
+      }
     } catch (e: unknown) {
-      toast.error((e as Error).message);
+      toast.error((e as Error).message ?? 'Erreur');
     }
-  }, [shopId, updateStatus, t]);
 
-  // Delete cancelled orders
-  const handleDeleteOrder = useCallback(async (order: Order) => {
-    if (!shopId) return;
-    if (!window.confirm(t('orders.deleteConfirm', 'Supprimer définitivement cette commande annulée ?'))) return;
-    try {
-      await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
-      toast.success(t('orders.deleted', 'Commande supprimée'));
-    } catch {
-      toast.error('Erreur lors de la suppression');
-    }
-  }, [shopId, deleteOrders, t]);
-
-  // Batch actions
-  const handleBatchAction = useCallback(async (newStatus: OrderStatus) => {
-    if (!shopId || selectedIds.size === 0) return;
-    const statusLabel = t(`orders.status.${newStatus}`, newStatus);
-    if (!window.confirm(`Modifier ${selectedIds.size} commande(s) → "${statusLabel}" ?`)) return;
-    try {
-      const result = await batchUpdate.mutateAsync({
-        orderIds: Array.from(selectedIds),
-        shopId,
-        newStatus,
-      });
-      toast.success(`${result.succeeded}/${result.total} commande(s) mises à jour`);
-      setSelectedIds(new Set());
-    } catch {
-      toast.error('Erreur lors de la mise à jour');
-    }
-  }, [shopId, selectedIds, batchUpdate, t]);
-
-  // Batch delete cancelled
-  const handleBatchDelete = useCallback(async () => {
-    if (!shopId || selectedIds.size === 0) return;
-    if (!window.confirm(`Supprimer ${selectedIds.size} commande(s) annulée(s) ?`)) return;
-    try {
-      const result = await deleteOrders.mutateAsync({ orderIds: Array.from(selectedIds), shopId });
-      toast.success(`${result.succeeded}/${result.total} commande(s) supprimée(s)`);
-      setSelectedIds(new Set());
-    } catch {
-      toast.error('Erreur lors de la suppression');
-    }
-  }, [shopId, selectedIds, deleteOrders]);
+    setConfirmAction(null);
+  }, [confirmAction, shopId, updateStatus, deleteOrders, batchUpdate, t]);
 
   // Available next statuses for inline actions
   const getNextStatuses = (status: OrderStatus): OrderStatus[] => ORDER_TRANSITIONS[status] ?? [];
+
+  const isActionPending = updateStatus.isPending || batchUpdate.isPending || deleteOrders.isPending;
 
   return (
     <>
@@ -704,6 +771,18 @@ export default function Orders() {
       </div>
 
       <CreateOrderModal open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      {/* ─── CONFIRM DIALOG ─── */}
+      <ConfirmDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        onConfirm={executeConfirmedAction}
+        title={confirmAction?.title ?? ''}
+        description={confirmAction?.description ?? ''}
+        confirmLabel={confirmAction?.confirmLabel ?? 'Confirmer'}
+        variant={confirmAction?.variant ?? 'confirm'}
+        loading={isActionPending}
+      />
     </>
   );
 }
