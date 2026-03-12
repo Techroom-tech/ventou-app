@@ -334,11 +334,9 @@ function CheckoutFormContent({
       });
 
       // Fire-and-forget: notify vendor by email
-      if (insertedOrder?.id) {
-        supabase.functions.invoke('notify-order', {
-          body: { order_id: insertedOrder.id, shop_id: shop.id },
-        }).catch(() => {});
-      }
+      supabase.functions.invoke('notify-order', {
+        body: { order_id: orderId, shop_id: shop.id },
+      }).catch(() => {});
 
       clearCart();
       setSuccess(true);
