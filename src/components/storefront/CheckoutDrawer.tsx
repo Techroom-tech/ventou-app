@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Truck, CheckCircle2, MapPin, X, Loader2, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Shop } from '@/types/shop';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
 import { useCart } from './CartContext';
