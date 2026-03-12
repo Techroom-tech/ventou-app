@@ -1,4 +1,4 @@
-import { ReactNode, lazy, Suspense } from 'react';
+import { ReactNode } from 'react';
 import { DashboardSidebar } from './DashboardSidebar';
 import { FeedbackWidget } from './FeedbackWidget';
 import { DashboardHeader } from './DashboardHeader';
