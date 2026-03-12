@@ -3,7 +3,6 @@ import {
   Package,
   ShoppingBag,
   Users,
-  MessageSquare,
   Megaphone,
   Settings,
   Store,
