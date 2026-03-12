@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,8 +24,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -35,8 +36,8 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPassword() {
   const { t } = useTranslation();
-  const { resetPassword } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -50,16 +51,21 @@ export default function ForgotPassword() {
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     setIsLoading(true);
 
-    const { error } = await resetPassword(data.email);
+    // Look up user by email to get user_id
+    // We use signInWithPassword with a dummy password to check if user exists
+    // Instead, we'll call verify-otp generate which will handle it server-side
+    // First, we need the user_id. Let's use the admin lookup via edge function.
+    
+    const { data: result, error } = await supabase.functions.invoke('verify-otp', {
+      body: { action: 'generate', email: data.email, type: 'password_reset', user_id: data.email },
+    });
 
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: t('common.error'),
-        description: t('auth.errors.generic'),
-      });
-    } else {
+    if (error || result?.error) {
+      // Don't reveal if email exists or not
       setIsSuccess(true);
+    } else {
+      // Redirect to reset-password with OTP input
+      navigate(`/reset-password?email=${encodeURIComponent(data.email)}`);
     }
 
     setIsLoading(false);

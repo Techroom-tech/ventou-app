@@ -394,13 +394,13 @@
     },
     "forgotPassword": {
       "title": "Mot de passe oublié",
-      "subtitle": "Entrez votre email pour recevoir un lien de réinitialisation",
+      "subtitle": "Entrez votre email pour recevoir un code de vérification",
       "email": "Adresse email",
       "emailPlaceholder": "votre@email.com",
-      "submit": "Envoyer le lien",
+      "submit": "Envoyer le code",
       "backToLogin": "Retour à la connexion",
       "successTitle": "Email envoyé !",
-      "successMessage": "Vérifiez votre boîte de réception pour le lien de réinitialisation."
+      "successMessage": "Vérifiez votre boîte de réception pour le code de vérification."
     },
     "resetPassword": {
       "title": "Nouveau mot de passe",
@@ -409,13 +409,29 @@
       "passwordPlaceholder": "Votre nouveau mot de passe",
       "confirmPassword": "Confirmer le mot de passe",
       "confirmPasswordPlaceholder": "Confirmez votre nouveau mot de passe",
-      "submit": "Réinitialiser le mot de passe"
+      "submit": "Réinitialiser le mot de passe",
+      "successMessage": "Votre mot de passe a été réinitialisé avec succès."
+    },
+    "otp": {
+      "title": "Entrez votre code de vérification",
+      "subtitle": "Nous avons envoyé un code à 5 chiffres à",
+      "noCode": "Vous n'avez pas reçu de code ?",
+      "resend": "Renvoyer le code",
+      "resendIn": "Renvoyer dans {{seconds}}s",
+      "resent": "Code renvoyé !",
+      "verifyingLink": "Vérification en cours...",
+      "successTitle": "Email vérifié !",
+      "successMessage": "Votre email a été vérifié avec succès. Redirection...",
+      "invalidOrExpired": "Code invalide ou expiré",
+      "wrongCode": "Code incorrect. {{remaining}} tentative(s) restante(s)",
+      "locked": "Trop de tentatives. Réessayez dans {{minutes}} minute(s)",
+      "expired": "Le code a expiré. Veuillez en demander un nouveau."
     },
     "verifyEmail": {
       "title": "Vérifiez votre email",
-      "subtitle": "Nous avons envoyé un lien de vérification à",
-      "resend": "Renvoyer l'email",
-      "resent": "Email renvoyé !"
+      "subtitle": "Nous avons envoyé un code de vérification à",
+      "resend": "Renvoyer le code",
+      "resent": "Code renvoyé !"
     },
     "twoFactor": {
       "title": "Vérification en deux étapes",

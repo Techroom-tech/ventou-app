@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,9 +27,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { useToast } from '@/hooks/use-toast';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { supabase } from '@/integrations/supabase/client';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 12 },
@@ -42,8 +43,8 @@ const itemVariants = {
 
 export default function Signup() {
   const { t } = useTranslation();
-  const { signUp } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,23 +78,32 @@ export default function Signup() {
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
 
-    const { error } = await signUp(data.email, data.password, {
-      first_name: data.firstName,
-      last_name: data.lastName,
+    const { error, data: authData } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: { first_name: data.firstName, last_name: data.lastName },
+        emailRedirectTo: window.location.origin,
+      },
     });
 
     if (error) {
       let errorMessage = t('auth.errors.generic');
-      
       if (error.message?.includes('already registered')) {
         errorMessage = 'Cet email est déjà utilisé';
       }
+      toast({ variant: 'destructive', title: t('common.error'), description: errorMessage });
+      setIsLoading(false);
+      return;
+    }
 
-      toast({
-        variant: 'destructive',
-        title: t('common.error'),
-        description: errorMessage,
+    const userId = authData?.user?.id;
+    if (userId) {
+      // Generate OTP
+      await supabase.functions.invoke('verify-otp', {
+        body: { action: 'generate', email: data.email, type: 'signup', user_id: userId },
       });
+      navigate(`/verify-email?email=${encodeURIComponent(data.email)}&type=signup&uid=${userId}`);
     } else {
       setUserEmail(data.email);
       setIsSuccess(true);

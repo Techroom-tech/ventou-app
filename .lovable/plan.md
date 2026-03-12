@@ -1,108 +1,52 @@
 
 
-## Plan : Systeme OTP + Lien de confirmation
+## Plan: SSR OG Meta Tags via Cloudflare Worker
 
-### Apercu
+### Problem
 
-Remplacer le Magic Link de Supabase par un systeme OTP 5 chiffres + lien de confirmation gere en interne. Les emails sont envoyes via l'infrastructure email existante (send-email edge function + SMTP).
+WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
 
-### 1. Table `email_verifications` (migration)
+### Solution
 
-```sql
-CREATE TABLE public.email_verifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  email text NOT NULL,
-  otp_code text NOT NULL,
-  token text NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
-  type text NOT NULL DEFAULT 'signup',
-  expires_at timestamptz NOT NULL DEFAULT (now() + interval '10 minutes'),
-  used boolean NOT NULL DEFAULT false,
-  attempts int NOT NULL DEFAULT 0,
-  locked_until timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
 
-ALTER TABLE public.email_verifications ENABLE ROW LEVEL SECURITY;
+### Architecture
 
--- RLS: no public access, edge functions use service_role
-CREATE POLICY "No public access" ON public.email_verifications
-  FOR ALL TO public USING (false);
+```text
+Bot request: test.ventou.shop/p/airpods-pro
+    │
+    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
+    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
+    │           ──► Fetches HTML from origin
+    │           ──► Rewrites <head> with OG tags + JSON-LD
+    │           ──► Returns modified HTML
+    │
+    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
 ```
 
-### 2. Edge Function `verify-otp`
+### Changes
 
-Fichier : `supabase/functions/verify-otp/index.ts`
+**`cloudflare-worker/ventou-wildcard-proxy.js`**
 
-Endpoints (POST body):
-- **`action: "generate"`** : Genere OTP 5 chiffres, stocke dans `email_verifications`, envoie email via `send-email`
-- **`action: "verify"`** : Verifie OTP ou token, marque `used=true`, confirme email user via admin API
-- **`action: "resend"`** : Invalide ancien OTP, genere nouveau (cooldown 60s verifie cote serveur)
+1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
 
-Securite :
-- 5 tentatives max → `locked_until = now() + 15min`
-- OTP expire apres 10 minutes
-- Token unique par verification
-- `verify_jwt = false` (les users ne sont pas encore confirmes)
+2. Add a `handleProductOG` async function that:
+   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
+   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
+   - Fetches the origin HTML
+   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
+   - Returns the modified HTML response
 
-### 3. Templates Email
+3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
 
-Ajouter 2 templates dans `email_templates` :
-- **`otp_signup`** : "Confirmez votre compte Ventou" avec OTP + lien
-- **`otp_password_reset`** : "Reinitialisation de votre mot de passe" avec OTP + lien
+4. Worker environment variables needed (set in Cloudflare dashboard):
+   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
+   - `SUPABASE_ANON_KEY` = the anon key
 
-### 4. Page `/verify-email` (nouveau)
+**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
 
-Fichier : `src/pages/VerifyEmail.tsx`
-
-- 5 InputOTP boxes (composant existant `input-otp`)
-- Auto-focus, auto-avance, paste du code complet
-- Bouton "Renvoyer le code" avec cooldown 60s
-- Gere aussi `?token=xxx` dans l'URL pour verification par lien
-- Responsive : grandes boxes sur mobile, card centree sur desktop
-- Succes → redirect `/dashboard`
-
-### 5. Page `/reset-password` modifiee
-
-Fichier : `src/pages/ResetPassword.tsx`
-
-- Ajouter etape OTP avant le formulaire de nouveau mot de passe
-- Step 1 : saisir OTP (ou arriver via `?token=xxx`)
-- Step 2 : nouveau mot de passe (une fois OTP valide)
-
-### 6. Modifications Signup
-
-`src/pages/Signup.tsx` :
-- Apres `signUp()` reussi → appeler `verify-otp` action=generate
-- Rediriger vers `/verify-email?email=xxx&type=signup`
-
-### 7. Modifications ForgotPassword
-
-`src/pages/ForgotPassword.tsx` :
-- Remplacer `resetPassword()` par appel a `verify-otp` action=generate type=password_reset
-- Rediriger vers `/reset-password?email=xxx`
-
-### 8. Supabase Auth Config
-
-Desactiver la confirmation email automatique de Supabase n'est pas possible via code, mais le systeme OTP contourne le flow natif : apres verification OTP, l'edge function utilise `admin.auth.updateUser({ email_confirm: true })` pour confirmer manuellement.
-
-### 9. Routes
-
-`src/App.tsx` : ajouter `/verify-email` route publique
-
-### Fichiers
-
-| Fichier | Action |
-|---------|--------|
-| Migration SQL | Creer table `email_verifications` |
-| `supabase/functions/verify-otp/index.ts` | Nouvelle edge function |
-| `supabase/config.toml` | Ajouter `verify_jwt = false` |
-| `src/pages/VerifyEmail.tsx` | Nouvelle page OTP |
-| `src/pages/Signup.tsx` | Redirect vers verify-email |
-| `src/pages/ForgotPassword.tsx` | Utiliser OTP au lieu de magic link |
-| `src/pages/ResetPassword.tsx` | Ajouter etape OTP |
-| `src/App.tsx` | Ajouter route `/verify-email` |
-| `src/i18n/locales/fr.json` | Traductions OTP |
-| `src/i18n/locales/en.json` | Traductions OTP |
-| Insert SQL | 2 templates email (otp_signup, otp_password_reset) |
+| File | Change |
+|------|--------|
+| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
+| `index.html` | Update default OG meta tags to Ventou branding |
 
