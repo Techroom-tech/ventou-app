@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { OrderStatusBadge } from '@/components/dashboard/OrderStatusBadge';
+import { ConfirmDialog } from '@/components/dashboard/ConfirmDialog';
 import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -86,6 +87,7 @@ export default function OrderDetail() {
 
   const [noteInput, setNoteInput] = useState('');
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Fetch order ──────────────────────────────────────────────────────────
   const {
@@ -164,7 +166,6 @@ export default function OrderDetail() {
 
   const handleDelete = async () => {
     if (!order || !shopId) return;
-    if (!window.confirm('Supprimer définitivement cette commande annulée ?')) return;
     try {
       await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
       toast.success('Commande supprimée');
@@ -258,7 +259,7 @@ export default function OrderDetail() {
                 <Button
                   variant="outline" size="sm"
                   className="h-8 text-xs gap-1 text-destructive border-destructive/30"
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteConfirm(true)}
                   disabled={deleteOrders.isPending}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -471,6 +472,17 @@ export default function OrderDetail() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleDelete}
+        title="Supprimer cette commande ?"
+        description={`La commande de ${order?.customer_name ?? ''} sera définitivement supprimée. Cette action est irréversible.`}
+        confirmLabel="Supprimer"
+        variant="delete"
+        loading={deleteOrders.isPending}
+      />
     </>
   );
 }

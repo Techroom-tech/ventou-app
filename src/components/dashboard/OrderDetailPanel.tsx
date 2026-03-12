@@ -9,6 +9,7 @@ import {
   Package, CreditCard, SendHorizonal, ChevronRight,
   AlertCircle,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/dashboard/ConfirmDialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -230,6 +231,7 @@ export function OrderDetailPanel({
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [newNote, setNewNote] = useState('');
   const noteInputRef = useRef<HTMLInputElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (order) {
@@ -264,10 +266,10 @@ export function OrderDetailPanel({
   };
 
   const handleDeleteOrder = async () => {
-    if (!window.confirm('Supprimer définitivement cette commande annulée ?')) return;
     try {
       await deleteOrders.mutateAsync({ orderIds: [order.id], shopId });
       toast.success('Commande supprimée');
+      setShowDeleteConfirm(false);
       onClose();
     } catch {
       toast.error('Erreur lors de la suppression');
@@ -300,6 +302,7 @@ export function OrderDetailPanel({
   const primaryNext = primaryNextStatuses[0];
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <SheetContent
         side="right"
@@ -347,7 +350,7 @@ export function OrderDetailPanel({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="gap-2 cursor-pointer text-xs text-destructive focus:text-destructive"
-                        onClick={handleDeleteOrder}
+                        onClick={() => setShowDeleteConfirm(true)}
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Supprimer
                       </DropdownMenuItem>
@@ -668,5 +671,17 @@ export function OrderDetailPanel({
         </div>
       </SheetContent>
     </Sheet>
+
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      onOpenChange={setShowDeleteConfirm}
+      onConfirm={handleDeleteOrder}
+      title="Supprimer cette commande ?"
+      description={`La commande de ${order.customer_name} sera définitivement supprimée. Cette action est irréversible.`}
+      confirmLabel="Supprimer"
+      variant="delete"
+      loading={deleteOrders.isPending}
+    />
+    </>
   );
 }
