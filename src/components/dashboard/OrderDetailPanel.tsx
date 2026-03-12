@@ -302,6 +302,7 @@ export function OrderDetailPanel({
   const primaryNext = primaryNextStatuses[0];
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <SheetContent
         side="right"
