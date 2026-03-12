@@ -9,7 +9,10 @@ Deno.serve(async (req) => {
 
   try {
     const { order_id, shop_id } = await req.json();
+    console.log("[notify-order] Received:", { order_id, shop_id });
+
     if (!order_id || !shop_id) {
+      console.error("[notify-order] Missing params:", { order_id, shop_id });
       return new Response(JSON.stringify({ error: "order_id and shop_id required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -21,6 +24,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     // Fetch order, shop, and owner email in parallel
+    console.log("[notify-order] Fetching order & shop data...");
     const [orderRes, shopRes] = await Promise.all([
       admin.from("orders").select("*").eq("id", order_id).single(),
       admin.from("shops").select("id, name, slug, owner_id, currency").eq("id", shop_id).single(),
@@ -44,6 +48,7 @@ Deno.serve(async (req) => {
 
     const order = orderRes.data;
     const shop = shopRes.data;
+    console.log("[notify-order] Order:", order.id, "Shop:", shop.name, "Owner:", shop.owner_id);
 
     // Get owner email from auth.users
     const { data: userData, error: userError } = await admin.auth.admin.getUserById(shop.owner_id);
@@ -57,6 +62,7 @@ Deno.serve(async (req) => {
 
     const ownerEmail = userData.user.email;
     const ownerName = userData.user.user_metadata?.first_name || "Vendeur";
+    console.log("[notify-order] Sending to:", ownerEmail, "Name:", ownerName);
 
     // Format items list
     const items = Array.isArray(order.items) ? order.items : [];
@@ -83,6 +89,8 @@ Deno.serve(async (req) => {
       platform_name: "Ventou",
     };
 
+    console.log("[notify-order] Calling send-email with slug: new_order_vendor");
+
     // Call send-email with service role
     const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
@@ -99,13 +107,17 @@ Deno.serve(async (req) => {
     });
 
     const sendData = await sendRes.json().catch(() => ({}));
-    console.log("[notify-order] send-email response:", sendRes.status, sendData);
+    console.log("[notify-order] send-email response:", sendRes.status, JSON.stringify(sendData));
 
-    return new Response(JSON.stringify({ success: true }), {
+    if (!sendRes.ok) {
+      console.error("[notify-order] send-email failed:", sendRes.status, sendData);
+    }
+
+    return new Response(JSON.stringify({ success: true, email_status: sendRes.status }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[notify-order] Error:", err);
+    console.error("[notify-order] Unhandled error:", (err as Error).message, (err as Error).stack);
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
