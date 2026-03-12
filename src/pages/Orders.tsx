@@ -171,26 +171,7 @@ export default function Orders() {
     setSelectedIds(new Set());
   }, [activeStatus, page, debouncedSearch, quickMode]);
 
-  // Real-time new order subscription
-  useEffect(() => {
-    if (!shopId) return;
-    const channel = supabase
-      .channel(`orders-realtime-${shopId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'orders', filter: `shop_id=eq.${shopId}` },
-        (payload) => {
-          const newOrder = payload.new as Order;
-          toast.success(
-            `🛍️ Nouvelle commande de ${newOrder.customer_name}`,
-            { duration: 6000 }
-          );
-          refetch();
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [shopId, refetch]);
+  // Realtime is handled globally in DashboardShell via useOrdersRealtime
 
   const handleTabChange = (status: OrderStatus | 'all') => {
     setActiveStatus(status);

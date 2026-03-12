@@ -1,6 +1,39 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderStatus, ORDER_TRANSITIONS } from '@/types/shop';
+
+/**
+ * Global realtime subscription for orders.
+ * Mount once in DashboardShell to auto-refresh all order-related queries.
+ */
+export function useOrdersRealtime(shopId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!shopId) return;
+
+    const channel = supabase
+      .channel(`orders-global-rt-${shopId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${shopId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['orders', shopId] });
+          queryClient.invalidateQueries({ queryKey: ['order-counts', shopId] });
+          queryClient.invalidateQueries({ queryKey: ['orders-today', shopId] });
+          queryClient.invalidateQueries({ queryKey: ['notifications-orders', shopId] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis', shopId] });
+          queryClient.invalidateQueries({ queryKey: ['revenue-chart', shopId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [shopId, queryClient]);
+}
 
 const PAGE_SIZE = 20;
 
