@@ -96,8 +96,9 @@ function validateVariables(variables: Record<string, unknown>): Record<string, s
 }
 
 // ─── Rate Limiting ───────────────────────────────
-const RATE_LIMIT_PER_USER = 5;   // per minute
-const RATE_LIMIT_GLOBAL = 200;    // per hour
+const RATE_LIMIT_PER_USER = 10;   // per minute (balanced mode)
+const RATE_LIMIT_GLOBAL = 500;    // per hour
+const RATE_LIMIT_DAILY = 800;     // per day (Hostinger limit = 1000, safety margin)
 
 async function checkRateLimit(admin: any, userId?: string): Promise<{ blocked: boolean; reason?: string }> {
   const now = new Date();
