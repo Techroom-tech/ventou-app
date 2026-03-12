@@ -30,9 +30,26 @@ Deno.serve(async (req) => {
 
     // ─── GENERATE ────────────────────────────────
     if (action === "generate") {
-      const { email, type = "signup", user_id } = body;
-      if (!email || !user_id) {
-        return new Response(JSON.stringify({ error: "email and user_id required" }), { status: 400, headers: jsonHeaders });
+      let { email, type = "signup", user_id } = body;
+      if (!email) {
+        return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      // For password_reset, look up user by email if user_id is email
+      if (type === "password_reset" && (!user_id || user_id === email)) {
+        const { data: userData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
+        // Search by email
+        const { data: users } = await admin.auth.admin.listUsers();
+        const foundUser = users?.users?.find((u: any) => u.email === email);
+        if (!foundUser) {
+          // Don't reveal if user exists — return success anyway
+          return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
+        }
+        user_id = foundUser.id;
+      }
+
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id required" }), { status: 400, headers: jsonHeaders });
       }
 
       // Invalidate previous unused OTPs
