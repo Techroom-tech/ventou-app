@@ -1,52 +1,34 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan : Refonte du widget feedback
 
-### Problem
+### Problemes identifies
 
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+1. **Deux boutons flottants** : `FloatingChatButton` (orange, support) et `FeedbackWidget` (bleu) se superposent. Supprimer le FloatingChatButton.
+2. **Modal au lieu de widget** : Le feedback s'ouvre en Dialog/Drawer centree. Le remplacer par un **Popover ancre au bouton** qui s'ouvre comme un widget classique (panneau qui monte depuis le bouton en bas a droite).
+3. **Clics multiples necessaires** : Le lazy loading + Suspense cause un delai. Precharger le composant au hover et supprimer la double couche Suspense.
+4. **Pas de contenu adaptatif par type** : Les placeholders titre/message doivent changer selon le type selectionne (Bug → "Decrivez le bug...", Feature → "Decrivez la fonctionnalite...").
+5. **Badges contexte inutiles** : Supprimer les badges "desktop / Edge / test" visibles par l'utilisateur (les donnees sont toujours envoyees en arriere-plan).
+6. **Bouton Envoyer mal designe** : Redesigner avec un style plus propre, radius 10px, hauteur 48px conforme au standard CTA.
 
-### Solution
+### Modifications
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+| Fichier | Action |
+|---------|--------|
+| `src/components/dashboard/FeedbackWidget.tsx` | Remplacer par un Popover ancre au bouton, preload au hover |
+| `src/components/dashboard/FeedbackModal.tsx` | Transformer en `FeedbackPanel.tsx` — contenu popover avec placeholders dynamiques par type, supprimer badges contexte, redesigner bouton submit |
+| `src/components/dashboard/DashboardLayout.tsx` | Supprimer l'import et le rendu de `FloatingChatButton` |
+| `src/components/dashboard/FloatingChatButton.tsx` | Supprimer le fichier (plus utilise) |
 
-### Architecture
+### Details UX du widget
 
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
-
-### Changes
-
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
-
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
-
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
-
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
-
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
-
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
-
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+- Le popover s'ouvre vers le haut depuis le bouton flottant (side="top", align="end")
+- Largeur : 400px desktop, plein ecran mobile (drawer conserve)
+- Animation : slide-up smooth avec framer-motion ou CSS
+- Placeholders dynamiques :
+  - Bug : "Quel bug avez-vous rencontre ?" / "Decrivez les etapes pour reproduire le bug..."
+  - Feature : "Quelle fonctionnalite souhaitez-vous ?" / "Decrivez votre idee en detail..."
+  - Feedback : "Resume de votre avis" / "Partagez votre experience..."
+  - Question : "Votre question" / "Posez votre question..."
+- Bouton submit : h-12, rounded-[10px], sans icone Upload (juste texte "Envoyer")
 
