@@ -9,6 +9,7 @@ import {
   Package, CreditCard, SendHorizonal, ChevronRight,
   AlertCircle,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/dashboard/ConfirmDialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
