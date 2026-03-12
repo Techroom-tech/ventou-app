@@ -7,6 +7,7 @@ import {
   Megaphone,
   Settings,
   Store,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 
