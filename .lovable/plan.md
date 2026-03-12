@@ -1,38 +1,52 @@
 
 
-## Plan : Notification Commande Automatique via Database Webhook
+## Plan: SSR OG Meta Tags via Cloudflare Worker
 
-### Diagnostic
+### Problem
 
-L'email de la derniere commande (12 mars 11:56) a bien ete envoye avec succes (`status: success` dans `email_logs`). Cependant, le systeme actuel repose sur un appel **cote client** (fire-and-forget depuis le navigateur du client). Si le navigateur ferme trop vite ou la connexion coupe, l'appel ne part jamais.
+WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
 
-### Solution : Database Webhook (temps reel garanti)
+### Solution
 
-Remplacer l'appel client par un **trigger PostgreSQL + pg_net** qui appelle automatiquement `notify-order` a chaque INSERT dans la table `orders`. Ainsi, des qu'une commande est inseree en base, la notification part immediatement, sans dependre du navigateur.
+Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
 
-### Modifications
-
-**1. Migration SQL : Trigger sur INSERT orders**
-
-Creer une fonction PL/pgSQL qui utilise `pg_net` (extension deja disponible sur Supabase) pour envoyer un HTTP POST a `notify-order` automatiquement apres chaque insertion de commande.
+### Architecture
 
 ```text
-INSERT orders → trigger → pg_net.http_post → notify-order → send-email → SMTP
+Bot request: test.ventou.shop/p/airpods-pro
+    │
+    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
+    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
+    │           ──► Fetches HTML from origin
+    │           ──► Rewrites <head> with OG tags + JSON-LD
+    │           ──► Returns modified HTML
+    │
+    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
 ```
 
-**2. CheckoutDrawer : Supprimer l'appel client**
+### Changes
 
-Retirer le bloc `supabase.functions.invoke('notify-order', ...)` devenu inutile puisque le trigger DB s'en charge.
+**`cloudflare-worker/ventou-wildcard-proxy.js`**
 
-**3. notify-order : Ajouter des logs de debug**
+1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
 
-Ajouter des logs plus detailles pour tracer chaque etape et faciliter le diagnostic futur.
+2. Add a `handleProductOG` async function that:
+   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
+   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
+   - Fetches the origin HTML
+   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
+   - Returns the modified HTML response
 
-### Fichiers modifies
+3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
 
-| Fichier | Action |
-|---------|--------|
-| Migration SQL | Trigger `after_order_insert` + appel `pg_net.http_post` |
-| `src/components/storefront/CheckoutDrawer.tsx` | Supprimer l'appel fire-and-forget |
-| `supabase/functions/notify-order/index.ts` | Logs ameliores |
+4. Worker environment variables needed (set in Cloudflare dashboard):
+   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
+   - `SUPABASE_ANON_KEY` = the anon key
+
+**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
+
+| File | Change |
+|------|--------|
+| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
+| `index.html` | Update default OG meta tags to Ventou branding |
 

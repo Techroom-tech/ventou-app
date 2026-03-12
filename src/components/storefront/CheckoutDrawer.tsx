@@ -333,10 +333,7 @@ function CheckoutFormContent({
         trackCampaignEvent(shop.id, 'purchase', { revenue: grandTotal });
       });
 
-      // Fire-and-forget: notify vendor by email
-      supabase.functions.invoke('notify-order', {
-        body: { order_id: orderId, shop_id: shop.id },
-      }).catch(() => {});
+      // Notification email is now handled automatically by database trigger (pg_net)
 
       clearCart();
       setSuccess(true);
