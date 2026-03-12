@@ -329,11 +329,11 @@ function CheckoutFormContent({
       });
 
       // Fire-and-forget: notify vendor by email
-      supabase.functions.invoke('notify-order', {
-        body: { order_id: undefined, shop_id: shop.id },
-      }).catch(() => {});
-      // Note: we don't have order_id from insert response, we pass shop_id
-      // The edge function will find the latest pending order
+      if (insertedOrder?.id) {
+        supabase.functions.invoke('notify-order', {
+          body: { order_id: insertedOrder.id, shop_id: shop.id },
+        }).catch(() => {});
+      }
 
       clearCart();
       setSuccess(true);
