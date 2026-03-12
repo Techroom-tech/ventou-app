@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       quartier: order.quartier ? `, ${order.quartier}` : "",
       payment_method: order.payment_method === "cod" ? "Paiement à la livraison" : "WhatsApp",
       items_list: itemsList,
-      dashboard_url: `https://${shop.slug}.ventou.shop/dashboard/orders`,
+      dashboard_url: `https://ventou.shop/dashboard/commandes/${order.id}`,
       platform_name: "Ventou",
     };
 

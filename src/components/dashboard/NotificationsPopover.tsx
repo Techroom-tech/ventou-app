@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, ShoppingCart, Package, Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -25,11 +26,28 @@ const statusConfig: Record<string, { icon: typeof Bell; label: string }> = {
   cancelled: { icon: Info, label: 'Commande annulée' },
 };
 
+function getLastSeenKey(shopId: string) {
+  return `ventou_notif_last_seen_${shopId}`;
+}
+
+function getLastSeen(shopId: string): string {
+  if (typeof window === 'undefined') return new Date(0).toISOString();
+  return localStorage.getItem(getLastSeenKey(shopId)) || new Date(0).toISOString();
+}
+
+function setLastSeen(shopId: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(getLastSeenKey(shopId), new Date().toISOString());
+}
+
 export function NotificationsPopover() {
   const { t, i18n } = useTranslation();
   const { shop } = useShop();
   const navigate = useNavigate();
   const locale = i18n.language === 'fr' ? fr : undefined;
+  const [lastSeen, setLastSeenState] = useState(() =>
+    shop?.id ? getLastSeen(shop.id) : new Date(0).toISOString()
+  );
 
   const { data: orders = [] } = useQuery({
     queryKey: ['notifications-orders', shop?.id],
@@ -45,15 +63,21 @@ export function NotificationsPopover() {
       return (data || []) as OrderNotification[];
     },
     enabled: !!shop?.id,
-    refetchInterval: 30000, // Poll every 30s for real-time feel
+    refetchInterval: 30000,
   });
 
-  // Consider orders from last 24h as "unread"
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const unreadCount = orders.filter(o => o.created_at > oneDayAgo).length;
+  const unreadCount = orders.filter(o => o.created_at > lastSeen).length;
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open && shop?.id) {
+      // Mark all as seen when popover opens
+      setLastSeen(shop.id);
+      setLastSeenState(new Date().toISOString());
+    }
+  }, [shop?.id]);
 
   return (
-    <Popover>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -77,7 +101,7 @@ export function NotificationsPopover() {
             orders.map((order) => {
               const config = statusConfig[order.status] || statusConfig.pending;
               const Icon = config.icon;
-              const isRecent = order.created_at > oneDayAgo;
+              const isRecent = order.created_at > lastSeen;
               return (
                 <button
                   key={order.id}

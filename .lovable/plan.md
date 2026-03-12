@@ -1,45 +1,52 @@
 
 
-## Plan : Corrections notifications, temps réel et lien email
+## Plan: SSR OG Meta Tags via Cloudflare Worker
 
-### Problemes identifies
+### Problem
 
-1. **Pas de mise a jour temps reel sur le Dashboard** : La page Dashboard utilise `useOrders` sans abonnement Realtime. Les nouvelles commandes n'apparaissent qu'apres rafraichissement.
-2. **Badge notifications ne se reinitialise pas au clic** : Le compteur "non lu" se base sur les commandes des dernieres 24h, sans tracking de "derniere consultation".
-3. **Lien email "Voir la commande" incorrect** : Le `dashboard_url` dans `notify-order` pointe vers `https://{slug}.ventou.shop/dashboard/orders` (le sous-domaine storefront) au lieu du dashboard vendeur avec l'ID de commande.
+WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
 
-### Corrections
+### Solution
 
-#### 1. Temps reel global (useOrders + Dashboard)
+Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
 
-Ajouter un abonnement Realtime dans `useOrders.ts` qui invalide automatiquement les queries quand une commande est inseree ou modifiee. Cela couvrira toutes les pages (Dashboard, Orders, etc.) sans duplication.
+### Architecture
 
-- Creer un hook `useOrdersRealtime(shopId)` dans `useOrders.ts` qui s'abonne aux `postgres_changes` (INSERT/UPDATE) sur la table `orders` filtree par `shop_id` et invalide les query keys `orders`, `order-counts`, `orders-today`, `notifications-orders`.
-- Appeler ce hook dans `DashboardShell.tsx` (layout persistant) pour qu'il soit actif sur toutes les pages dashboard.
-- Supprimer l'abonnement duplique dans `Orders.tsx` (lignes 174-193).
+```text
+Bot request: test.ventou.shop/p/airpods-pro
+    │
+    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
+    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
+    │           ──► Fetches HTML from origin
+    │           ──► Rewrites <head> with OG tags + JSON-LD
+    │           ──► Returns modified HTML
+    │
+    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
+```
 
-#### 2. Notification read state
+### Changes
 
-Modifier `NotificationsPopover.tsx` :
-- Stocker un timestamp `lastSeenNotifications` dans `localStorage` (par shop).
-- Au clic sur le popover (ouverture), mettre a jour ce timestamp.
-- Le compteur "non lu" = commandes creees apres `lastSeen`.
-- Le badge se reinitialise immediatement a l'ouverture du popover.
-- Utiliser aussi le Realtime pour rafraichir les notifications instantanement.
+**`cloudflare-worker/ventou-wildcard-proxy.js`**
 
-#### 3. Lien email corrige
+1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
 
-Modifier `supabase/functions/notify-order/index.ts` ligne 88 :
-- Changer `dashboard_url` de `https://${shop.slug}.ventou.shop/dashboard/orders` vers `https://ventou.shop/dashboard/commandes/${order.id}`
-- Cela pointe vers la page de detail de la commande exacte sur le domaine principal.
+2. Add a `handleProductOG` async function that:
+   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
+   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
+   - Fetches the origin HTML
+   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
+   - Returns the modified HTML response
 
-### Fichiers modifies
+3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
 
-| Fichier | Action |
-|---------|--------|
-| `src/hooks/useOrders.ts` | Ajouter hook `useOrdersRealtime` |
-| `src/components/dashboard/DashboardShell.tsx` | Appeler `useOrdersRealtime` |
-| `src/pages/Orders.tsx` | Supprimer abonnement Realtime duplique |
-| `src/components/dashboard/NotificationsPopover.tsx` | localStorage read state + Realtime |
-| `supabase/functions/notify-order/index.ts` | Corriger `dashboard_url` |
+4. Worker environment variables needed (set in Cloudflare dashboard):
+   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
+   - `SUPABASE_ANON_KEY` = the anon key
+
+**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
+
+| File | Change |
+|------|--------|
+| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
+| `index.html` | Update default OG meta tags to Ventou branding |
 
