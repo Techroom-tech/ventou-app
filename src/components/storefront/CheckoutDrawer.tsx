@@ -8,11 +8,12 @@
  * - Null guards throughout
  */
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Truck, CheckCircle2, MapPin, X, Loader2, ShoppingBag } from 'lucide-react';
+import { toast } from 'sonner';
 import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 import { Shop } from '@/types/shop';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
@@ -250,11 +251,24 @@ function CheckoutFormContent({
     );
   };
 
+  const onInvalid = (formErrors: FieldErrors<CheckoutForm>) => {
+    const firstField = Object.keys(formErrors)[0] as keyof CheckoutForm | undefined;
+
+    if (firstField) {
+      const target = document.getElementById(firstField);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (target as HTMLInputElement | null)?.focus();
+    }
+
+    toast.error('Veuillez compléter les champs obligatoires.');
+  };
+
   // ── Submit ───────────────────────────────────────────────────────────────────
   const onSubmit = async (data: CheckoutForm) => {
     if (items.length === 0) return;
     if (shop.is_suspended) {
       console.warn('[CheckoutDrawer] Shop is suspended, blocking order.');
+      toast.error('Cette boutique n’accepte pas de commandes pour le moment.');
       return;
     }
     setSubmitting(true);
@@ -338,8 +352,20 @@ function CheckoutFormContent({
       clearCart();
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onSuccess(); }, 3000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[CheckoutDrawer] error:', err);
+
+      const isRlsError =
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code?: string }).code === '42501';
+
+      if (isRlsError) {
+        toast.error('Cette boutique ne peut pas recevoir de commandes actuellement.');
+      } else {
+        toast.error('Échec de l’envoi de la commande. Vérifiez les champs et réessayez.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -356,7 +382,7 @@ function CheckoutFormContent({
   }
 
   return (
-    <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form id="checkout-form" onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
       {/* Customer info */}
       <div className="space-y-3">
         {/* Name */}
