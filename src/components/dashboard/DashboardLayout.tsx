@@ -35,8 +35,7 @@ function DashboardInner({ children }: { children: ReactNode }) {
         </main>
       </div>
       <MobileBottomNav />
-      <FloatingChatButton />
-      <Suspense fallback={null}><FeedbackWidget /></Suspense>
+      <FeedbackWidget />
     </div>
   );
 }
