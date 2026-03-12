@@ -22,6 +22,7 @@ export const adminNavItems: AdminNavItem[] = [
   { key: 'subscriptions', icon: CreditCard, path: '/admin/subscriptions' },
   { key: 'users', icon: Shield, path: '/admin/users' },
   { key: 'shop-diagnostic', icon: Bug, path: '/admin/shop-diagnostic', roles: ['super_admin'] },
+  { key: 'feedback', icon: MessageSquare, path: '/admin/feedback' },
   { key: 'settings', icon: Settings, path: '/admin/settings', roles: ['super_admin'] },
 ];
 

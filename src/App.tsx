@@ -232,6 +232,7 @@ const App = () => {
             <Route path="/admin/settings/email/templates" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailTemplates /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/settings/email/logs" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailLogs /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/settings/email/domains" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailDomains /></AdminGuard></ProtectedRoute>} />
+            <Route path="/admin/feedback" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminFeedback /></AdminGuard></ProtectedRoute>} />
 
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />
