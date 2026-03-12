@@ -720,7 +720,9 @@
       "links": "Tracked Links",
       "linksDesc": "Track clicks from your campaigns",
       "pixels": "Pixels & Tracking",
-      "pixelsDesc": "Facebook Pixel, TikTok, Google Tag Manager"
+      "pixelsDesc": "Facebook Pixel, TikTok, Google Tag Manager",
+      "reviews": "Reviews & Ideas",
+      "reviewsDesc": "Manage customer reviews and vote on ideas"
     },
     "analytics": {
       "title": "Analytics",
