@@ -272,7 +272,12 @@ function CheckoutFormContent({
       );
       const grandTotal = subtotal + deliveryFee;
 
-      const { data: insertedOrder, error } = await supabase.from('orders').insert({
+      // Generate ID client-side so we can use it for notify-order
+      // (anon users can't SELECT back after INSERT due to RLS)
+      const orderId = crypto.randomUUID();
+
+      const { error } = await supabase.from('orders').insert({
+        id: orderId,
         shop_id: shop.id,
         customer_name: data.customer_name.trim(),
         customer_phone: data.phone.trim(),
@@ -287,7 +292,7 @@ function CheckoutFormContent({
         total: grandTotal,
         status: 'pending',
         payment_method: data.payment_method,
-      }).select('id').single();
+      });
 
       if (error) throw error;
 
