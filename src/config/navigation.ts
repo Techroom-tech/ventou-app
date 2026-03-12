@@ -7,7 +7,6 @@ import {
   Megaphone,
   Settings,
   Store,
-  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -28,7 +27,6 @@ export const primaryNavItems: NavItem[] = [
 export const secondaryNavItems: NavItem[] = [
   { key: 'customers', icon: Users, path: '/dashboard/customers' },
   { key: 'reviews', icon: MessageSquare, path: '/dashboard/reviews' },
-  { key: 'ideas', icon: Lightbulb, path: '/dashboard/ideas' },
   { key: 'marketing', icon: Megaphone, path: '/dashboard/marketing' },
   { key: 'settings', icon: Settings, path: '/dashboard/parametres' },
 ];
