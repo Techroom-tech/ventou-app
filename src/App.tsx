@@ -182,6 +182,7 @@ const App = () => {
               <Route path="commandes/:orderId" element={<OrderDetail />} />
               <Route path="customers" element={<Customers />} />
               <Route path="reviews" element={<Reviews />} />
+              <Route path="ideas" element={<Ideas />} />
 
               {/* Marketing */}
               <Route path="marketing" element={<MarketingHub />} />

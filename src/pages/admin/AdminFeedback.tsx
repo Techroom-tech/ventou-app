@@ -161,6 +161,16 @@ export default function AdminFeedback() {
                         {fb.title}
                         {fb.screenshot_url && <ImageIcon className="inline h-3 w-3 ml-1 text-muted-foreground" />}
                       </TableCell>
+                      <TableCell className="text-center">
+                        {fb.type === 'feature' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium">
+                            <ThumbsUp className="h-3 w-3" />
+                            {fb.votes_count || 0}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-[180px] truncate">
                         {fb.page_url?.replace(/^https?:\/\/[^/]+/, '') || '—'}
                       </TableCell>
