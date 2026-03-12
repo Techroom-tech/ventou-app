@@ -432,6 +432,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_verifications: {
+        Row: {
+          attempts: number
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          locked_until: string | null
+          otp_code: string
+          token: string
+          type: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          locked_until?: string | null
+          otp_code: string
+          token?: string
+          type?: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          locked_until?: string | null
+          otp_code?: string
+          token?: string
+          type?: string
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback_votes: {
         Row: {
           created_at: string
