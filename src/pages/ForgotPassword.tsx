@@ -38,6 +38,7 @@ export default function ForgotPassword() {
   const { t } = useTranslation();
   const { resetPassword } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
