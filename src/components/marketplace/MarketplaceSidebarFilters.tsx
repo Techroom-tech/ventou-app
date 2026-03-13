@@ -4,7 +4,10 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { RotateCcw, Tag, MapPin, BadgeCheck, Flame, Sparkles, Layers } from "lucide-react";
+import {
+  RotateCcw, Tag, MapPin, BadgeCheck, Flame, Sparkles, Layers,
+  ArrowUpDown, TrendingUp, Star, Clock, ArrowUp, ArrowDown, Check,
+} from "lucide-react";
 import { useState } from "react";
 import type { MarketplaceFiltersState } from "@/hooks/useInfiniteMarketplaceProducts";
 
@@ -21,6 +24,15 @@ const COUNTRIES = [
   { code: "Ghana", flag: "🇬🇭", label: "Ghana" },
 ];
 
+const SORT_SHORTCUTS = [
+  { value: "score", label: "Pertinence", icon: Sparkles },
+  { value: "best_selling", label: "Plus vendus", icon: TrendingUp },
+  { value: "rating", label: "Mieux notés", icon: Star },
+  { value: "newest", label: "Nouveautés", icon: Clock },
+  { value: "price_asc", label: "Prix croissant", icon: ArrowUp },
+  { value: "price_desc", label: "Prix décroissant", icon: ArrowDown },
+] as const;
+
 interface Props {
   filters: MarketplaceFiltersState;
   onChange: (f: MarketplaceFiltersState) => void;
@@ -33,50 +45,71 @@ export default function MarketplaceSidebarFilters({ filters, onChange }: Props) 
     filters.maxPrice ?? 500000,
   ]);
 
-  const hasActiveFilters = filters.minPrice || filters.maxPrice || filters.country || filters.hasPromo || filters.verifiedOnly || filters.categorySlug;
+  const hasActiveFilters = filters.minPrice || filters.maxPrice || filters.country || filters.hasPromo || filters.verifiedOnly || filters.categorySlug || (filters.sort && filters.sort !== "score");
+
+  const handleReset = () => {
+    setPriceRange([0, 500000]);
+    onChange({ sort: "score" });
+  };
 
   return (
     <div className="space-y-5">
-      {/* Reset */}
-      {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs gap-1.5 text-muted-foreground w-full justify-start"
-          onClick={() => onChange({ sort: filters.sort })}
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Réinitialiser les filtres
-        </Button>
-      )}
+      {/* Sort shortcuts */}
+      <div>
+        <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+          <ArrowUpDown className="h-3.5 w-3.5" /> Trier par
+        </h4>
+        <div className="space-y-0.5">
+          {SORT_SHORTCUTS.map((opt) => {
+            const Icon = opt.icon;
+            const isActive = (filters.sort ?? "score") === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => onChange({ ...filters, sort: opt.value as any })}
+                className={`flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {opt.label}
+                {isActive && <Check className="h-3.5 w-3.5 ml-auto" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <Separator />
 
       {/* Categories */}
       {categories && categories.length > 0 && (
-        <div>
-          <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5" /> Catégories
-          </h4>
-          <div className="space-y-0.5 max-h-48 overflow-y-auto">
-            <button
-              onClick={() => onChange({ ...filters, categorySlug: undefined })}
-              className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!filters.categorySlug ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
-            >
-              Toutes
-            </button>
-            {categories.map((cat) => (
+        <>
+          <div>
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> Catégories
+            </h4>
+            <div className="space-y-0.5 max-h-48 overflow-y-auto">
               <button
-                key={cat.id}
-                onClick={() => onChange({ ...filters, categorySlug: cat.slug })}
-                className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.categorySlug === cat.slug ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                onClick={() => onChange({ ...filters, categorySlug: undefined })}
+                className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!filters.categorySlug ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
               >
-                {cat.name}
+                Toutes
               </button>
-            ))}
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => onChange({ ...filters, categorySlug: cat.slug })}
+                  className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.categorySlug === cat.slug ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"}`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+          <Separator />
+        </>
       )}
-
-      <Separator />
 
       {/* Budget */}
       <div>
@@ -160,6 +193,20 @@ export default function MarketplaceSidebarFilters({ filters, onChange }: Props) 
           />
         </div>
       </div>
+
+      <Separator />
+
+      {/* Reset button — always visible */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full gap-1.5 text-xs"
+        onClick={handleReset}
+        disabled={!hasActiveFilters}
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        Réinitialiser les filtres
+      </Button>
     </div>
   );
 }
