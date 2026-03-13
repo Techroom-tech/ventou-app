@@ -166,6 +166,7 @@ export default function MarketplaceHome() {
             <Link to="/marketplace/search?promo=true"><Tag className="h-3.5 w-3.5" /> Promos</Link>
           </Button>
         </div>
+      </div>
 
       {/* Categories */}
       <section className="container mx-auto px-4">
