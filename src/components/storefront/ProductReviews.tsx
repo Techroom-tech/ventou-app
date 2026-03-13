@@ -108,7 +108,7 @@ export default function ProductReviews({ productId, shopId }: ProductReviewsProp
                   <span className="font-medium text-sm">{review.full_name}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {format(new Date(review.created_at), 'dd/MM/yyyy')}
+                  {review.created_at ? format(new Date(review.created_at), 'dd/MM/yyyy') : ''}
                 </span>
               </div>
               <StarRating rating={review.rating} size="sm" />
