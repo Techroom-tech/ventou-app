@@ -67,6 +67,12 @@ const MarketingLinks = lazy(() => import("./pages/marketing/MarketingLinks"));
 const CampaignDetail = lazy(() => import("./pages/marketing/CampaignDetail"));
 const MarketingPixels = lazy(() => import("./pages/marketing/MarketingPixels"));
 
+// Marketplace pages
+const MarketplaceLayout = lazy(() => import("./components/marketplace/MarketplaceLayout"));
+const MarketplaceHome = lazy(() => import("./pages/marketplace/MarketplaceHome"));
+const MarketplaceCategory = lazy(() => import("./pages/marketplace/MarketplaceCategory"));
+const MarketplaceSearch = lazy(() => import("./pages/marketplace/MarketplaceSearch"));
+
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminVendors = lazy(() => import("./pages/admin/AdminVendors"));
@@ -237,6 +243,13 @@ const App = () => {
             <Route path="/admin/settings/email/logs" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailLogs /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/settings/email/domains" element={<ProtectedRoute fallback="notfound"><AdminGuard role="super_admin"><AdminEmailDomains /></AdminGuard></ProtectedRoute>} />
             <Route path="/admin/feedback" element={<ProtectedRoute fallback="notfound"><AdminGuard><AdminFeedback /></AdminGuard></ProtectedRoute>} />
+
+            {/* Marketplace */}
+            <Route path="/marketplace" element={<MarketplaceLayout />}>
+              <Route index element={<MarketplaceHome />} />
+              <Route path="search" element={<MarketplaceSearch />} />
+              <Route path=":categorySlug" element={<MarketplaceCategory />} />
+            </Route>
 
             {/* Storefront */}
             <Route path="/boutique/:slug" element={<ShopStorefrontRoute />} />

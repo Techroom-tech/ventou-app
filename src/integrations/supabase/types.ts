@@ -619,6 +619,90 @@ export type Database = {
           },
         ]
       }
+      marketplace_banners: {
+        Row: {
+          button_link: string | null
+          button_text: string | null
+          created_at: string | null
+          description: string | null
+          ends_at: string | null
+          id: string
+          image_url: string
+          is_active: boolean | null
+          priority: number | null
+          starts_at: string | null
+          title: string | null
+        }
+        Insert: {
+          button_link?: string | null
+          button_text?: string | null
+          created_at?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean | null
+          priority?: number | null
+          starts_at?: string | null
+          title?: string | null
+        }
+        Update: {
+          button_link?: string | null
+          button_text?: string | null
+          created_at?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean | null
+          priority?: number | null
+          starts_at?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_categories: {
+        Row: {
+          banner_link: string | null
+          banner_title: string | null
+          banner_url: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          position: number | null
+          slug: string
+        }
+        Insert: {
+          banner_link?: string | null
+          banner_title?: string | null
+          banner_url?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          position?: number | null
+          slug: string
+        }
+        Update: {
+          banner_link?: string | null
+          banner_title?: string | null
+          banner_url?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          position?: number | null
+          slug?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string | null
@@ -948,12 +1032,14 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean | null
+          marketplace_category_id: string | null
           meta_description: string | null
           meta_title: string | null
           name: string
           price: number
           product_type: string | null
           shop_id: string | null
+          show_in_marketplace: boolean | null
           slug: string | null
           status: string | null
           stock_quantity: number | null
@@ -971,12 +1057,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          marketplace_category_id?: string | null
           meta_description?: string | null
           meta_title?: string | null
           name: string
           price: number
           product_type?: string | null
           shop_id?: string | null
+          show_in_marketplace?: boolean | null
           slug?: string | null
           status?: string | null
           stock_quantity?: number | null
@@ -994,12 +1082,14 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          marketplace_category_id?: string | null
           meta_description?: string | null
           meta_title?: string | null
           name?: string
           price?: number
           product_type?: string | null
           shop_id?: string | null
+          show_in_marketplace?: boolean | null
           slug?: string | null
           status?: string | null
           stock_quantity?: number | null
@@ -1008,6 +1098,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_marketplace_category_id_fkey"
+            columns: ["marketplace_category_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_shop_id_fkey"
             columns: ["shop_id"]
@@ -1276,6 +1373,60 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: []
+      }
+      sponsored_products: {
+        Row: {
+          budget: number | null
+          created_at: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean | null
+          placement: string
+          product_id: string
+          shop_id: string
+          spent: number | null
+          starts_at: string | null
+        }
+        Insert: {
+          budget?: number | null
+          created_at?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          placement?: string
+          product_id: string
+          shop_id: string
+          spent?: number | null
+          starts_at?: string | null
+        }
+        Update: {
+          budget?: number | null
+          created_at?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          placement?: string
+          product_id?: string
+          shop_id?: string
+          spent?: number | null
+          starts_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsored_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsored_products_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_pages: {
         Row: {
