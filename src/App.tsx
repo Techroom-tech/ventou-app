@@ -67,6 +67,12 @@ const MarketingLinks = lazy(() => import("./pages/marketing/MarketingLinks"));
 const CampaignDetail = lazy(() => import("./pages/marketing/CampaignDetail"));
 const MarketingPixels = lazy(() => import("./pages/marketing/MarketingPixels"));
 
+// Marketplace pages
+const MarketplaceLayout = lazy(() => import("./components/marketplace/MarketplaceLayout"));
+const MarketplaceHome = lazy(() => import("./pages/marketplace/MarketplaceHome"));
+const MarketplaceCategory = lazy(() => import("./pages/marketplace/MarketplaceCategory"));
+const MarketplaceSearch = lazy(() => import("./pages/marketplace/MarketplaceSearch"));
+
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminVendors = lazy(() => import("./pages/admin/AdminVendors"));
