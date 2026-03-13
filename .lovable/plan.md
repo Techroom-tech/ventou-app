@@ -1,52 +1,42 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan: Rendre tous les tris fonctionnels avec de vrais filtres
 
-### Problem
-
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+### Probleme actuel
+- `best_selling` et `popular` sont convertis en `score` dans le hook -- ils ne trient pas reellement par ventes
+- `rating` trie par note mais n'exclut pas les produits sans avis
+- Aucun filtre strict n'est applique
 
 ### Solution
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+**1. Migration SQL -- Mettre a jour le RPC `get_marketplace_products`**
 
-### Architecture
+Ajouter 2 nouveaux parametres au RPC:
+- `_min_rating numeric DEFAULT NULL` -- pour filtrer les produits avec note >= 4
+- `_min_orders bigint DEFAULT NULL` -- pour filtrer les produits avec ventes > 0
 
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
+Ajouter `best_selling` dans le ORDER BY (`ps.order_count DESC`).
 
-### Changes
+Ajouter les conditions WHERE:
+- `(_min_rating IS NULL OR avg_rating >= _min_rating)`
+- `(_min_orders IS NULL OR order_count >= _min_orders)`
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
+**2. Hook `useInfiniteMarketplaceProducts.ts`**
 
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
+- Supprimer le remapping `best_selling -> score`
+- Quand `sort === "rating"`: passer `_min_rating: 4`
+- Quand `sort === "best_selling"` ou `sort === "popular"`: passer `_min_orders: 1`
+- Passer `best_selling` directement au RPC
 
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
+**3. Supprimer `popular` du toolbar**
 
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+`popular` et `best_selling` font la meme chose. Garder uniquement `best_selling` ("Plus vendus") pour eviter la confusion.
 
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
+### Fichiers modifies
 
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
-
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+| Fichier | Changement |
+|---------|-----------|
+| Migration SQL | Ajouter `_min_rating`, `_min_orders` params + `best_selling` sort |
+| `useInfiniteMarketplaceProducts.ts` | Passer les vrais params, supprimer remapping |
+| `MarketplaceToolbar.tsx` | Supprimer doublon "Populaires" |
 
