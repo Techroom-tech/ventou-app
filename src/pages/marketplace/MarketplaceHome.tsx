@@ -3,7 +3,7 @@ import MarketplaceCategoryGrid from "@/components/marketplace/MarketplaceCategor
 import MarketplaceProductCard from "@/components/marketplace/MarketplaceProductCard";
 import { useMarketplaceProducts } from "@/hooks/useMarketplaceProducts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingUp, Clock, Store, Flame, BadgeCheck } from "lucide-react";
+import { ArrowRight, Clock, Store, Flame, BadgeCheck, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
