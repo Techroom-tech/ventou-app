@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, BadgeCheck, Sparkles, Eye } from "lucide-react";
+import { Star, BadgeCheck, Sparkles, Eye, Flame } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { MarketplaceProduct } from "@/hooks/useMarketplaceProducts";
@@ -20,7 +20,7 @@ export default function MarketplaceProductCard({ product }: Props) {
 
   return (
     <div className="group relative bg-card rounded-xl border overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
-      {/* Badges */}
+      {/* Badges top-left */}
       <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1.5">
         {product.is_sponsored && (
           <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-50 text-amber-700 border-amber-200 shadow-sm">
@@ -28,11 +28,19 @@ export default function MarketplaceProductCard({ product }: Props) {
             Sponsorisé
           </Badge>
         )}
+        {product.shop?.is_verified && (
+          <Badge variant="secondary" className="text-[10px] gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm">
+            <BadgeCheck className="h-3 w-3" />
+            Vérifié
+          </Badge>
+        )}
       </div>
 
+      {/* Discount badge top-right */}
       {hasDiscount && (
         <div className="absolute top-2.5 right-2.5 z-10">
-          <Badge className="text-xs font-bold bg-destructive text-destructive-foreground shadow-sm">
+          <Badge className="text-xs font-bold bg-destructive text-destructive-foreground shadow-sm gap-1">
+            <Flame className="h-3 w-3" />
             -{discountPct}%
           </Badge>
         </div>
@@ -69,7 +77,7 @@ export default function MarketplaceProductCard({ product }: Props) {
 
       {/* Info */}
       <div className="p-3.5 flex flex-col gap-2 flex-1">
-        {/* Shop info - top */}
+        {/* Shop info */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {product.shop?.logo_url ? (
             <img src={product.shop.logo_url} alt="" className="h-4 w-4 rounded-full object-cover ring-1 ring-border" />
@@ -92,20 +100,21 @@ export default function MarketplaceProductCard({ product }: Props) {
           </h3>
         </Link>
 
-        {/* Rating */}
-        {product.avg_rating !== null && (
-          <div className="flex items-center gap-1 text-xs">
+        {/* Rating + sales */}
+        <div className="flex items-center gap-2 text-xs flex-wrap">
+          {product.avg_rating !== null && (
             <div className="flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-3 w-3 ${i < Math.round(product.avg_rating!) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                />
-              ))}
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              <span className="font-medium">{product.avg_rating.toFixed(1)}</span>
+              <span className="text-muted-foreground">({product.review_count})</span>
             </div>
-            <span className="text-muted-foreground ml-0.5">({product.review_count})</span>
-          </div>
-        )}
+          )}
+          {(product.order_count ?? 0) > 0 && (
+            <span className="text-muted-foreground">
+              {product.order_count}+ vendus
+            </span>
+          )}
+        </div>
 
         {/* Price */}
         <div className="flex items-baseline gap-2 mt-auto pt-1">
@@ -118,13 +127,6 @@ export default function MarketplaceProductCard({ product }: Props) {
             </span>
           )}
         </div>
-
-        {/* Order count */}
-        {(product.order_count ?? 0) > 0 && (
-          <p className="text-[10px] text-muted-foreground">
-            {product.order_count}+ vendus
-          </p>
-        )}
       </div>
     </div>
   );
