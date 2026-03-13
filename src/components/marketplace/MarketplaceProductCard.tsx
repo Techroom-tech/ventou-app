@@ -16,9 +16,7 @@ export default function MarketplaceProductCard({ product }: Props) {
     ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
     : 0;
 
-  const productUrl = product.shop?.slug
-    ? `/boutique/${product.shop.slug}/p/${product.slug}`
-    : "#";
+  const productUrl = `/marketplace/product/${product.id}`;
 
   return (
     <div className="group relative bg-card rounded-xl border overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col">

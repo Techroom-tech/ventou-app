@@ -45,10 +45,6 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
   const reviewsRef = useRef<HTMLDivElement>(null);
 
   const currency = shop.currency ?? country.currency;
-  const primaryColor = shop.primary_color || '#1E3A5F';
-  const ctaBg = shop.button_color ?? primaryColor;
-  const ctaText = shop.button_text_color ?? '#FFFFFF';
-  const ctaRadius = shop.button_radius === 'Sharp' ? '4px' : shop.button_radius === 'Pill' ? '999px' : '8px';
 
   // Fetch product images
   const { data: productImages = [] } = useQuery({
@@ -218,7 +214,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
 
             {/* Price */}
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-3xl font-bold" style={{ color: primaryColor }}>
+              <span className="text-3xl font-bold text-primary">
                 {formatCurrency(product.price, currency)}
               </span>
               {hasPromo && (
@@ -302,8 +298,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
                 variant="outline"
-                className="flex-1 gap-2 h-12 text-base font-semibold"
-                style={{ borderRadius: ctaRadius, borderColor: ctaBg, color: ctaBg }}
+                className="flex-1 gap-2 h-12 text-base font-semibold border-primary text-primary hover:bg-primary/10"
               >
                 <ShoppingCart className="h-5 w-5" />
                 Ajouter au panier
@@ -313,12 +308,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
               <Button
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
-                className="flex-1 gap-2 h-12 text-base font-semibold"
-                style={{
-                  backgroundColor: isOutOfStock ? undefined : ctaBg,
-                  color: isOutOfStock ? undefined : ctaText,
-                  borderRadius: ctaRadius,
-                }}
+                className="flex-1 gap-2 h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <ShoppingBag className="h-5 w-5" />
                 {shop.cta_label || 'Commander maintenant'} — {formatCurrency(product.price * quantity, currency)}
@@ -383,19 +373,14 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t px-4 py-3 pb-safe">
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold truncate" style={{ color: primaryColor }}>
+              <p className="text-lg font-bold truncate text-primary">
                 {formatCurrency(product.price * quantity, currency)}
               </p>
             </div>
             <Button
               onClick={handleBuyNow}
               disabled={isOutOfStock}
-              className="gap-2 h-11 px-6"
-              style={{
-                backgroundColor: isOutOfStock ? undefined : ctaBg,
-                color: isOutOfStock ? undefined : ctaText,
-                borderRadius: ctaRadius,
-              }}
+              className="gap-2 h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <ShoppingBag className="h-4 w-4" />
               {shop.cta_label || 'Commander'}

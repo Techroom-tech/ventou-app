@@ -45,7 +45,7 @@ export function useMarketplaceProducts(filters: Filters = {}) {
   return useQuery({
     queryKey: ["marketplace-products", filters],
     queryFn: async () => {
-      // Resolve category slug to id
+      // Resolve category slug to id only when needed
       let categoryId: string | null = null;
       if (categorySlug) {
         const { data: cat } = await supabase
@@ -56,7 +56,6 @@ export function useMarketplaceProducts(filters: Filters = {}) {
         categoryId = cat?.id ?? null;
       }
 
-      // Use RPC for scored results
       const { data, error } = await supabase.rpc("get_marketplace_products", {
         _category_id: categoryId,
         _search: search || "",

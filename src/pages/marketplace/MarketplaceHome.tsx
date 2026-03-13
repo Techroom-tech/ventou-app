@@ -3,7 +3,7 @@ import MarketplaceCategoryGrid from "@/components/marketplace/MarketplaceCategor
 import MarketplaceProductCard from "@/components/marketplace/MarketplaceProductCard";
 import { useMarketplaceProducts } from "@/hooks/useMarketplaceProducts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingUp, Clock, Store, Flame, BadgeCheck } from "lucide-react";
+import { ArrowRight, Clock, Store, Flame, BadgeCheck, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,6 +153,19 @@ export default function MarketplaceHome() {
       {/* Hero */}
       <div className="container mx-auto px-4 pt-4 md:pt-6">
         <MarketplaceHero />
+
+        {/* Quick filters */}
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Button asChild variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
+            <Link to="/marketplace/search?sort=popular"><Flame className="h-3.5 w-3.5" /> Populaires</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
+            <Link to="/marketplace/search?sort=newest"><Clock className="h-3.5 w-3.5" /> Nouveautés</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
+            <Link to="/marketplace/search?promo=true"><Tag className="h-3.5 w-3.5" /> Promos</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Categories */}
