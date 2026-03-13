@@ -218,6 +218,8 @@ export default function AddProduct() {
       meta_title: metaTitle || null,
       meta_description: metaDescription || null,
       image_url: images.find((i) => i.is_primary)?.url || images[0]?.url || null,
+      show_in_marketplace: showInMarketplace,
+      marketplace_category_id: marketplaceCategoryId || null,
     };
 
     setSaving(true);
