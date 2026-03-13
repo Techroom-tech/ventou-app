@@ -27,6 +27,8 @@ import { CategoryPicker, type Category } from '@/components/addproduct/CategoryP
 import { cn } from '@/lib/utils';
 import type { ProductStatus, ProductType } from '@/types/shop';
 import { getProductUrl } from '@/lib/domain';
+import { Separator } from '@/components/ui/separator';
+import MarketplaceToggle from '@/components/addproduct/MarketplaceToggle';
 
 const productSchema = z.object({
   name: z.string().trim().min(1, 'Le nom est obligatoire').max(200),
