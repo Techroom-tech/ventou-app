@@ -252,6 +252,7 @@ const App = () => {
             <Route path="/marketplace" element={<MarketplaceLayout />}>
               <Route index element={<MarketplaceHome />} />
               <Route path="search" element={<MarketplaceSearch />} />
+              <Route path="product/:productId" element={<MarketplaceProductPage />} />
               <Route path=":categorySlug" element={<MarketplaceCategory />} />
             </Route>
 

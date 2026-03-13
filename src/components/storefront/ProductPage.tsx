@@ -373,19 +373,14 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t px-4 py-3 pb-safe">
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold truncate" style={{ color: primaryColor }}>
+              <p className="text-lg font-bold truncate text-primary">
                 {formatCurrency(product.price * quantity, currency)}
               </p>
             </div>
             <Button
               onClick={handleBuyNow}
               disabled={isOutOfStock}
-              className="gap-2 h-11 px-6"
-              style={{
-                backgroundColor: isOutOfStock ? undefined : ctaBg,
-                color: isOutOfStock ? undefined : ctaText,
-                borderRadius: ctaRadius,
-              }}
+              className="gap-2 h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <ShoppingBag className="h-4 w-4" />
               {shop.cta_label || 'Commander'}

@@ -102,7 +102,7 @@ export default function MarketplaceLayout() {
             </Link>
 
             {/* Search */}
-            <div ref={searchRef} className="flex-1 max-w-2xl relative">
+            <div ref={searchRef} className="flex-1 max-w-2xl relative flex gap-2">
               <form onSubmit={handleSearch}>
                 <div className="relative">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
