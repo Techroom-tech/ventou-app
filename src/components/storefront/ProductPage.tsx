@@ -298,8 +298,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
                 variant="outline"
-                className="flex-1 gap-2 h-12 text-base font-semibold"
-                style={{ borderRadius: ctaRadius, borderColor: ctaBg, color: ctaBg }}
+                className="flex-1 gap-2 h-12 text-base font-semibold border-primary text-primary hover:bg-primary/10"
               >
                 <ShoppingCart className="h-5 w-5" />
                 Ajouter au panier
@@ -309,12 +308,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
               <Button
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
-                className="flex-1 gap-2 h-12 text-base font-semibold"
-                style={{
-                  backgroundColor: isOutOfStock ? undefined : ctaBg,
-                  color: isOutOfStock ? undefined : ctaText,
-                  borderRadius: ctaRadius,
-                }}
+                className="flex-1 gap-2 h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <ShoppingBag className="h-5 w-5" />
                 {shop.cta_label || 'Commander maintenant'} — {formatCurrency(product.price * quantity, currency)}
