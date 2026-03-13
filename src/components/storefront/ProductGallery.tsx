@@ -15,6 +15,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+  const thumbContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
   // Embla for mobile carousel
@@ -24,6 +25,15 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
     if (!emblaApi) return;
     emblaApi.on('select', () => setSelectedIndex(emblaApi.selectedScrollSnap()));
   }, [emblaApi]);
+
+  // Auto-scroll thumbnail into view
+  useEffect(() => {
+    if (isMobile || !thumbContainerRef.current) return;
+    const thumb = thumbContainerRef.current.children[selectedIndex] as HTMLElement;
+    if (thumb) {
+      thumb.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedIndex, isMobile]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (isMobile || !mainRef.current) return;
@@ -83,36 +93,24 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
     );
   }
 
-  // Desktop: main image + thumbnails with zoom + lightbox
+  // Desktop: vertical thumbnails left + main image right with zoom + lightbox
   return (
     <>
-      <div className="space-y-3">
-        {/* Main image with zoom */}
-        <div
-          ref={mainRef}
-          className="aspect-square bg-muted rounded-xl overflow-hidden cursor-crosshair relative"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          onClick={() => setLightboxOpen(true)}
-        >
-          <img
-            src={mainImage}
-            alt={productName}
-            className="w-full h-full object-cover transition-transform duration-150"
-            style={zoomStyle}
-            loading="eager"
-          />
-        </div>
-
-        {/* Thumbnails */}
+      <div className="flex gap-3">
+        {/* Vertical thumbnails */}
         {images.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div
+            ref={thumbContainerRef}
+            className="flex flex-col gap-2 max-h-[500px] overflow-y-auto scrollbar-thin pr-0.5 shrink-0"
+          >
             {images.map((img, i) => (
               <button
                 key={i}
                 onClick={() => setSelectedIndex(i)}
-                className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
-                  i === selectedIndex ? 'border-primary' : 'border-transparent hover:border-muted-foreground/50'
+                className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all duration-200 ${
+                  i === selectedIndex
+                    ? 'border-primary ring-1 ring-primary/30'
+                    : 'border-transparent hover:border-muted-foreground/50'
                 }`}
               >
                 <img
@@ -125,6 +123,23 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
             ))}
           </div>
         )}
+
+        {/* Main image with zoom */}
+        <div
+          ref={mainRef}
+          className="flex-1 aspect-square bg-muted rounded-xl overflow-hidden cursor-crosshair relative"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          onClick={() => setLightboxOpen(true)}
+        >
+          <img
+            src={mainImage}
+            alt={productName}
+            className="w-full h-full object-cover transition-transform duration-150"
+            style={zoomStyle}
+            loading="eager"
+          />
+        </div>
       </div>
 
       {/* Lightbox */}

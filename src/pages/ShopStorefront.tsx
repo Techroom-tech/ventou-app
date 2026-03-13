@@ -431,6 +431,10 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
             shop={shop}
             onBack={navigateToHome}
             onProductClick={navigateToProduct}
+            onBuyNow={() => {
+              setCheckoutOpen(true);
+              trackInitiateCheckout({ currency: shop.currency ?? 'XOF' });
+            }}
           />
         </Suspense>
 

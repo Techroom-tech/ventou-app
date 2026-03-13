@@ -1,17 +1,21 @@
 /**
- * ProductPage — Full-page, conversion-optimized product page.
+ * ProductPage — Full-page, conversion-optimized product page (Shopify-level).
  * Desktop: 2-column layout (gallery left, info right).
+ * Tablet: stacked layout.
  * Mobile: stacked with sticky buy bar.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Minus, Plus, ShoppingCart, ShoppingBag, ArrowLeft, Star,
+  Shield, Truck, MessageCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase, formatCurrency } from '@/integrations/supabase/client';
 import { Product, Shop } from '@/types/shop';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCart } from './CartContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,14 +33,16 @@ interface ProductPageProps {
   shop: Shop;
   onBack: () => void;
   onProductClick: (product: Product) => void;
+  onBuyNow?: () => void;
 }
 
-export default function ProductPage({ product, shop, onBack, onProductClick }: ProductPageProps) {
+export default function ProductPage({ product, shop, onBack, onProductClick, onBuyNow }: ProductPageProps) {
   const { addToCart } = useCart();
   const { country } = useCountry();
   const isMobile = useIsMobile();
   const [quantity, setQuantity] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+  const reviewsRef = useRef<HTMLDivElement>(null);
 
   const currency = shop.currency ?? country.currency;
   const primaryColor = shop.primary_color || '#1E3A5F';
@@ -81,13 +87,13 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
     return groups;
   }, [variants]);
 
-  // Build images array: product_images first, fallback to main image_url
+  // Build images array
   const allImages = useMemo(() => {
     if (productImages.length > 0) return productImages;
     return product.image_url ? [product.image_url] : [];
   }, [productImages, product.image_url]);
 
-  // Fetch reviews count for star display
+  // Fetch reviews
   const { data: reviews = [] } = useQuery({
     queryKey: ['product-reviews', product.id],
     queryFn: async () => {
@@ -105,7 +111,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
     ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
     : 0;
 
-  // Track ViewContent on mount
+  // Track ViewContent
   useEffect(() => {
     trackViewContent({
       content_name: product.name,
@@ -113,7 +119,6 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
       value: product.price,
       currency,
     });
-    // Campaign tracking
     import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
       trackCampaignEvent(shop.id, 'view_product', { product_id: product.id });
     });
@@ -136,8 +141,9 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
     ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
     : 0;
   const isOutOfStock = product.track_stock && product.stock_quantity === 0;
+  const maxQty = product.track_stock ? product.stock_quantity : 99;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = useCallback(() => {
     addToCart(product, quantity);
     trackAddToCart({
       content_name: product.name,
@@ -149,8 +155,25 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
     import('@/lib/campaignTracking').then(({ trackCampaignEvent }) => {
       trackCampaignEvent(shop.id, 'add_to_cart', { product_id: product.id });
     });
+    toast.success('Produit ajouté au panier');
     setQuantity(1);
-  };
+  }, [product, quantity, currency, shop.id, addToCart]);
+
+  const handleBuyNow = useCallback(() => {
+    addToCart(product, quantity);
+    trackAddToCart({
+      content_name: product.name,
+      content_id: product.id,
+      value: product.price * quantity,
+      currency,
+      num_items: quantity,
+    });
+    onBuyNow?.();
+  }, [product, quantity, currency, addToCart, onBuyNow]);
+
+  const scrollToReviews = useCallback(() => {
+    reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <>
@@ -176,23 +199,25 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
             {/* Title */}
             <h1 className="text-2xl md:text-3xl font-bold leading-tight">{product.name}</h1>
 
-            {/* Rating */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <Star
-                    key={i}
-                    className={`w-4 h-4 ${i <= Math.round(avgRating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/40'}`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {avgRating > 0 ? avgRating.toFixed(1) : '—'} ({reviews.length} avis)
-              </span>
-            </div>
+            {/* Rating — click scrolls to reviews */}
+            {reviews.length > 0 && (
+              <button onClick={scrollToReviews} className="flex items-center gap-2 group">
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <Star
+                      key={i}
+                      className={`w-4 h-4 ${i <= Math.round(avgRating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/40'}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  {avgRating.toFixed(1)} ({reviews.length} avis)
+                </span>
+              </button>
+            )}
 
             {/* Price */}
-            <div className="flex items-baseline gap-3">
+            <div className="flex items-baseline gap-3 flex-wrap">
               <span className="text-3xl font-bold" style={{ color: primaryColor }}>
                 {formatCurrency(product.price, currency)}
               </span>
@@ -218,20 +243,22 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
               </Badge>
             )}
 
+            <Separator />
+
             {/* Variants */}
             {Object.keys(variantGroups).length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {Object.entries(variantGroups).map(([groupName, values]) => (
                   <div key={groupName}>
-                    <span className="text-sm font-medium text-muted-foreground mb-1.5 block">{groupName}</span>
+                    <span className="text-sm font-semibold mb-2 block">{groupName}</span>
                     <div className="flex flex-wrap gap-2">
                       {values.map(v => (
                         <button
                           key={v.value}
                           onClick={() => setSelectedVariants(prev => ({ ...prev, [groupName]: v.value }))}
-                          className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                             selectedVariants[groupName] === v.value
-                              ? 'border-primary bg-primary/10 text-primary'
+                              ? 'border-primary bg-primary/10 text-primary shadow-sm'
                               : 'border-border hover:border-muted-foreground'
                           }`}
                         >
@@ -246,42 +273,75 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
 
             {/* Quantity */}
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-muted-foreground">Quantité</span>
-              <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">Quantité</span>
+              <div className="flex items-center border rounded-lg overflow-hidden">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
+                  className="h-10 w-10 rounded-none"
                   onClick={() => setQuantity(q => Math.max(1, q - 1))}
                 >
-                  <Minus className="h-3.5 w-3.5" />
+                  <Minus className="h-4 w-4" />
                 </Button>
-                <span className="w-10 text-center font-semibold">{quantity}</span>
+                <span className="w-12 text-center font-semibold text-sm border-x">{quantity}</span>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="h-9 w-9"
-                  onClick={() => setQuantity(q => q + 1)}
+                  className="h-10 w-10 rounded-none"
+                  onClick={() => setQuantity(q => Math.min(maxQty, q + 1))}
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            {/* Buy CTA */}
-            <Button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-              className="w-full gap-2 h-12 text-base font-semibold"
-              style={{
-                backgroundColor: isOutOfStock ? undefined : ctaBg,
-                color: isOutOfStock ? undefined : ctaText,
-                borderRadius: ctaRadius,
-              }}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {shop.cta_label || 'Acheter maintenant'} — {formatCurrency(product.price * quantity, currency)}
-            </Button>
+            {/* CTA Buttons */}
+            <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-row'}`}>
+              {/* Add to cart */}
+              <Button
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+                variant="outline"
+                className="flex-1 gap-2 h-12 text-base font-semibold"
+                style={{ borderRadius: ctaRadius, borderColor: ctaBg, color: ctaBg }}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                Ajouter au panier
+              </Button>
+
+              {/* Buy now */}
+              <Button
+                onClick={handleBuyNow}
+                disabled={isOutOfStock}
+                className="flex-1 gap-2 h-12 text-base font-semibold"
+                style={{
+                  backgroundColor: isOutOfStock ? undefined : ctaBg,
+                  color: isOutOfStock ? undefined : ctaText,
+                  borderRadius: ctaRadius,
+                }}
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {shop.cta_label || 'Commander maintenant'} — {formatCurrency(product.price * quantity, currency)}
+              </Button>
+            </div>
+
+            {/* Trust indicators */}
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Shield className="h-4 w-4 text-primary" />
+                Paiement sécurisé
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Truck className="h-4 w-4 text-primary" />
+                Paiement à la livraison
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <MessageCircle className="h-4 w-4 text-primary" />
+                Support WhatsApp
+              </span>
+            </div>
+
+            <Separator />
 
             {/* Share */}
             <ShareButtons url={window.location.href} title={product.name} />
@@ -289,9 +349,9 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
         </div>
 
         {/* Tabs: Details & Reviews */}
-        <div className="mt-10">
+        <div className="mt-10" ref={reviewsRef}>
           <Tabs defaultValue="details">
-            <TabsList>
+            <TabsList className="w-full justify-start">
               <TabsTrigger value="details">Détails produit</TabsTrigger>
               <TabsTrigger value="reviews">Avis clients ({reviews.length})</TabsTrigger>
             </TabsList>
@@ -328,7 +388,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
               </p>
             </div>
             <Button
-              onClick={handleAddToCart}
+              onClick={handleBuyNow}
               disabled={isOutOfStock}
               className="gap-2 h-11 px-6"
               style={{
@@ -337,8 +397,8 @@ export default function ProductPage({ product, shop, onBack, onProductClick }: P
                 borderRadius: ctaRadius,
               }}
             >
-              <ShoppingCart className="h-4 w-4" />
-              {shop.cta_label || 'Acheter'}
+              <ShoppingBag className="h-4 w-4" />
+              {shop.cta_label || 'Commander'}
             </Button>
           </div>
         </div>
