@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase, formatCurrency } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
