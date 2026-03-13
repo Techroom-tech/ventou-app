@@ -33,9 +33,10 @@ export default function MarketplaceCategoryGrid() {
           <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-105 transition-all duration-200 overflow-hidden">
             {cat.image_url ? (
               <img src={cat.image_url} alt={cat.name} className="h-full w-full object-cover rounded-2xl" />
-            ) : (
-              <Icon name={cat.icon || "Package"} className="h-7 w-7 text-muted-foreground group-hover:text-primary transition-colors" />
-            )}
+            ) : (() => {
+              const IconComp = (LucideIcons as any)[cat.icon || "Package"] || Package;
+              return <IconComp className="h-7 w-7 text-muted-foreground group-hover:text-primary transition-colors" />;
+            })()}
           </div>
           <span className="text-xs font-medium text-center text-muted-foreground group-hover:text-foreground transition-colors line-clamp-2">
             {cat.name}
