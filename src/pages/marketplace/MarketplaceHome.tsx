@@ -120,7 +120,7 @@ function TopSellers() {
 
 export default function MarketplaceHome() {
   const { data: popularProducts, isLoading: loadingPopular } = useMarketplaceProducts({
-    sort: "newest",
+    sort: "score",
     pageSize: 8,
   });
 

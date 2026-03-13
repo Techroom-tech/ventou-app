@@ -145,7 +145,6 @@ const App = () => {
                       <Route path="/p/:productSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                       <Route path="/page/:pageSlug" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                       <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
-                      <Route path="*" element={<ShopStorefront slug={hostnameSlug} basePath="" />} />
                     </Routes>
                   </ErrorBoundary>
                 </Suspense>
