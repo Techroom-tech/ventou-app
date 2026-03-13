@@ -54,9 +54,7 @@ export default function RelatedProducts({ product, shop, onProductClick }: Relat
 
   if (related.length === 0) return null;
 
-  const primaryColor = shop.primary_color || '#1E3A5F';
-  const ctaBg = shop.button_color ?? primaryColor;
-  const ctaText = shop.button_text_color ?? '#FFFFFF';
+  // Use semantic tokens instead of vendor colors for consistent UI
 
   return (
     <section className="space-y-4">
