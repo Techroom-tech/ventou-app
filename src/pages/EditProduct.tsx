@@ -108,6 +108,8 @@ export default function EditProduct() {
   const [metaDescription, setMetaDescription] = useState('');
   const [images, setImages] = useState<Array<{ id?: string; url: string; storage_path: string; is_primary: boolean; position: number }>>([]);
   const [variants, setVariants] = useState<VariantInput[]>([]);
+  const [showInMarketplace, setShowInMarketplace] = useState(true);
+  const [marketplaceCategoryId, setMarketplaceCategoryId] = useState<string | null>(null);
 
   // UI state
   const [saving, setSaving] = useState(false);
