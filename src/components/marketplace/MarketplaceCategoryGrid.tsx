@@ -1,7 +1,8 @@
 import { useMarketplaceCategories } from "@/hooks/useMarketplaceCategories";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Icon } from "@/components/ui/Icon";
+import * as LucideIcons from "lucide-react";
+import { Package } from "lucide-react";
 
 export default function MarketplaceCategoryGrid() {
   const { data: categories, isLoading } = useMarketplaceCategories();
