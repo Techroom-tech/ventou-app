@@ -9,6 +9,7 @@ import {
   Settings,
   Bug,
   MessageSquare,
+  ShoppingBag,
 } from 'lucide-react';
 import type { AdminNavItem, AdminRole } from '@/types/admin';
 
