@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { Search, Store, Menu, SlidersHorizontal, ChevronRight } from "lucide-react";
+import { Search, Store, Menu, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { useMarketplaceCategories } from "@/hooks/useMarketplaceCategories";
