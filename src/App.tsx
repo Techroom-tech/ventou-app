@@ -72,6 +72,7 @@ const MarketplaceLayout = lazy(() => import("./components/marketplace/Marketplac
 const MarketplaceHome = lazy(() => import("./pages/marketplace/MarketplaceHome"));
 const MarketplaceCategory = lazy(() => import("./pages/marketplace/MarketplaceCategory"));
 const MarketplaceSearch = lazy(() => import("./pages/marketplace/MarketplaceSearch"));
+const MarketplaceProductPage = lazy(() => import("./pages/marketplace/MarketplaceProductPage"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
