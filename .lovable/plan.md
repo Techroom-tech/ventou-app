@@ -1,52 +1,63 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan : Refonte design section Avis clients
 
-### Problem
+### Problemes actuels (screenshot)
 
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+- Resume basique (etoiles + texte plat)
+- Carte avis minimaliste sans avatar, sans mise en valeur
+- Formulaire generique sans hierarchie visuelle
+- Aucune barre de distribution des notes
+- Pas d'etat vide engageant
 
-### Solution
+### Ameliorations proposees
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+#### 1. Resume avec barre de distribution
 
-### Architecture
+Remplacer le resume simple par un bloc structuré :
 
 ```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
+┌─────────────────────────────────────────────┐
+│  ★★★★☆  4.0        ■■■■■■■■■ 5★  60%      │
+│  sur 5 (12 avis)    ■■■■■      4★  25%      │
+│                     ■■■        3★  10%      │
+│                     ■          2★   3%      │
+│                                1★   2%      │
+└─────────────────────────────────────────────┘
 ```
 
-### Changes
+Desktop : 2 colonnes (note globale gauche, barres droite). Mobile : empile.
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
+#### 2. Cartes avis ameliorees
 
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
+- Avatar genere (initiales + couleur) a la place du vide actuel
+- Drapeau pays a cote du nom
+- Etoiles sur la meme ligne que le nom
+- Date en format relatif ("il y a 3 jours")
+- Reponse vendeur avec badge "Vendeur" et fond subtil
+- Ombre legere sur les cartes
 
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
+#### 3. Formulaire repense
 
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+- Etoiles plus grandes et interactives avec hover preview (highlight toutes les etoiles jusqu'au survol)
+- Labels descriptifs sous les etoiles ("Excellent", "Tres bien", etc.)
+- Supprimer le champ telephone (friction inutile pour la conversion)
+- Succes : animation checkmark au lieu du texte simple
+- Bouton avec icone etoile
 
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
+#### 4. Etat vide engageant
 
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
+Si aucun avis : illustration minimaliste avec texte "Soyez le premier a donner votre avis" et etoiles cliquables directement.
 
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+#### 5. Responsivite
+
+- Desktop : resume en 2 colonnes, liste 2 colonnes si >4 avis
+- Tablet : resume empile, liste 1 colonne
+- Mobile : tout empile, formulaire pleine largeur, etoiles plus grandes pour le tactile
+
+### Fichier modifie
+
+| Fichier | Action |
+|---------|--------|
+| `src/components/storefront/ProductReviews.tsx` | Refonte complete du composant |
 
