@@ -1,41 +1,52 @@
 
 
-## Plan: Amelioration marketplace Ventou
+## Plan: SSR OG Meta Tags via Cloudflare Worker
 
-### Changements
+### Problem
 
-**1. Bouton "Commander" sur chaque carte produit**
-- Ajouter un bouton visible sous le prix avec icone `ShoppingCart` qui redirige vers `/marketplace/product/:id?from=marketplace`
-- Remplacer le hover overlay "Voir le produit" par ce bouton permanent et visible
-- Fichier: `MarketplaceProductCard.tsx`
+WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
 
-**2. Navigation avec `?from=marketplace`**
-- Tous les liens produit dans `MarketplaceProductCard` ajoutent `?from=marketplace`
-- Dans `MarketplaceProductPage.tsx`, detecter `from=marketplace` et afficher un bouton retour qui utilise `navigate(-1)` pour conserver les filtres
-- Fichiers: `MarketplaceProductCard.tsx`, `MarketplaceProductPage.tsx`
+### Solution
 
-**3. Amelioration filtres sidebar**
-- Les filtres tri (plus vendus, mieux notes, nouveautes, prix) sont deja dans le toolbar sort dropdown -- les deplacer aussi dans la sidebar comme "raccourcis de tri" pour une meilleure visibilite
-- Ajouter bouton "Appliquer" en bas de la sidebar (desktop et mobile drawer)
-- Le bouton "Reset filtres" existe deja -- le rendre plus visible (toujours affiche)
-- Fichier: `MarketplaceSidebarFilters.tsx`
+Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
 
-**4. Grille responsive**
-- Modifier: `grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4` (mobile = 2 colonnes au lieu de 1)
-- Fichier: `MarketplaceHome.tsx`, `MarketplaceSearch.tsx`
+### Architecture
 
-**5. Toolbar sticky**
-- Ajouter `sticky top-[64px] z-20 bg-background` au toolbar pour qu'il reste visible au scroll
-- Fichier: `MarketplaceToolbar.tsx`
+```text
+Bot request: test.ventou.shop/p/airpods-pro
+    │
+    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
+    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
+    │           ──► Fetches HTML from origin
+    │           ──► Rewrites <head> with OG tags + JSON-LD
+    │           ──► Returns modified HTML
+    │
+    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
+```
 
-### Fichiers modifies
+### Changes
 
-| Fichier | Changement |
-|---------|-----------|
-| `MarketplaceProductCard.tsx` | Bouton "Commander" visible, liens avec `?from=marketplace` |
-| `MarketplaceSidebarFilters.tsx` | Raccourcis tri, boutons Reset/Appliquer toujours visibles |
-| `MarketplaceToolbar.tsx` | Sticky toolbar |
-| `MarketplaceHome.tsx` | Grille 2 cols mobile |
-| `MarketplaceSearch.tsx` | Grille 2 cols mobile |
-| `MarketplaceProductPage.tsx` | Bouton retour marketplace |
+**`cloudflare-worker/ventou-wildcard-proxy.js`**
+
+1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
+
+2. Add a `handleProductOG` async function that:
+   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
+   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
+   - Fetches the origin HTML
+   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
+   - Returns the modified HTML response
+
+3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+
+4. Worker environment variables needed (set in Cloudflare dashboard):
+   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
+   - `SUPABASE_ANON_KEY` = the anon key
+
+**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
+
+| File | Change |
+|------|--------|
+| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
+| `index.html` | Update default OG meta tags to Ventou branding |
 

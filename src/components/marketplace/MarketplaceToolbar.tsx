@@ -27,7 +27,7 @@ export default function MarketplaceToolbar({ filters, onChange, totalCount }: Pr
   const currentSort = SORT_OPTIONS.find(s => s.value === (filters.sort ?? "score"));
 
   return (
-    <div className="flex items-center justify-between gap-3 py-3 px-1">
+    <div className="flex items-center justify-between gap-3 py-3 px-1 sticky top-[64px] z-20 bg-background">
       <div className="flex items-center gap-2">
         {/* Mobile filter trigger */}
         {isMobile && (
