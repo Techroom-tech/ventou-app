@@ -1,52 +1,37 @@
 
 
-## Plan: SSR OG Meta Tags via Cloudflare Worker
+## Plan: Corrections marketplace et page produit
 
-### Problem
+### Problemes identifies
 
-WhatsApp, Facebook, Telegram crawlers do not execute JavaScript. The current `ProductSEO.tsx` injects meta tags client-side via `useEffect`, so crawlers only see the generic `index.html` tags ("Lovable App").
+1. **Couleurs CTA cassees** — Le `ProductPage` utilise `shop.button_color` et `shop.primary_color` directement en `style`. Quand un vendeur met une couleur orange sur fond blanc, le bouton "Ajouter au panier" (variant outline) a du texte orange illisible et une bordure invisible. Il faut utiliser des couleurs fixes et neutres pour les CTA, independamment de la personnalisation vendeur.
 
-### Solution
+2. **X et Telegram dans ShareButtons** — A supprimer completement.
 
-Intercept product page requests (`/p/{slug}`) in the Cloudflare Worker. When the request comes from a known bot user-agent, fetch product + shop data from Supabase, then rewrite the HTML `<head>` to inject the correct OG/Twitter/JSON-LD tags before returning it.
+3. **Clic produit marketplace mene a la boutique** — Le `MarketplaceProductCard` linke vers `/boutique/:slug/p/:productSlug`, qui charge `ShopStorefront` complet (header boutique, etc.). Il faut creer une page produit marketplace standalone qui affiche le produit dans le layout marketplace sans naviguer vers la boutique.
 
-### Architecture
+4. **Performance lente** — Les requetes `useMarketplaceProducts` font 2 appels sequentiels (categories + RPC). La homepage fait 2 appels paralleles mais chacun attend la resolution du slug. Le hook doit etre optimise.
 
-```text
-Bot request: test.ventou.shop/p/airpods-pro
-    │
-    ├─ User-Agent = WhatsApp/Facebook/Telegram/Twitter bot?
-    │   YES ──► Worker fetches product from Supabase (slug + shop slug)
-    │           ──► Fetches HTML from origin
-    │           ──► Rewrites <head> with OG tags + JSON-LD
-    │           ──► Returns modified HTML
-    │
-    │   NO ───► Normal proxy (SPA loads, client-side SEO works)
-```
+5. **Produits populaires/nouveautes pas directement visibles** — Deja affiches en homepage. Le probleme est qu'il n'y a pas de bouton filtre visible a cote de la barre de recherche dans le header marketplace.
 
-### Changes
+### Corrections
 
-**`cloudflare-worker/ventou-wildcard-proxy.js`**
+| Fichier | Changement |
+|---------|-----------|
+| `src/components/storefront/ProductPage.tsx` | Remplacer les couleurs CTA vendor par des couleurs fixes et lisibles (primary/outline standard). Garder la personnalisation uniquement pour la boutique standalone, pas quand accede depuis marketplace |
+| `src/components/storefront/ShareButtons.tsx` | Supprimer X et Telegram, garder Facebook et WhatsApp |
+| `src/components/marketplace/MarketplaceProductCard.tsx` | Lier vers `/marketplace/product/:productId` au lieu de `/boutique/:slug/p/:productSlug` |
+| `src/pages/marketplace/MarketplaceProductPage.tsx` | **Creer** — Page produit standalone dans le layout marketplace, reutilisant les composants existants (gallery, reviews, related) mais avec un design neutre |
+| `src/App.tsx` | Ajouter route `/marketplace/product/:productId` dans le layout marketplace |
+| `src/components/marketplace/MarketplaceLayout.tsx` | Ajouter un bouton "Filtres" a cote de la barre de recherche dans le header |
+| `src/hooks/useMarketplaceProducts.ts` | Optimiser en evitant le double appel sequentiel quand pas de categorySlug |
+| `src/pages/marketplace/MarketplaceHome.tsx` | Ajouter des liens filtres rapides (Populaires, Nouveautes, Promos) sous le hero |
 
-1. Add bot detection function matching user-agents: `facebookexternalhit`, `WhatsApp`, `Twitterbot`, `TelegramBot`, `LinkedInBot`, `Googlebot`, `bingbot`, `Slackbot`.
+### Details techniques
 
-2. Add a `handleProductOG` async function that:
-   - Extracts shop slug from hostname (first label) and product slug from pathname (`/p/:slug`)
-   - Queries Supabase REST API directly (using `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker env vars) to fetch product + shop data in two parallel requests
-   - Fetches the origin HTML
-   - Uses string replacement on `<head>` to inject: `<title>`, `og:title`, `og:description`, `og:image`, `og:url`, `og:type`, `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`, and a `<script type="application/ld+json">` block
-   - Returns the modified HTML response
+**Page produit marketplace** : Charge le produit par ID via Supabase, affiche dans le layout marketplace avec couleurs neutres (primary bleu Ventou, pas les couleurs vendeur). Inclut un lien "Voir la boutique" vers `/boutique/:slug`. Reutilise `ProductGallery`, `ProductReviews`, `TipTapRenderer`.
 
-3. In the main `fetch` handler, before the normal proxy logic, check: if pathname matches `/p/` and user-agent is a bot → call `handleProductOG` and return early.
+**Couleurs CTA fixes** : "Ajouter au panier" = outline avec bordure `border-primary` et texte `text-primary`. "Commander" = `bg-primary text-white`. Plus de `style={{ backgroundColor: ctaBg }}`.
 
-4. Worker environment variables needed (set in Cloudflare dashboard):
-   - `SUPABASE_URL` = `https://chpplckgndznakuvcqbx.supabase.co`
-   - `SUPABASE_ANON_KEY` = the anon key
-
-**`index.html`** — Update the default OG tags to use Ventou branding instead of "Lovable App" (fallback for non-product pages).
-
-| File | Change |
-|------|--------|
-| `cloudflare-worker/ventou-wildcard-proxy.js` | Add bot detection + SSR OG meta injection for `/p/{slug}` |
-| `index.html` | Update default OG meta tags to Ventou branding |
+**Filtre dans header** : Ajouter un bouton `SlidersHorizontal` a droite de la barre de recherche qui ouvre un Sheet avec les filtres, navigant vers `/marketplace/search` avec les params.
 
