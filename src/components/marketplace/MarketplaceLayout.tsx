@@ -122,6 +122,16 @@ export default function MarketplaceLayout() {
                   </Button>
                 </div>
               </form>
+              {/* Filter button */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 h-10 w-10 md:h-11 md:w-11 rounded-xl"
+                onClick={() => navigate("/marketplace/search")}
+                title="Filtres"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
 
               {/* Quick suggestions */}
               {showSuggestions && categories && categories.length > 0 && (

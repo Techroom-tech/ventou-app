@@ -45,10 +45,6 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
   const reviewsRef = useRef<HTMLDivElement>(null);
 
   const currency = shop.currency ?? country.currency;
-  const primaryColor = shop.primary_color || '#1E3A5F';
-  const ctaBg = shop.button_color ?? primaryColor;
-  const ctaText = shop.button_text_color ?? '#FFFFFF';
-  const ctaRadius = shop.button_radius === 'Sharp' ? '4px' : shop.button_radius === 'Pill' ? '999px' : '8px';
 
   // Fetch product images
   const { data: productImages = [] } = useQuery({
