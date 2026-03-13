@@ -214,7 +214,7 @@ export default function ProductPage({ product, shop, onBack, onProductClick, onB
 
             {/* Price */}
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-3xl font-bold" style={{ color: primaryColor }}>
+              <span className="text-3xl font-bold text-primary">
                 {formatCurrency(product.price, currency)}
               </span>
               {hasPromo && (
