@@ -288,6 +288,8 @@ export default function EditProduct() {
       meta_description: metaDescription || null,
       image_url: images.find((i) => i.is_primary)?.url || images[0]?.url || null,
       updated_at: new Date().toISOString(),
+      show_in_marketplace: showInMarketplace,
+      marketplace_category_id: marketplaceCategoryId || null,
     };
 
     setSaving(true);
