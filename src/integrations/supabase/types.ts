@@ -1761,43 +1761,83 @@ export type Database = {
           total_orders: number
         }[]
       }
-      get_marketplace_products: {
-        Args: {
-          _category_id?: string
-          _country?: string
-          _has_promo?: boolean
-          _max_price?: number
-          _min_price?: number
-          _page_offset?: number
-          _page_size?: number
-          _search?: string
-          _sort?: string
-        }
-        Returns: {
-          avg_rating: number
-          category: string
-          compare_at_price: number
-          created_at: string
-          id: string
-          image_url: string
-          is_sponsored: boolean
-          marketplace_category_id: string
-          name: string
-          order_count: number
-          price: number
-          review_count: number
-          score: number
-          shop_country: string
-          shop_currency: string
-          shop_id: string
-          shop_is_verified: boolean
-          shop_logo_url: string
-          shop_name: string
-          shop_slug: string
-          slug: string
-          total_count: number
-        }[]
-      }
+      get_marketplace_products:
+        | {
+            Args: {
+              _category_id?: string
+              _country?: string
+              _has_promo?: boolean
+              _max_price?: number
+              _min_price?: number
+              _page_offset?: number
+              _page_size?: number
+              _search?: string
+              _sort?: string
+            }
+            Returns: {
+              avg_rating: number
+              category: string
+              compare_at_price: number
+              created_at: string
+              id: string
+              image_url: string
+              is_sponsored: boolean
+              marketplace_category_id: string
+              name: string
+              order_count: number
+              price: number
+              review_count: number
+              score: number
+              shop_country: string
+              shop_currency: string
+              shop_id: string
+              shop_is_verified: boolean
+              shop_logo_url: string
+              shop_name: string
+              shop_slug: string
+              slug: string
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              _category_id?: string
+              _country?: string
+              _has_promo?: boolean
+              _max_price?: number
+              _min_orders?: number
+              _min_price?: number
+              _min_rating?: number
+              _page_offset?: number
+              _page_size?: number
+              _search?: string
+              _sort?: string
+            }
+            Returns: {
+              avg_rating: number
+              category: string
+              compare_at_price: number
+              created_at: string
+              id: string
+              image_url: string
+              is_sponsored: boolean
+              marketplace_category_id: string
+              name: string
+              order_count: number
+              price: number
+              review_count: number
+              score: number
+              shop_country: string
+              shop_currency: string
+              shop_id: string
+              shop_is_verified: boolean
+              shop_logo_url: string
+              shop_name: string
+              shop_slug: string
+              slug: string
+              total_count: number
+            }[]
+          }
       get_repeat_customer_count: { Args: { _shop_id: string }; Returns: number }
       has_role: {
         Args: {
