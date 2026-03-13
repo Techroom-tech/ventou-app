@@ -99,7 +99,7 @@ export default function RelatedProducts({ product, shop, onProductClick }: Relat
                       {formatCurrency(p.compare_at_price!, shop.currency)}
                     </p>
                   )}
-                  <p className="text-sm font-semibold" style={{ color: primaryColor }}>
+                  <p className="text-sm font-semibold text-primary">
                     {formatCurrency(p.price, shop.currency)}
                   </p>
                 </div>
