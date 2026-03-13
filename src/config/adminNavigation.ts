@@ -9,6 +9,7 @@ import {
   Settings,
   Bug,
   MessageSquare,
+  ShoppingBag,
 } from 'lucide-react';
 import type { AdminNavItem, AdminRole } from '@/types/admin';
 
@@ -23,6 +24,8 @@ export const adminNavItems: AdminNavItem[] = [
   { key: 'users', icon: Shield, path: '/admin/users' },
   { key: 'shop-diagnostic', icon: Bug, path: '/admin/shop-diagnostic', roles: ['super_admin'] },
   { key: 'feedback', icon: MessageSquare, path: '/admin/feedback' },
+  { key: 'marketplace-categories', icon: ShoppingBag, path: '/admin/marketplace/categories', roles: ['super_admin'] },
+  { key: 'marketplace-banners', icon: ShoppingBag, path: '/admin/marketplace/banners', roles: ['super_admin'] },
   { key: 'settings', icon: Settings, path: '/admin/settings', roles: ['super_admin'] },
 ];
 

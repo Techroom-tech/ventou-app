@@ -26,6 +26,8 @@ import { CategoryPicker, type Category } from '@/components/addproduct/CategoryP
 import { cn } from '@/lib/utils';
 import type { ProductStatus, ProductType } from '@/types/shop';
 import { getProductUrl } from '@/lib/domain';
+import { Separator } from '@/components/ui/separator';
+import MarketplaceToggle from '@/components/addproduct/MarketplaceToggle';
 
 const productSchema = z.object({
   name: z.string().trim().min(1, 'Le nom est obligatoire').max(200),
@@ -108,6 +110,8 @@ export default function EditProduct() {
   const [metaDescription, setMetaDescription] = useState('');
   const [images, setImages] = useState<Array<{ id?: string; url: string; storage_path: string; is_primary: boolean; position: number }>>([]);
   const [variants, setVariants] = useState<VariantInput[]>([]);
+  const [showInMarketplace, setShowInMarketplace] = useState(true);
+  const [marketplaceCategoryId, setMarketplaceCategoryId] = useState<string | null>(null);
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -168,6 +172,8 @@ export default function EditProduct() {
         setProductType((product.product_type ?? 'physical') as ProductType);
         setMetaTitle(product.meta_title ?? '');
         setMetaDescription(product.meta_description ?? '');
+        setShowInMarketplace((product as any).show_in_marketplace ?? true);
+        setMarketplaceCategoryId((product as any).marketplace_category_id ?? null);
 
         // Safely parse description_json
         try {
@@ -284,6 +290,8 @@ export default function EditProduct() {
       meta_description: metaDescription || null,
       image_url: images.find((i) => i.is_primary)?.url || images[0]?.url || null,
       updated_at: new Date().toISOString(),
+      show_in_marketplace: showInMarketplace,
+      marketplace_category_id: marketplaceCategoryId || null,
     };
 
     setSaving(true);
@@ -578,7 +586,7 @@ export default function EditProduct() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Catégorie</Label>
+                  <Label>Catégorie boutique</Label>
                   {shop ? (
                     <CategoryPicker
                       shopId={shop.id}
@@ -608,6 +616,13 @@ export default function EditProduct() {
                     </div>
                   </RadioGroup>
                 </div>
+                <Separator />
+                <MarketplaceToggle
+                  showInMarketplace={showInMarketplace}
+                  onShowInMarketplaceChange={setShowInMarketplace}
+                  marketplaceCategoryId={marketplaceCategoryId}
+                  onMarketplaceCategoryIdChange={setMarketplaceCategoryId}
+                />
               </CardContent>
             </Card>
 
