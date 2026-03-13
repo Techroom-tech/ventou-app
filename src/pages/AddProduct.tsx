@@ -546,14 +546,14 @@ export default function AddProduct() {
               </CardContent>
             </Card>
 
-            {/* Section 6: Organization */}
+            {/* Section 6: Organisation */}
             <Card className="animate-in fade-in-50 duration-300">
               <CardHeader>
                 <CardTitle className="text-base">Organisation</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Catégorie</Label>
+                  <Label>Catégorie boutique</Label>
                   {shop ? (
                     <CategoryPicker
                       shopId={shop.id}
@@ -583,6 +583,13 @@ export default function AddProduct() {
                     </div>
                   </RadioGroup>
                 </div>
+                <Separator />
+                <MarketplaceToggle
+                  showInMarketplace={showInMarketplace}
+                  onShowInMarketplaceChange={setShowInMarketplace}
+                  marketplaceCategoryId={marketplaceCategoryId}
+                  onMarketplaceCategoryIdChange={setMarketplaceCategoryId}
+                />
               </CardContent>
             </Card>
 
