@@ -21,8 +21,11 @@ import type { Product, Shop } from "@/types/shop";
 
 export default function MarketplaceProductPage() {
   const { productId } = useParams<{ productId: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [quantity, setQuantity] = useState(1);
+  const fromMarketplace = searchParams.get("from") === "marketplace";
 
   // Fetch product + shop in parallel
   const { data, isLoading } = useQuery({
