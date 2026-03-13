@@ -8,7 +8,6 @@ import MarketplaceSidebarFilters from "@/components/marketplace/MarketplaceSideb
 
 const SORT_OPTIONS = [
   { value: "score", label: "Pertinence" },
-  { value: "popular", label: "Populaires" },
   { value: "best_selling", label: "Plus vendus" },
   { value: "newest", label: "Nouveautés" },
   { value: "price_asc", label: "Prix croissant" },
