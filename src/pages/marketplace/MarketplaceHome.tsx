@@ -153,7 +153,19 @@ export default function MarketplaceHome() {
       {/* Hero */}
       <div className="container mx-auto px-4 pt-4 md:pt-6">
         <MarketplaceHero />
-      </div>
+
+        {/* Quick filters */}
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Button asChild variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
+            <Link to="/marketplace/search?sort=popular"><Flame className="h-3.5 w-3.5" /> Populaires</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
+            <Link to="/marketplace/search?sort=newest"><Clock className="h-3.5 w-3.5" /> Nouveautés</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
+            <Link to="/marketplace/search?promo=true"><Tag className="h-3.5 w-3.5" /> Promos</Link>
+          </Button>
+        </div>
 
       {/* Categories */}
       <section className="container mx-auto px-4">
