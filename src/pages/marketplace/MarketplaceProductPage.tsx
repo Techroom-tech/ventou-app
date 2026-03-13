@@ -132,13 +132,23 @@ export default function MarketplaceProductPage() {
   return (
     <div className="container mx-auto px-4 py-4 md:py-8">
       {/* Back */}
-      <Link
-        to="/marketplace"
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Retour au marketplace
-      </Link>
+      {fromMarketplace ? (
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour au marketplace
+        </button>
+      ) : (
+        <Link
+          to="/marketplace"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour au marketplace
+        </Link>
+      )}
 
       {/* Main layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
