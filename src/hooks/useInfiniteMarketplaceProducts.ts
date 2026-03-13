@@ -31,7 +31,12 @@ export function useInfiniteMarketplaceProducts(filters: MarketplaceFiltersState 
         categoryId = cat?.id ?? null;
       }
 
-      const rpcSort = sort === "popular" || sort === "best_selling" ? "score" : sort;
+      // Map "popular" to "best_selling" since they share the same logic
+      const rpcSort = sort === "popular" ? "best_selling" : sort;
+
+      // Strict filters based on sort type
+      const minRating = rpcSort === "rating" ? 4 : null;
+      const minOrders = rpcSort === "best_selling" ? 1 : null;
 
       const { data, error } = await supabase.rpc("get_marketplace_products", {
         _category_id: categoryId,
@@ -43,6 +48,8 @@ export function useInfiniteMarketplaceProducts(filters: MarketplaceFiltersState 
         _sort: rpcSort,
         _page_size: PAGE_SIZE,
         _page_offset: pageParam,
+        _min_rating: minRating,
+        _min_orders: minOrders,
       });
 
       if (error) throw error;
