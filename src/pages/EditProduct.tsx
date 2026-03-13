@@ -584,7 +584,7 @@ export default function EditProduct() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Catégorie</Label>
+                  <Label>Catégorie boutique</Label>
                   {shop ? (
                     <CategoryPicker
                       shopId={shop.id}
@@ -614,6 +614,13 @@ export default function EditProduct() {
                     </div>
                   </RadioGroup>
                 </div>
+                <Separator />
+                <MarketplaceToggle
+                  showInMarketplace={showInMarketplace}
+                  onShowInMarketplaceChange={setShowInMarketplace}
+                  marketplaceCategoryId={marketplaceCategoryId}
+                  onMarketplaceCategoryIdChange={setMarketplaceCategoryId}
+                />
               </CardContent>
             </Card>
 
