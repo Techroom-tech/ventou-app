@@ -23,6 +23,8 @@ export interface MarketplaceProduct {
   avg_rating: number | null;
   review_count: number;
   is_sponsored: boolean;
+  score?: number;
+  order_count?: number;
 }
 
 interface Filters {
@@ -32,132 +34,67 @@ interface Filters {
   minPrice?: number;
   maxPrice?: number;
   hasPromo?: boolean;
-  sort?: "popular" | "newest" | "price_asc" | "price_desc" | "rating";
+  sort?: "popular" | "newest" | "price_asc" | "price_desc" | "rating" | "score";
   page?: number;
   pageSize?: number;
 }
 
 export function useMarketplaceProducts(filters: Filters = {}) {
-  const { categorySlug, search, country, minPrice, maxPrice, hasPromo, sort = "newest", page = 1, pageSize = 24 } = filters;
+  const { categorySlug, search, country, minPrice, maxPrice, hasPromo, sort = "score", page = 1, pageSize = 24 } = filters;
 
   return useQuery({
     queryKey: ["marketplace-products", filters],
     queryFn: async () => {
-      // 1. Get category id if slug provided
-      let categoryId: string | undefined;
+      // Resolve category slug to id
+      let categoryId: string | null = null;
       if (categorySlug) {
         const { data: cat } = await supabase
           .from("marketplace_categories")
           .select("id")
           .eq("slug", categorySlug)
           .single();
-        categoryId = cat?.id;
+        categoryId = cat?.id ?? null;
       }
 
-      // 2. Query products
-      let query = supabase
-        .from("products")
-        .select(`
-          id, name, slug, price, compare_at_price, image_url, category, marketplace_category_id, created_at,
-          shops!inner(id, name, slug, country, logo_url, is_verified, currency)
-        `)
-        .eq("show_in_marketplace", true)
-        .eq("is_active", true)
-        .eq("status", "published");
+      // Use RPC for scored results
+      const { data, error } = await supabase.rpc("get_marketplace_products", {
+        _category_id: categoryId,
+        _search: search || "",
+        _country: country || "",
+        _min_price: minPrice ?? null,
+        _max_price: maxPrice ?? null,
+        _has_promo: hasPromo || false,
+        _sort: sort === "popular" ? "score" : sort,
+        _page_size: pageSize,
+        _page_offset: (page - 1) * pageSize,
+      });
 
-      if (categoryId) {
-        query = query.eq("marketplace_category_id", categoryId);
-      }
-
-      if (search) {
-        query = query.ilike("name", `%${search}%`);
-      }
-
-      if (country) {
-        query = query.eq("shops.country", country);
-      }
-
-      if (minPrice !== undefined) {
-        query = query.gte("price", minPrice);
-      }
-      if (maxPrice !== undefined) {
-        query = query.lte("price", maxPrice);
-      }
-
-      if (hasPromo) {
-        query = query.not("compare_at_price", "is", null);
-      }
-
-      // Sort
-      switch (sort) {
-        case "price_asc":
-          query = query.order("price", { ascending: true });
-          break;
-        case "price_desc":
-          query = query.order("price", { ascending: false });
-          break;
-        case "newest":
-        default:
-          query = query.order("created_at", { ascending: false });
-          break;
-      }
-
-      // Pagination
-      const from = (page - 1) * pageSize;
-      query = query.range(from, from + pageSize - 1);
-
-      const { data, error } = await query;
       if (error) throw error;
 
-      // 3. Get reviews for these products
-      const productIds = (data ?? []).map((p: any) => p.id);
-      let reviewsMap: Record<string, { avg: number; count: number }> = {};
-      if (productIds.length > 0) {
-        const { data: reviews } = await supabase
-          .from("product_reviews")
-          .select("product_id, rating")
-          .in("product_id", productIds)
-          .eq("is_approved", true);
-
-        if (reviews) {
-          const grouped: Record<string, number[]> = {};
-          for (const r of reviews) {
-            if (!grouped[r.product_id]) grouped[r.product_id] = [];
-            grouped[r.product_id].push(r.rating);
-          }
-          for (const [pid, ratings] of Object.entries(grouped)) {
-            reviewsMap[pid] = {
-              avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
-              count: ratings.length,
-            };
-          }
-        }
-      }
-
-      // 4. Get sponsored product ids
-      const { data: sponsored } = await supabase
-        .from("sponsored_products")
-        .select("product_id")
-        .eq("is_active", true)
-        .in("product_id", productIds);
-
-      const sponsoredSet = new Set((sponsored ?? []).map((s: any) => s.product_id));
-
-      // 5. Map results
-      const products: MarketplaceProduct[] = (data ?? []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: p.price,
-        compare_at_price: p.compare_at_price,
-        image_url: p.image_url,
-        category: p.category,
-        marketplace_category_id: p.marketplace_category_id,
-        created_at: p.created_at,
-        shop: Array.isArray(p.shops) ? p.shops[0] : p.shops,
-        avg_rating: reviewsMap[p.id]?.avg ?? null,
-        review_count: reviewsMap[p.id]?.count ?? 0,
-        is_sponsored: sponsoredSet.has(p.id),
+      const products: MarketplaceProduct[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        price: row.price,
+        compare_at_price: row.compare_at_price,
+        image_url: row.image_url,
+        category: row.category,
+        marketplace_category_id: row.marketplace_category_id,
+        created_at: row.created_at,
+        shop: {
+          id: row.shop_id,
+          name: row.shop_name,
+          slug: row.shop_slug,
+          country: row.shop_country,
+          logo_url: row.shop_logo_url,
+          is_verified: row.shop_is_verified,
+          currency: row.shop_currency,
+        },
+        avg_rating: row.avg_rating > 0 ? row.avg_rating : null,
+        review_count: Number(row.review_count) || 0,
+        is_sponsored: row.is_sponsored,
+        score: row.score,
+        order_count: Number(row.order_count) || 0,
       }));
 
       return products;
