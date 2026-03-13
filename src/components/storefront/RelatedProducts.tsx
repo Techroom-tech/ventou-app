@@ -106,7 +106,6 @@ export default function RelatedProducts({ product, shop, onProductClick }: Relat
                 <Button
                   size="sm"
                   className="w-full gap-1 text-xs h-8"
-                  style={{ backgroundColor: ctaBg, color: ctaText }}
                   onClick={e => {
                     e.stopPropagation();
                     addToCart(p);
