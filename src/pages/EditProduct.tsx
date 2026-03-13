@@ -170,6 +170,8 @@ export default function EditProduct() {
         setProductType((product.product_type ?? 'physical') as ProductType);
         setMetaTitle(product.meta_title ?? '');
         setMetaDescription(product.meta_description ?? '');
+        setShowInMarketplace((product as any).show_in_marketplace ?? true);
+        setMarketplaceCategoryId((product as any).marketplace_category_id ?? null);
 
         // Safely parse description_json
         try {
