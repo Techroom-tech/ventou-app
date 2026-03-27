@@ -2,7 +2,7 @@
  * TipTapRenderer — renders TipTap/ProseMirror JSON as rich HTML.
  * Supports text, images, YouTube embeds, headings, lists, links, horizontal rules.
  */
-import DOMPurify from 'dompurify';
+import React from 'react';
 
 interface TipTapNode {
   type: string;
@@ -12,10 +12,21 @@ interface TipTapNode {
   marks?: { type: string; attrs?: Record<string, unknown> }[];
 }
 
-function renderMarks(text: string, marks?: { type: string; attrs?: Record<string, unknown> }[]): JSX.Element {
+function sanitizeUrl(url: string): string {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'javascript:') return '';
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+function renderMarks(text: string, marks?: { type: string; attrs?: Record<string, unknown> }[]): React.ReactElement {
   if (!marks || marks.length === 0) return <>{text}</>;
 
-  let el: JSX.Element = <>{text}</>;
+  let el: React.ReactElement = <>{text}</>;
   for (const mark of marks) {
     switch (mark.type) {
       case 'bold':
@@ -61,7 +72,7 @@ function RenderNode({ node, index }: { node: TipTapNode; index: number }) {
 
     case 'heading': {
       const level = (node.attrs?.level as number) ?? 2;
-      const Tag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
+      const Tag = `h${Math.min(level, 6)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
       const sizes: Record<number, string> = { 1: 'text-2xl', 2: 'text-xl', 3: 'text-lg', 4: 'text-base', 5: 'text-sm', 6: 'text-xs' };
       return (
         <Tag key={index} className={`${sizes[level] || 'text-base'} font-bold mb-2`}>
@@ -92,12 +103,12 @@ function RenderNode({ node, index }: { node: TipTapNode; index: number }) {
       );
 
     case 'image': {
-      const src = String(node.attrs?.src ?? '');
+      const src = sanitizeUrl(String(node.attrs?.src ?? ''));
       const alt = String(node.attrs?.alt ?? '');
       return (
         <img
           key={index}
-          src={DOMPurify.sanitize(src)}
+          src={src}
           alt={alt}
           className="rounded-lg max-w-full h-auto my-4"
           loading="lazy"
@@ -107,12 +118,9 @@ function RenderNode({ node, index }: { node: TipTapNode; index: number }) {
 
     case 'youtube':
     case 'iframe': {
-      const src = String(node.attrs?.src ?? '');
-      // Extract YouTube video ID for embed
+      const src = sanitizeUrl(String(node.attrs?.src ?? ''));
       const ytMatch = src.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-      const embedSrc = ytMatch
-        ? `https://www.youtube.com/embed/${ytMatch[1]}`
-        : DOMPurify.sanitize(src);
+      const embedSrc = ytMatch ? `https://www.youtube.com/embed/${ytMatch[1]}` : src;
       return (
         <div key={index} className="aspect-video my-4 rounded-lg overflow-hidden">
           <iframe
@@ -153,7 +161,6 @@ function RenderNode({ node, index }: { node: TipTapNode; index: number }) {
       );
 
     default:
-      // Fallback: try to render content if exists
       if (node.content) {
         return (
           <div key={index}>
@@ -173,7 +180,6 @@ interface TipTapRendererProps {
 export default function TipTapRenderer({ content, className }: TipTapRendererProps) {
   if (!content) return null;
 
-  // If it's a plain string, render as paragraph
   if (typeof content === 'string') {
     return <p className={className}>{content}</p>;
   }

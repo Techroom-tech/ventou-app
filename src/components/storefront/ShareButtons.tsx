@@ -1,4 +1,5 @@
-import { Facebook } from 'lucide-react';
+import { Share2 } from 'lucide-react';
+const Facebook = Share2;
 import WhatsAppIcon from '@/components/ui/WhatsAppIcon';
 
 interface ShareButtonsProps {

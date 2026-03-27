@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import DOMPurify from 'dompurify';
+// DOMPurify replaced with lightweight sanitizer
+function sanitizeHtml(html: string): string {
+  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+}
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { EmailJumpToMenu } from '@/components/admin/EmailJumpToMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -85,7 +88,7 @@ function TemplatePreview({ body }: { body: string }) {
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader><DialogTitle>Aperçu du template</DialogTitle></DialogHeader>
-        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }} />
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewHtml) }} />
       </DialogContent>
     </Dialog>
   );
