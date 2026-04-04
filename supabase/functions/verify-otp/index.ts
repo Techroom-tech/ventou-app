@@ -1,11 +1,76 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightOrMethod } from "../_shared/cors.ts";
+import { checkPersistentRateLimit } from "../_shared/persistentRateLimit.ts";
 
 const MAX_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 15;
 const OTP_EXPIRY_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 60;
+const RESET_PROOF_TTL_SECONDS = 5 * 60;
+
+const encoder = new TextEncoder();
+
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function fromBase64Url(input: string): Uint8Array {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (input.length % 4)) % 4);
+  const binary = atob(base64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+async function signProofPayload(payloadB64: string): Promise<string> {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!secret) throw new Error("Signing secret unavailable");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payloadB64));
+  return toBase64Url(new Uint8Array(sig));
+}
+
+async function createResetProof(userId: string, verificationId: string): Promise<string> {
+  const payload = {
+    uid: userId,
+    vid: verificationId,
+    exp: Math.floor(Date.now() / 1000) + RESET_PROOF_TTL_SECONDS,
+  };
+  const payloadB64 = toBase64Url(encoder.encode(JSON.stringify(payload)));
+  const sig = await signProofPayload(payloadB64);
+  return `${payloadB64}.${sig}`;
+}
+
+async function verifyResetProof(resetProof: string, userId: string): Promise<{ ok: boolean; verificationId?: string }> {
+  const [payloadB64, providedSig] = resetProof.split(".");
+  if (!payloadB64 || !providedSig) return { ok: false };
+
+  const expectedSig = await signProofPayload(payloadB64);
+  if (expectedSig !== providedSig) return { ok: false };
+
+  let payload: { uid?: string; vid?: string; exp?: number };
+  try {
+    const raw = new TextDecoder().decode(fromBase64Url(payloadB64));
+    payload = JSON.parse(raw);
+  } catch {
+    return { ok: false };
+  }
+
+  if (!payload?.uid || !payload?.vid || !payload?.exp) return { ok: false };
+  if (payload.uid !== userId) return { ok: false };
+  if (payload.exp < Math.floor(Date.now() / 1000)) return { ok: false };
+
+  return { ok: true, verificationId: payload.vid };
+}
 
 function generateOTP(): string {
   const array = new Uint32Array(1);
@@ -28,6 +93,26 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const emailKey = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "none";
+    const userKey = typeof body?.user_id === "string" ? body.user_id : "none";
+    const limitKey = `verify-otp:${action}:${clientIp}:${emailKey}:${userKey}`;
+
+    const rl = await checkPersistentRateLimit(
+      admin,
+      limitKey,
+      action === "verify" ? 30 : 12,
+      60_000,
+      15 * 60_000,
+    );
+
+    if (rl.blocked) {
+      return new Response(JSON.stringify({ error: "rate_limited", retry_after: rl.retryAfterSeconds ?? 60 }), {
+        status: 429,
+        headers: jsonHeaders,
+      });
+    }
+
     // ─── GENERATE ────────────────────────────────
     if (action === "generate") {
       let { email, type = "signup", user_id } = body;
@@ -37,7 +122,6 @@ Deno.serve(async (req) => {
 
       // For password_reset, look up user by email if user_id is email
       if (type === "password_reset" && (!user_id || user_id === email)) {
-        const { data: userData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
         // Search by email
         const { data: users } = await admin.auth.admin.listUsers();
         const foundUser = users?.users?.find((u: any) => u.email === email);
@@ -199,6 +283,7 @@ Deno.serve(async (req) => {
         success: true,
         user_id: record.user_id,
         type: record.type,
+        ...(record.type === "password_reset" ? { reset_proof: await createResetProof(record.user_id, record.id) } : {}),
       }), { headers: jsonHeaders });
     }
 
@@ -285,9 +370,31 @@ Deno.serve(async (req) => {
 
     // ─── UPDATE PASSWORD ─────────────────────────
     if (action === "update_password") {
-      const { user_id, password } = body;
-      if (!user_id || !password) {
-        return new Response(JSON.stringify({ error: "user_id and password required" }), { status: 400, headers: jsonHeaders });
+      const { user_id, password, reset_proof } = body;
+      if (!user_id || !password || !reset_proof) {
+        return new Response(JSON.stringify({ error: "user_id, password and reset_proof required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const proof = await verifyResetProof(String(reset_proof), String(user_id));
+      if (!proof.ok || !proof.verificationId) {
+        return new Response(JSON.stringify({ error: "invalid_reset_proof" }), { status: 401, headers: jsonHeaders });
+      }
+
+      const { data: verification, error: verifErr } = await admin
+        .from("email_verifications")
+        .select("id, user_id, type, used, expires_at")
+        .eq("id", proof.verificationId)
+        .eq("user_id", user_id)
+        .eq("type", "password_reset")
+        .eq("used", true)
+        .maybeSingle();
+
+      if (verifErr || !verification) {
+        return new Response(JSON.stringify({ error: "invalid_or_expired" }), { status: 401, headers: jsonHeaders });
+      }
+
+      if (new Date(verification.expires_at).getTime() < Date.now()) {
+        return new Response(JSON.stringify({ error: "expired" }), { status: 401, headers: jsonHeaders });
       }
 
       const { error: updateError } = await admin.auth.admin.updateUserById(user_id, { password });
@@ -295,6 +402,8 @@ Deno.serve(async (req) => {
         console.error("Update password error:", updateError);
         return new Response(JSON.stringify({ error: "Failed to update password" }), { status: 500, headers: jsonHeaders });
       }
+
+      await admin.from("email_verifications").delete().eq("id", verification.id);
 
       return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
     }

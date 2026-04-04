@@ -136,6 +136,12 @@ function StatusTimeline({
 // ─── Print Receipt ────────────────────────────────────────────────────────────
 
 function printReceipt(order: Order, currencyCode: string) {
+  const esc = (value: unknown) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
   const items = (Array.isArray(order.items) ? order.items : []) as Record<string, unknown>[];
   const total = order.total_amount ?? order.total ?? 0;
   const phone = order.phone ?? order.customer_phone ?? '';
@@ -145,16 +151,16 @@ function printReceipt(order: Order, currencyCode: string) {
   <style>body{font-family:monospace;font-size:13px;max-width:300px;margin:0 auto;padding:16px}h1{font-size:16px;text-align:center;margin:0 0 4px}.center{text-align:center}.row{display:flex;justify-content:space-between;margin:4px 0}hr{border-top:1px dashed #000}.bold{font-weight:bold}.total{font-size:15px}</style>
   </head><body>
   <h1>VENTOU</h1><p class="center">Reçu de commande</p><hr/>
-  <div class="row"><span>N° commande</span><span class="bold">${orderNum}</span></div>
-  <div class="row"><span>Date</span><span>${date}</span></div>
-  <div class="row"><span>Client</span><span>${order.customer_name}</span></div>
-  ${phone ? `<div class="row"><span>Téléphone</span><span>${phone}</span></div>` : ''}
-  ${order.city ? `<div class="row"><span>Ville</span><span>${order.city}</span></div>` : ''}
+  <div class="row"><span>N° commande</span><span class="bold">${esc(orderNum)}</span></div>
+  <div class="row"><span>Date</span><span>${esc(date)}</span></div>
+  <div class="row"><span>Client</span><span>${esc(order.customer_name)}</span></div>
+  ${phone ? `<div class="row"><span>Téléphone</span><span>${esc(phone)}</span></div>` : ''}
+  ${order.city ? `<div class="row"><span>Ville</span><span>${esc(order.city)}</span></div>` : ''}
   <hr/><p class="bold">Articles :</p>
-  ${items.map((item: Record<string, unknown>) => `<div class="row"><span>${(item.name as string) ?? 'Produit'} x${item.quantity}</span><span>${formatCurrency((item.unit_price as number) * (item.quantity as number), currencyCode as 'XOF')}</span></div>`).join('')}
+  ${items.map((item: Record<string, unknown>) => `<div class="row"><span>${esc((item.name as string) ?? 'Produit')} x${esc(item.quantity)}</span><span>${esc(formatCurrency((item.unit_price as number) * (item.quantity as number), currencyCode as 'XOF'))}</span></div>`).join('')}
   <hr/>
-  <div class="row total"><span class="bold">TOTAL</span><span class="bold">${formatCurrency(total, currencyCode as 'XOF')}</span></div>
-  <div class="row"><span>Paiement</span><span>${order.payment_method ?? 'N/A'}</span></div>
+  <div class="row total"><span class="bold">TOTAL</span><span class="bold">${esc(formatCurrency(total, currencyCode as 'XOF'))}</span></div>
+  <div class="row"><span>Paiement</span><span>${esc(order.payment_method ?? 'N/A')}</span></div>
   <hr/><p class="center">Merci pour votre commande !</p><p class="center">Propulsé par Ventou</p>
   </body></html>`;
   const win = window.open('', '_blank', 'width=400,height=600');

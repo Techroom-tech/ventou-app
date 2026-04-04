@@ -124,6 +124,22 @@ function getCacheControl(pathname) {
   return 'public, max-age=3600, s-maxage=86400';
 }
 
+function applySecurityHeaders(headers) {
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+
+  // Keep CSP permissive enough for current third-party scripts while blocking risky primitives.
+  if (!headers.has('Content-Security-Policy')) {
+    headers.set(
+      'Content-Security-Policy',
+      "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    );
+  }
+}
+
 function isBot(userAgent) {
   return BOT_UA_RE.test(userAgent || '');
 }
@@ -410,9 +426,9 @@ export default {
       try {
         const ogResponse = await handleProductOG(request, env, shopSlug, productSlug);
         if (ogResponse) {
-          // Add country header
+          // Add country + security headers
           ogResponse.headers.set('X-User-Country', country);
-          ogResponse.headers.set('X-Content-Type-Options', 'nosniff');
+          applySecurityHeaders(ogResponse.headers);
           return ogResponse;
         }
       } catch (err) {
@@ -431,7 +447,7 @@ export default {
         const ogResponse = await handleStorePageOG(request, env, shopSlug, pageSlug);
         if (ogResponse) {
           ogResponse.headers.set('X-User-Country', country);
-          ogResponse.headers.set('X-Content-Type-Options', 'nosniff');
+          applySecurityHeaders(ogResponse.headers);
           return ogResponse;
         }
       } catch (err) {
@@ -491,7 +507,7 @@ export default {
 
     // Inject country header + security
     responseHeaders.set('X-User-Country', country);
-    responseHeaders.set('X-Content-Type-Options', 'nosniff');
+    applySecurityHeaders(responseHeaders);
 
     return new Response(response.body, {
       status: response.status,

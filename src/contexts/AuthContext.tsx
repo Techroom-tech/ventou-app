@@ -34,17 +34,17 @@ const AUTH_FALLBACK: AuthContextType = {
 
 function isSessionExpired(): boolean {
   if (typeof window === 'undefined') return false;
-  const start = localStorage.getItem('ventou_session_start');
+  const start = sessionStorage.getItem('ventou_session_start');
   if (!start) return false;
-  const rememberMe = localStorage.getItem('ventou_remember_me') === 'true';
+  const rememberMe = sessionStorage.getItem('ventou_remember_me') === 'true';
   const ttl = rememberMe ? TTL_REMEMBER : TTL_DEFAULT;
   return Date.now() - Number(start) > ttl;
 }
 
 function clearSessionFlags() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('ventou_remember_me');
-  localStorage.removeItem('ventou_session_start');
+  sessionStorage.removeItem('ventou_remember_me');
+  sessionStorage.removeItem('ventou_session_start');
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -177,8 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string, rememberMe = false) => {
     // Set storage flags BEFORE signIn so the storage adapter routes correctly
-    localStorage.setItem('ventou_remember_me', String(rememberMe));
-    localStorage.setItem('ventou_session_start', String(Date.now()));
+    sessionStorage.setItem('ventou_remember_me', String(rememberMe));
+    sessionStorage.setItem('ventou_session_start', String(Date.now()));
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 

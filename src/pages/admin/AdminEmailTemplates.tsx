@@ -1,7 +1,26 @@
 import { useState } from 'react';
-// DOMPurify replaced with lightweight sanitizer
+// Minimal sanitizer for preview rendering only.
 function sanitizeHtml(html: string): string {
-  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  doc.querySelectorAll('script, iframe, object, embed, form').forEach((el) => el.remove());
+
+  doc.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.trim().toLowerCase();
+      if (name.startsWith('on') || name === 'srcdoc') {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if ((name === 'href' || name === 'src' || name === 'xlink:href') && value.startsWith('javascript:')) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+
+  return doc.body.innerHTML;
 }
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { EmailJumpToMenu } from '@/components/admin/EmailJumpToMenu';

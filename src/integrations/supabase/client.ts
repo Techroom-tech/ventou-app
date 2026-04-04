@@ -27,32 +27,23 @@ export const formatCurrency = (amount: number, currency: CurrencyCode = 'XOF') =
   }).format(safeAmount);
 };
 
-// ── Custom storage adapter for Remember Me ──
-// Delegates to localStorage (remember me) or sessionStorage (default)
+// ── Custom storage adapter ──
+// Keep auth token in sessionStorage to reduce persistent token exposure.
 const STORAGE_KEY = 'sb-chpplckgndznakuvcqbx-auth-token';
 
 export const VentouStorage = {
   getItem(key: string): string | null {
-    // Always check localStorage first (remember me), then sessionStorage
-    return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+    return sessionStorage.getItem(key);
   },
   setItem(key: string, value: string): void {
-    const rememberMe = localStorage.getItem('ventou_remember_me') === 'true';
-    if (rememberMe) {
-      localStorage.setItem(key, value);
-      // Clean sessionStorage copy if any
-      try { sessionStorage.removeItem(key); } catch {}
-    } else {
-      sessionStorage.setItem(key, value);
-      // Clean localStorage copy of auth token (but keep ventou_* flags)
-      if (key === STORAGE_KEY) {
-        try { localStorage.removeItem(key); } catch {}
-      }
+    sessionStorage.setItem(key, value);
+    if (key === STORAGE_KEY) {
+      try { localStorage.removeItem(key); } catch {}
     }
   },
   removeItem(key: string): void {
-    localStorage.removeItem(key);
     try { sessionStorage.removeItem(key); } catch {}
+    try { localStorage.removeItem(key); } catch {}
   },
 };
 

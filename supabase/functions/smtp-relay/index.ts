@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       // Mode 2: Load from DB — prefer encrypted_config over plaintext
       const { data: provider, error: provErr } = await supabaseAdmin
         .from("email_providers")
-        .select("mail_host, mail_port, mail_username, mail_password, encrypted_config, sender_email, sender_name")
+        .select("mail_host, mail_port, mail_username, encrypted_config, sender_email, sender_name")
         .eq("id", provider_id)
         .maybeSingle();
 
@@ -129,19 +129,23 @@ Deno.serve(async (req) => {
       senderEmail = String(provider.sender_email || username).trim();
       senderName = String(provider.sender_name || "").trim();
 
-      // Decrypt password from encrypted_config if available, fallback to plaintext
+      // Decrypt password from encrypted_config only (plaintext fallback disabled)
       const enc = provider.encrypted_config as Record<string, string> | null;
-      if (enc?.mail_password) {
-        try {
-          password = await decryptValue(enc.mail_password);
-          console.log("[smtp-relay] Using encrypted credentials");
-        } catch (decErr: any) {
-          console.error("[smtp-relay] Decrypt failed, falling back to plaintext:", decErr.message);
-          password = String(provider.mail_password || "");
-        }
-      } else {
-        password = String(provider.mail_password || "");
-        console.log("[smtp-relay] Using plaintext credentials (no encrypted_config)");
+      if (!enc?.mail_password) {
+        return new Response(JSON.stringify({ error: "Encrypted SMTP credentials missing. Save SMTP password again." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      try {
+        password = await decryptValue(enc.mail_password);
+        console.log("[smtp-relay] Using encrypted credentials");
+      } catch (decErr: any) {
+        return new Response(JSON.stringify({ error: `Unable to decrypt SMTP credentials: ${decErr.message}` }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       console.log("[smtp-relay] Provider config loaded:", { host, port, username: username ? "***" : "(empty)", senderEmail });

@@ -139,8 +139,8 @@ export function useStorefrontTracking(shopId: string | undefined) {
     queryKey: ['storefront-tracking', shopId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tracking_settings')
-        .select('*')
+        .from('tracking_settings_public')
+        .select('shop_id, facebook_pixel, tiktok_pixel, gtm_id, custom_scripts')
         .eq('shop_id', shopId!)
         .maybeSingle();
       if (error) return null;

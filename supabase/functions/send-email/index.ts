@@ -379,17 +379,17 @@ async function sendViaSMTP(provider: any, from: string, _fromName: string, to: s
   const port = String(provider.mail_port || 465);
   const username = provider.mail_username || "";
 
-  // Prefer encrypted credentials, fallback to plaintext
+  // Encrypted credentials only (plaintext fallback disabled)
   let password = "";
   const enc = provider.encrypted_config as Record<string, string> | null;
-  if (enc?.mail_password) {
-    try {
-      password = await decryptValue(enc.mail_password);
-    } catch {
-      password = provider.mail_password || "";
-    }
-  } else {
-    password = provider.mail_password || "";
+  if (!enc?.mail_password) {
+    throw new Error("Encrypted SMTP credentials missing. Save SMTP password again.");
+  }
+
+  try {
+    password = await decryptValue(enc.mail_password);
+  } catch {
+    throw new Error("Unable to decrypt SMTP credentials.");
   }
 
   if (!host || !username || !password) {

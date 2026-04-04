@@ -34,6 +34,15 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
+function sanitizeQrSvg(svg: string): string {
+  if (!svg || !svg.trim().startsWith('<svg')) return '';
+  return svg
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<foreignObject[\s\S]*?>[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/javascript:/gi, '');
+}
+
 // ─── Password strength helper ────────────────────────────────────────────────
 function getPasswordStrength(password: string): { score: number; label: string; labelColor: string; barColor: string } {
   if (!password) return { score: 0, label: '', labelColor: '', barColor: '' };
@@ -764,7 +773,7 @@ export default function SettingsProfil() {
                   <div className="flex flex-col items-center gap-3 p-4 bg-muted/50 rounded-lg border border-border">
                     <div
                       className="h-36 w-36 rounded-lg overflow-hidden border border-border"
-                      dangerouslySetInnerHTML={{ __html: enrollData.qrCode }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeQrSvg(enrollData.qrCode) }}
                     />
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-1">Ou saisissez la clé manuellement :</p>

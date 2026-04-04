@@ -206,6 +206,7 @@ export default function SettingsApparence() {
   const [isCustomCta, setIsCustomCta] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const savedFormRef = useRef<AppearanceForm>(DEFAULT_FORM);
   const isDirty = JSON.stringify(form) !== JSON.stringify(savedFormRef.current);
 
@@ -284,11 +285,11 @@ export default function SettingsApparence() {
             '--products-grid-cols': gridCols,
           },
         },
-        '*',
+        previewOrigin,
       );
     }, 350);
     return () => clearTimeout(t);
-  }, [form]);
+  }, [form, previewOrigin]);
 
   const update = useCallback(<K extends keyof AppearanceForm>(key: K, value: AppearanceForm[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));

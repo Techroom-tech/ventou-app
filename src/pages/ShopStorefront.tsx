@@ -71,6 +71,8 @@ function StorefrontContent({ slug, basePath = '' }: ShopStorefrontProps) {
   useEffect(() => {
     if (!window.location.search.includes('preview=true')) return;
     const handler = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.source !== window.parent) return;
       if (e.data?.type !== 'VENTOU_THEME_UPDATE') return;
       const root = document.documentElement;
       const vars = e.data.vars as Record<string, string>;

@@ -23,6 +23,42 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
+    const authHeader = req.headers.get("authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    let callerUserId: string | null = null;
+    let isPlatformAdmin = false;
+
+    if (token !== serviceRoleKey) {
+      const userClient = createClient(
+        supabaseUrl,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: userData, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !userData?.user?.id) {
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      callerUserId = userData.user.id;
+
+      const { data: roleData } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerUserId)
+        .in("role", ["super_admin", "manager"])
+        .limit(1);
+      isPlatformAdmin = !!roleData && roleData.length > 0;
+    }
+
     // Fetch order, shop, and owner email in parallel
     console.log("[notify-order] Fetching order & shop data...");
     const [orderRes, shopRes] = await Promise.all([
@@ -48,6 +84,14 @@ Deno.serve(async (req) => {
 
     const order = orderRes.data;
     const shop = shopRes.data;
+
+    if (callerUserId && !isPlatformAdmin && callerUserId !== shop.owner_id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("[notify-order] Order:", order.id, "Shop:", shop.name, "Owner:", shop.owner_id);
 
     // Get owner email from auth.users

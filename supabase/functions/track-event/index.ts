@@ -1,11 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightOrMethod } from "../_shared/cors.ts";
+import { checkPersistentRateLimit } from "../_shared/persistentRateLimit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+function isValidSourceUrlForShop(rawUrl: string | undefined, shopSlug: string): boolean {
+  if (!rawUrl) return false;
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (host === `${shopSlug}.ventou.shop`) return true;
+    // Local preview/dev support
+    if ((host === "localhost" || host === "127.0.0.1") && parsed.pathname.includes(`/boutique/${shopSlug}`)) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 interface TrackEventBody {
   event_name: string;
@@ -26,16 +37,11 @@ async function sha256(value: string): Promise<string> {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const early = handleCorsPreflightOrMethod(req, "POST");
+  if (early) return early;
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const corsHeaders = getCorsHeaders(req);
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   try {
     const body: TrackEventBody = await req.json();
@@ -54,11 +60,40 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const limitKey = `track-event:${shop_id}:${clientIp}`;
+    const rl = await checkPersistentRateLimit(supabaseAdmin, limitKey, 120, 60_000, 10 * 60_000);
+    if (rl.blocked) {
+      return new Response(JSON.stringify({ error: "Too many requests", retry_after: rl.retryAfterSeconds ?? 60 }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: settings, error } = await supabaseAdmin
       .from("tracking_settings")
       .select("facebook_pixel, facebook_capi_token, tiktok_pixel")
       .eq("shop_id", shop_id)
       .maybeSingle();
+
+    const { data: shopData } = await supabaseAdmin
+      .from("shops")
+      .select("slug, is_active, deleted_at")
+      .eq("id", shop_id)
+      .maybeSingle();
+
+    if (!shopData || !shopData.slug || !shopData.is_active || shopData.deleted_at !== null) {
+      return new Response(
+        JSON.stringify({ error: "Invalid shop" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!isValidSourceUrlForShop(event_source_url, String(shopData.slug))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid event source" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (error || !settings) {
       return new Response(

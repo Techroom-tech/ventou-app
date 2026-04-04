@@ -36,10 +36,11 @@ export function useEmailProviders() {
 
   const createProvider = useMutation({
     mutationFn: async (provider: Record<string, any>) => {
-      // Remove any fields not in the table
-      const { config, encrypted_config, ...rest } = provider;
-      const { error } = await supabase.from('email_providers').insert(rest);
+      // Remove non-table and sensitive plaintext fields
+      const { config, encrypted_config, mail_password, ...rest } = provider;
+      const { data, error } = await supabase.from('email_providers').insert(rest).select('id').single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['email-providers'] });
@@ -50,11 +51,12 @@ export function useEmailProviders() {
 
   const updateProvider = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      // Remove any fields not in the table
-      const { config, encrypted_config, ...rest } = updates;
+      // Remove non-table and sensitive plaintext fields
+      const { config, encrypted_config, mail_password, ...rest } = updates;
       const payload: any = { ...rest, updated_at: new Date().toISOString() };
-      const { error } = await supabase.from('email_providers').update(payload).eq('id', id);
+      const { data, error } = await supabase.from('email_providers').update(payload).eq('id', id).select('id').single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['email-providers'] });

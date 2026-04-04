@@ -97,12 +97,65 @@ Deno.serve(async (req) => {
 
     if (action === 'invalidate') {
       const { shop_id, slug } = body;
+      const authHeader = req.headers.get('authorization') || '';
+      if (!authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: jsonHeaders });
+      }
+
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const { data: authData, error: authError } = await userClient.auth.getUser();
+      if (authError || !authData?.user?.id) {
+        return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: jsonHeaders });
+      }
+
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      let targetShopId = shop_id as string | undefined;
+      let ownerId: string | null = null;
+
+      if (targetShopId) {
+        const { data: shopData } = await admin
+          .from('shops')
+          .select('id, owner_id')
+          .eq('id', targetShopId)
+          .maybeSingle();
+        ownerId = shopData?.owner_id ?? null;
+      } else if (slug) {
+        const { data: shopData } = await admin
+          .from('shops')
+          .select('id, owner_id')
+          .eq('slug', slug)
+          .maybeSingle();
+        targetShopId = shopData?.id;
+        ownerId = shopData?.owner_id ?? null;
+      }
+
+      if (!targetShopId && !slug) {
+        return new Response(JSON.stringify({ error: 'shop_id or slug required' }), { status: 400, headers: jsonHeaders });
+      }
+
+      const { data: roleData } = await admin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .in('role', ['super_admin', 'manager'])
+        .limit(1);
+      const isPlatformAdmin = !!roleData && roleData.length > 0;
+
+      if (!isPlatformAdmin && ownerId !== authData.user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: jsonHeaders });
+      }
+
       let cleared = 0;
 
       for (const key of cache.keys()) {
         if (
           (slug && key === `shop:${slug}`) ||
-          (shop_id && key.startsWith(`products:${shop_id}:`))
+          (targetShopId && key.startsWith(`products:${targetShopId}:`))
         ) {
           cache.delete(key);
           cleared++;

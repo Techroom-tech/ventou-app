@@ -48,6 +48,7 @@ export default function ResetPassword() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
   const [verifiedUserId, setVerifiedUserId] = useState<string | null>(null);
+  const [verifiedResetProof, setVerifiedResetProof] = useState<string | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -98,6 +99,7 @@ export default function ResetPassword() {
     }
 
     setVerifiedUserId(data.user_id);
+    setVerifiedResetProof(data.reset_proof ?? null);
     setIsVerifyingToken(false);
     setStep('password');
   };
@@ -123,6 +125,7 @@ export default function ResetPassword() {
     }
 
     setVerifiedUserId(data.user_id);
+    setVerifiedResetProof(data.reset_proof ?? null);
     setStep('password');
     setIsVerifying(false);
   }, [email, toast, t]);
@@ -146,7 +149,7 @@ export default function ResetPassword() {
   };
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
-    if (!verifiedUserId) return;
+    if (!verifiedUserId || !verifiedResetProof) return;
     setIsLoading(true);
 
     // Use admin API via edge function to update password
@@ -154,6 +157,7 @@ export default function ResetPassword() {
       body: {
         action: 'update_password',
         user_id: verifiedUserId,
+        reset_proof: verifiedResetProof,
         password: data.password,
       },
     });

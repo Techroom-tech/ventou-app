@@ -114,33 +114,32 @@ export default function AdminEmailProviderConfig() {
         if (mailHost) payload.mail_host = mailHost;
         if (mailPort) payload.mail_port = parseInt(mailPort, 10);
         if (mailUsername) payload.mail_username = mailUsername;
-        if (mailPassword) payload.mail_password = mailPassword;
       }
 
       let providerId = existing?.id;
 
       if (existing) {
-        await updateProvider.mutateAsync({ id: existing.id, ...payload });
+        const updated = await updateProvider.mutateAsync({ id: existing.id, ...payload });
+        providerId = updated?.id || providerId;
       } else {
-        await createProvider.mutateAsync({
+        const created = await createProvider.mutateAsync({
           driver,
           name: meta.label,
           ...payload,
         });
+        providerId = created?.id;
       }
 
       // Encrypt SMTP credentials after save
-      if (driver === 'smtp' && mailPassword && providerId) {
-        try {
-          await supabase.functions.invoke('encrypt-config', {
-            body: {
-              provider_id: providerId,
-              config: { mail_password: mailPassword },
-            },
-          });
-        } catch (encErr: any) {
-          console.warn('[encrypt] Failed to encrypt credentials:', encErr.message);
-        }
+      if (driver === 'smtp' && mailPassword) {
+        if (!providerId) throw new Error('Provider ID missing for encryption');
+        const { error: encError } = await supabase.functions.invoke('encrypt-config', {
+          body: {
+            provider_id: providerId,
+            config: { mail_password: mailPassword },
+          },
+        });
+        if (encError) throw encError;
       }
 
       toast.success('Configuration sauvegardée');
