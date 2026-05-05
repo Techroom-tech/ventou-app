@@ -1,7 +1,7 @@
 /**
  * Hostname suffixes to always ignore (preview/dev hosts are not storefront tenants).
  */
-const IGNORED_SUFFIXES = ['.lovable.app', '.lovableproject.com'];
+const IGNORED_SUFFIXES = ['.lovable.app', '.lovableproject.com', '.herokuapp.com'];
 
 /**
  * Extract store slug from current hostname using generic host parsing.
