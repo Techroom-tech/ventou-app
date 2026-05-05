@@ -1,21 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders } from '../_shared/cors.ts'
-
-// Simple in-memory rate limiter (per isolate lifetime)
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 15; // max requests per window per IP
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count++;
-  return entry.count > RATE_LIMIT_MAX;
-}
+import { checkPersistentRateLimit } from '../_shared/persistentRateLimit.ts'
 
 function normalizeSubdomain(value: string): string {
   return value
@@ -43,11 +28,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Rate limiting by client IP
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+
+    // Persistent rate limiting by client IP
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (isRateLimited(clientIp)) {
+    const rateLimit = await checkPersistentRateLimit(supabase, `check-slug:${clientIp}`, 20, 60_000, 10 * 60_000);
+    if (rateLimit.blocked) {
       return new Response(
-        JSON.stringify({ error_code: 'RATE_LIMITED', error: 'Too many requests. Please try again later.' }),
+        JSON.stringify({
+          error_code: 'RATE_LIMITED',
+          error: 'Too many requests. Please try again later.',
+          retry_after_seconds: rateLimit.retryAfterSeconds ?? 60,
+        }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -73,11 +68,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
 
     const { data, error } = await supabase
       .from('shops')

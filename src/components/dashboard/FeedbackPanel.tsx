@@ -126,8 +126,7 @@ export default function FeedbackPanel({ onClose }: FeedbackPanelProps) {
           .from('feedback-screenshots')
           .upload(path, screenshot, { contentType: screenshot.type });
         if (uploadErr) throw uploadErr;
-        const { data: urlData } = supabase.storage.from('feedback-screenshots').getPublicUrl(path);
-        screenshot_url = urlData.publicUrl;
+        screenshot_url = path;
       }
 
       const { error } = await supabase.from('feedbacks').insert({

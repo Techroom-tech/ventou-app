@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, Profile, VentouStorage } from '@/integrations/supabase/client';
+import { validatePassword } from '@/lib/security';
 
 const STORAGE_KEY = 'sb-chpplckgndznakuvcqbx-auth-token';
 const TTL_REMEMBER = 72 * 60 * 60 * 1000; // 72 hours
@@ -60,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .single();
     if (error) {
-      console.error('Error fetching profile:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error fetching profile:', error);
+      }
       return null;
     }
     return data;
@@ -125,7 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const profileData = await fetchProfile(currentSession.user.id);
               if (mounted) setProfile(profileData);
             } catch (e) {
-              console.error('[Auth] Profile fetch failed (non-fatal):', e);
+              if (import.meta.env.DEV) {
+                console.error('[Auth] Profile fetch failed (non-fatal):', e);
+              }
               if (mounted) setProfile(null);
             }
           }, 0);
@@ -145,7 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           fetchProfile(initialSession.user.id)
             .then((p) => { if (mounted) setProfile(p); })
             .catch((e) => {
-              console.error('[Auth] Profile fetch failed (non-fatal):', e);
+              if (import.meta.env.DEV) {
+                console.error('[Auth] Profile fetch failed (non-fatal):', e);
+              }
               if (mounted) setProfile(null);
             });
         }
@@ -202,6 +209,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updatePassword = async (password: string) => {
+    const validation = validatePassword(password);
+    if (!validation.isValid) {
+      return { error: new Error(validation.errors[0] || 'Mot de passe invalide') };
+    }
+
     const { error } = await supabase.auth.updateUser({ password });
     return { error: error as Error | null };
   };
@@ -218,7 +230,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    console.warn('useAuth called outside AuthProvider — returning fallback');
+    if (import.meta.env.DEV) {
+      console.warn('useAuth called outside AuthProvider — returning fallback');
+    }
     return AUTH_FALLBACK;
   }
   return context;

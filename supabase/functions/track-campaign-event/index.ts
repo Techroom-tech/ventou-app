@@ -1,22 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightOrMethod } from "../_shared/cors.ts";
+import { checkPersistentRateLimit } from "../_shared/persistentRateLimit.ts";
 
 const VALID_EVENTS = ["view_product", "add_to_cart", "checkout_started", "purchase"];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 80;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > RATE_LIMIT_MAX;
-}
 
 Deno.serve(async (req) => {
   const early = handleCorsPreflightOrMethod(req, "POST");
@@ -25,8 +12,14 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
-  if (isRateLimited(clientIp)) {
-    return new Response(JSON.stringify({ error: "Too many requests" }), {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  const rl = await checkPersistentRateLimit(supabase, `track-campaign-event:${clientIp}`, 80, 60_000, 10 * 60_000);
+  if (rl.blocked) {
+    return new Response(JSON.stringify({ error: "Too many requests", retry_after: rl.retryAfterSeconds ?? 60 }), {
       status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -71,11 +64,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const { error } = await supabase.from("campaign_events").insert({
       click_id: click_id || null,

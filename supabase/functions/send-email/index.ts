@@ -724,7 +724,7 @@ Deno.serve(async (req) => {
       throw sendErr;
     }
   } catch (err: any) {
-    console.error("[send-email] Error:", err.message);
+    if (import.meta.env.DEV) console.error("[send-email] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Email delivery failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

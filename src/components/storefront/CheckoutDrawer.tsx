@@ -308,12 +308,20 @@ function CheckoutFormContent({
         payment_method: data.payment_method,
       };
 
-      console.log('[CheckoutDrawer] Inserting order:', JSON.stringify(orderPayload));
+      if (import.meta.env.DEV) {
+        console.log('[CheckoutDrawer] Inserting order:', {
+          shop_id: orderPayload.shop_id,
+          total: orderPayload.total,
+          itemCount: orderItems.length,
+        });
+      }
 
       const { error } = await supabase.from('orders').insert(orderPayload);
 
       if (error) {
-        console.error('[CheckoutDrawer] Supabase insert error:', error.message, error.code, error.details, error.hint);
+        if (import.meta.env.DEV) {
+          console.error('[CheckoutDrawer] Supabase insert error:', error.message, error.code, error.details, error.hint);
+        }
         
         if (error.code === '42501') {
           toast.error('Cette boutique ne peut pas recevoir de commandes actuellement.');

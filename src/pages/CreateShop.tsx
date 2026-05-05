@@ -371,7 +371,9 @@ export default function CreateShop() {
       toast({ title: '🎉 Boutique créée avec succès !' });
       navigate('/dashboard/shop-created', { state: { slug: finalSlug } });
     } catch (error: any) {
-      console.error('Error creating shop:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error creating shop:', error);
+      }
       
       toast({ title: 'Erreur lors de la création', description: error.message, variant: 'destructive' });
     } finally {
@@ -419,7 +421,9 @@ export default function CreateShop() {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                    console.error('Validation errors:', errors);
+                    if (import.meta.env.DEV) {
+                      console.error('Validation errors:', errors);
+                    }
                     toast({
                       title: 'Veuillez corriger les erreurs',
                       description: Object.keys(errors).join(', '),

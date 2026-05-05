@@ -23,7 +23,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    // Log only in development to avoid exposing sensitive data
+    if (import.meta.env.DEV) {
+      console.error('ErrorBoundary caught:', error, errorInfo);
+    } else {
+      // In production, send to error tracking service (e.g., Sentry)
+      console.error('An error occurred:', error);
+    }
   }
 
   render() {
@@ -35,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.props.fallbackMessage || 'Une erreur est survenue'}
           </p>
           <p className="text-sm text-muted-foreground text-center max-w-md">
-            {this.state.error?.message}
+            {import.meta.env.DEV ? this.state.error?.message : 'Veuillez rafraîchir la page ou contacter le support'}
           </p>
           <Button variant="outline" onClick={() => this.setState({ hasError: false, error: null })}>
             Réessayer

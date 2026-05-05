@@ -1,21 +1,23 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightOrMethod } from "../_shared/cors.ts";
+import { checkPersistentRateLimit } from "../_shared/persistentRateLimit.ts";
 
 Deno.serve(async (req) => {
   const methodResponse = handleCorsPreflightOrMethod(req, "POST");
   if (methodResponse) return methodResponse;
   const corsHeaders = getCorsHeaders(req);
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
   try {
     const { order_id, shop_id } = await req.json();
-    console.log("[notify-order] Received:", { order_id, shop_id });
+    if (import.meta.env.DEV) console.log("[notify-order] Received:", { order_id, shop_id });
 
     if (!order_id || !shop_id) {
-      console.error("[notify-order] Missing params:", { order_id, shop_id });
+      if (import.meta.env.DEV) console.error("[notify-order] Missing params:", { order_id, shop_id });
       return new Response(JSON.stringify({ error: "order_id and shop_id required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: jsonHeaders,
       });
     }
 
@@ -23,11 +25,21 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rateLimitKey = `notify-order:${clientIp}:${shop_id}:${order_id}`;
+    const rateLimit = await checkPersistentRateLimit(admin, rateLimitKey, 20, 60_000, 10 * 60_000);
+    if (rateLimit.blocked) {
+      return new Response(JSON.stringify({ error: "Too many requests", retry_after: rateLimit.retryAfterSeconds ?? 60 }), {
+        status: 429,
+        headers: jsonHeaders,
+      });
+    }
+
     const authHeader = req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: jsonHeaders,
       });
     }
 
@@ -45,7 +57,7 @@ Deno.serve(async (req) => {
       if (authErr || !userData?.user?.id) {
         return new Response(JSON.stringify({ error: "Invalid token" }), {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: jsonHeaders,
         });
       }
       callerUserId = userData.user.id;
@@ -60,25 +72,25 @@ Deno.serve(async (req) => {
     }
 
     // Fetch order, shop, and owner email in parallel
-    console.log("[notify-order] Fetching order & shop data...");
+    if (import.meta.env.DEV) console.log("[notify-order] Fetching order & shop data...");
     const [orderRes, shopRes] = await Promise.all([
       admin.from("orders").select("*").eq("id", order_id).single(),
       admin.from("shops").select("id, name, slug, owner_id, currency").eq("id", shop_id).single(),
     ]);
 
     if (orderRes.error || !orderRes.data) {
-      console.error("[notify-order] Order not found:", orderRes.error);
+      if (import.meta.env.DEV) console.error("[notify-order] Order not found:", orderRes.error);
       return new Response(JSON.stringify({ error: "Order not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: jsonHeaders,
       });
     }
 
     if (shopRes.error || !shopRes.data) {
-      console.error("[notify-order] Shop not found:", shopRes.error);
+      if (import.meta.env.DEV) console.error("[notify-order] Shop not found:", shopRes.error);
       return new Response(JSON.stringify({ error: "Shop not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: jsonHeaders,
       });
     }
 
@@ -88,25 +100,25 @@ Deno.serve(async (req) => {
     if (callerUserId && !isPlatformAdmin && callerUserId !== shop.owner_id) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: jsonHeaders,
       });
     }
 
-    console.log("[notify-order] Order:", order.id, "Shop:", shop.name, "Owner:", shop.owner_id);
+    if (import.meta.env.DEV) console.log("[notify-order] Order:", order.id, "Shop:", shop.name, "Owner:", shop.owner_id);
 
     // Get owner email from auth.users
     const { data: userData, error: userError } = await admin.auth.admin.getUserById(shop.owner_id);
     if (userError || !userData?.user?.email) {
-      console.error("[notify-order] Owner email not found:", userError);
+      if (import.meta.env.DEV) console.error("[notify-order] Owner email not found:", userError);
       return new Response(JSON.stringify({ error: "Owner email not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: jsonHeaders,
       });
     }
 
     const ownerEmail = userData.user.email;
     const ownerName = userData.user.user_metadata?.first_name || "Vendeur";
-    console.log("[notify-order] Sending to:", ownerEmail, "Name:", ownerName);
+    if (import.meta.env.DEV) console.log("[notify-order] Sending to:", ownerEmail, "Name:", ownerName);
 
     // Format items list
     const items = Array.isArray(order.items) ? order.items : [];
@@ -133,7 +145,7 @@ Deno.serve(async (req) => {
       platform_name: "Ventou",
     };
 
-    console.log("[notify-order] Calling send-email with slug: new_order_vendor");
+    if (import.meta.env.DEV) console.log("[notify-order] Calling send-email with slug: new_order_vendor");
 
     // Call send-email with service role
     const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
@@ -151,20 +163,20 @@ Deno.serve(async (req) => {
     });
 
     const sendData = await sendRes.json().catch(() => ({}));
-    console.log("[notify-order] send-email response:", sendRes.status, JSON.stringify(sendData));
+    if (import.meta.env.DEV) console.log("[notify-order] send-email response:", sendRes.status, JSON.stringify(sendData));
 
     if (!sendRes.ok) {
-      console.error("[notify-order] send-email failed:", sendRes.status, sendData);
+      if (import.meta.env.DEV) console.error("[notify-order] send-email failed:", sendRes.status, sendData);
     }
 
     return new Response(JSON.stringify({ success: true, email_status: sendRes.status }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: jsonHeaders,
     });
   } catch (err) {
-    console.error("[notify-order] Unhandled error:", (err as Error).message, (err as Error).stack);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+    if (import.meta.env.DEV) console.error("[notify-order] Unhandled error:", (err as Error).message, (err as Error).stack);
+    return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: jsonHeaders,
     });
   }
 });

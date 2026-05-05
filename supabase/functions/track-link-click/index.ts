@@ -1,22 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightOrMethod } from "../_shared/cors.ts";
+import { checkPersistentRateLimit } from "../_shared/persistentRateLimit.ts";
 
 const REF_CODE_RE = /^[a-zA-Z0-9_-]{3,80}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 100;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > RATE_LIMIT_MAX;
-}
 
 Deno.serve(async (req) => {
   const early = handleCorsPreflightOrMethod(req, "POST");
@@ -25,8 +12,14 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
-  if (isRateLimited(clientIp)) {
-    return new Response(JSON.stringify({ error: "Too many requests" }), {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  const rl = await checkPersistentRateLimit(supabase, `track-link-click:${clientIp}`, 100, 60_000, 10 * 60_000);
+  if (rl.blocked) {
+    return new Response(JSON.stringify({ error: "Too many requests", retry_after: rl.retryAfterSeconds ?? 60 }), {
       status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -65,11 +58,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     // 1. Increment clicks + last_clicked_at on tracked_links
     const { error: incError } = await supabase.rpc("increment_tracked_link_click", {

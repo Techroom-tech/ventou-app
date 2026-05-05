@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { checkPersistentRateLimit } from '../_shared/persistentRateLimit.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -42,6 +43,25 @@ Deno.serve(async (req) => {
       });
     }
 
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const callerIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rateLimitKey = `create-shop:${authData.user.id}:${callerIp}`;
+    const rateLimit = await checkPersistentRateLimit(admin, rateLimitKey, 5, 15 * 60_000, 30 * 60_000);
+
+    if (rateLimit.blocked) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error_code: 'RATE_LIMITED',
+          retry_after_seconds: rateLimit.retryAfterSeconds ?? 60,
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
     const body = await req.json();
 
     // Use authenticated client so auth.uid() works inside the RPC
@@ -55,8 +75,6 @@ Deno.serve(async (req) => {
       _whatsapp: body?.whatsapp ?? null,
       _primary_color: body?.primary_color ?? null,
     }).single();
-
-    const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const result = data ?? { success: false, error_code: 'INTERNAL_ERROR' };
 

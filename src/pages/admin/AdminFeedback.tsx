@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -40,6 +40,42 @@ export default function AdminFeedback() {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selected, setSelected] = useState<any>(null);
+  const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const resolveScreenshot = async () => {
+      if (!selected?.screenshot_url) {
+        setSelectedScreenshotUrl(null);
+        return;
+      }
+
+      if (/^https?:\/\//i.test(selected.screenshot_url)) {
+        setSelectedScreenshotUrl(selected.screenshot_url);
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('feedback-screenshots')
+        .createSignedUrl(selected.screenshot_url, 60 * 10);
+
+      if (!active) return;
+
+      if (error) {
+        setSelectedScreenshotUrl(null);
+        return;
+      }
+
+      setSelectedScreenshotUrl(data.signedUrl);
+    };
+
+    resolveScreenshot();
+
+    return () => {
+      active = false;
+    };
+  }, [selected]);
 
   const { data: feedbacks, isLoading } = useQuery({
     queryKey: ['admin-feedbacks', filterType, filterStatus],
@@ -222,9 +258,9 @@ export default function AdminFeedback() {
             <div className="space-y-4">
               <p className="text-sm whitespace-pre-wrap">{selected.message}</p>
 
-              {selected.screenshot_url && (
-                <a href={selected.screenshot_url} target="_blank" rel="noopener noreferrer" className="block">
-                  <img src={selected.screenshot_url} alt="Screenshot" className="rounded-lg border max-h-64 object-contain w-full" />
+              {selectedScreenshotUrl && (
+                <a href={selectedScreenshotUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <img src={selectedScreenshotUrl} alt="Screenshot" className="rounded-lg border max-h-64 object-contain w-full" />
                 </a>
               )}
 

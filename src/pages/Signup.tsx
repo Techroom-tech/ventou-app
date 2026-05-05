@@ -55,7 +55,12 @@ export default function Signup() {
     firstName: z.string().min(1, t('auth.validation.firstNameRequired')),
     lastName: z.string().min(1, t('auth.validation.lastNameRequired')),
     email: z.string().email(t('auth.validation.emailInvalid')),
-    password: z.string().min(8, t('auth.validation.passwordMin')),
+    password: z.string()
+      .min(12, 'Mot de passe: minimum 12 caractères')
+      .regex(/[A-Z]/, 'Doit contenir au moins une majuscule')
+      .regex(/[a-z]/, 'Doit contenir au moins une minuscule')
+      .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
+      .regex(/[!@#$%^&*]/, 'Doit contenir au moins un caractère spécial (!@#$%^&*)'),
     confirmPassword: z.string(),
   }).refine((data) => data.password === data.confirmPassword, {
     message: t('auth.validation.passwordMatch'),

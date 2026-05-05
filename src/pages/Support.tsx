@@ -56,7 +56,6 @@ const Support = () => {
   });
 
   const onSubmit = (data: ContactFormValues) => {
-    console.log('Form submitted:', data);
     toast({
       title: t('support.form.success'),
       description: t('support.form.successDescription'),

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -32,8 +32,8 @@ import { useToast } from '@/hooks/use-toast';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+  email: z.string().email('Email invalide'),
+  password: z.string().min(1, 'Mot de passe requis'),
   rememberMe: z.boolean().default(false),
 });
 
@@ -48,6 +48,30 @@ const itemVariants = {
   },
 };
 
+const RATE_LIMIT_KEY = 'login_attempts';
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+
+function readRateLimitRecord() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = sessionStorage.getItem(RATE_LIMIT_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { count?: number; firstAttempt?: number };
+    if (!parsed || typeof parsed.count !== 'number' || typeof parsed.firstAttempt !== 'number') {
+      sessionStorage.removeItem(RATE_LIMIT_KEY);
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    sessionStorage.removeItem(RATE_LIMIT_KEY);
+    return null;
+  }
+}
+
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -56,6 +80,7 @@ export default function Login() {
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [rateLimitExceeded, setRateLimitExceeded] = useState(false);
 
   const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard';
 
@@ -68,8 +93,70 @@ export default function Login() {
     },
   });
 
+  const checkRateLimit = (): boolean => {
+    const data = readRateLimitRecord();
+    if (!data) return true;
+
+    const now = Date.now();
+
+    if (now - data.firstAttempt > RATE_LIMIT_WINDOW) {
+      sessionStorage.removeItem(RATE_LIMIT_KEY);
+      return true;
+    }
+
+    return data.count < RATE_LIMIT_MAX;
+  };
+
+  const recordAttempt = () => {
+    const attempts = readRateLimitRecord();
+    const now = Date.now();
+
+    if (!attempts) {
+      sessionStorage.setItem(RATE_LIMIT_KEY, JSON.stringify({
+        count: 1,
+        firstAttempt: now,
+      }));
+    } else {
+      if (now - attempts.firstAttempt > RATE_LIMIT_WINDOW) {
+        sessionStorage.setItem(RATE_LIMIT_KEY, JSON.stringify({
+          count: 1,
+          firstAttempt: now,
+        }));
+      } else {
+        sessionStorage.setItem(RATE_LIMIT_KEY, JSON.stringify({
+          count: attempts.count + 1,
+          firstAttempt: attempts.firstAttempt,
+        }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!rateLimitExceeded) return;
+
+    const timer = window.setInterval(() => {
+      if (checkRateLimit()) {
+        setRateLimitExceeded(false);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [rateLimitExceeded, checkRateLimit]);
+
   const onSubmit = async (data: LoginFormValues) => {
+    // Check rate limit
+    if (!checkRateLimit()) {
+      setRateLimitExceeded(true);
+      toast({
+        variant: 'destructive',
+        title: t('common.error'),
+        description: 'Trop de tentatives. Réessayez dans 15 minutes.',
+      });
+      return;
+    }
+
     setIsLoading(true);
+    recordAttempt();
 
     const { error } = await signIn(data.email, data.password, data.rememberMe);
 
@@ -88,6 +175,8 @@ export default function Login() {
         description: errorMessage,
       });
     } else {
+      // Clear rate limit on success
+      sessionStorage.removeItem(RATE_LIMIT_KEY);
       navigate(from, { replace: true });
     }
 
